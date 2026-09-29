@@ -1,0 +1,535 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Tizim foydalanuvchisi va uning roli",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "fullName": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string", "format": "email" },
+        "login": { "type": "string", "maxLength": 80 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "role": {
+          "type": "string",
+          "enum": [
+            "SUPER_ADMIN",
+            "PRACTICE_HEAD",
+            "PRACTICE_STAFF",
+            "FACULTY_DEAN",
+            "PRACTICE_SUPERVISOR",
+            "CLINIC_RESPONSIBLE",
+            "STUDENT"
+          ]
+        },
+        "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "SUSPENDED"] },
+        "photoURL": { "type": "string" },
+        "facultyId": { "type": "string" },
+        "practicePlaceId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "lastLoginAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "fullName", "role", "status", "createdAt"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Amaliyotdagi talaba ma'lumotlari",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "studentId": { "type": "string", "description": "Tibbiyot talaba guvohnomasi ID" },
+        "fullName": { "type": "string", "maxLength": 150 },
+        "pinfl": { "type": "string", "maxLength": 14, "minLength": 14 },
+        "facultyId": { "type": "string" },
+        "directionId": { "type": "string" },
+        "courseId": { "type": "string" },
+        "groupId": { "type": "string" },
+        "phone": { "type": "string" },
+        "telegram": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "IN_PRACTICE", "COMPLETED", "SUSPENDED"] },
+        "currentPracticeId": { "type": "string" },
+        "currentPracticePlaceId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "studentId", "fullName", "pinfl", "facultyId", "directionId", "courseId", "groupId", "status", "createdAt"]
+    },
+    "Faculty": {
+      "title": "Faculty",
+      "description": "Tibbiyot universiteti fakulteti",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 150 },
+        "code": { "type": "string", "maxLength": 30 },
+        "deanName": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "code", "deanName"]
+    },
+    "Direction": {
+      "title": "Direction",
+      "description": "Mutaxassislik ta'lim yo'nalishi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "facultyId": { "type": "string" },
+        "degree": { "type": "string", "enum": ["Bakalavr", "Magistratura", "Klinik ordinatura"] },
+        "durationYears": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "code", "facultyId", "degree", "durationYears"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "O'quv kursi bosqichi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "level": { "type": "number" },
+        "name": { "type": "string" },
+        "academicYear": { "type": "string" }
+      },
+      "required": ["id", "level", "name", "academicYear"]
+    },
+    "Group": {
+      "title": "Group",
+      "description": "Akademik guruh",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "directionId": { "type": "string" },
+        "courseId": { "type": "string" },
+        "facultyId": { "type": "string" },
+        "language": { "type": "string", "enum": ["O'zbek", "Rus", "Ingliz"] },
+        "studentCount": { "type": "number" }
+      },
+      "required": ["id", "name", "directionId", "courseId", "facultyId", "language"]
+    },
+    "PracticePlace": {
+      "title": "PracticePlace",
+      "description": "Klinik baza, shifoxona yoki poliklinika",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["Shifoxona", "Klinika", "Poliklinika", "Ilmiy Markaz", "Tez Yordam"] },
+        "city": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "capacity": { "type": "number" },
+        "activeStudentsCount": { "type": "number" },
+        "contactPerson": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "contractNumber": { "type": "string" },
+        "contractDate": { "type": "string" },
+        "contractExpiryDate": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "type", "city", "capacity"]
+    },
+    "PracticeDepartment": {
+      "title": "PracticeDepartment",
+      "description": "Shifoxonadagi klinik bo'lim",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "practicePlaceId": { "type": "string" },
+        "name": { "type": "string" },
+        "headDoctor": { "type": "string" },
+        "bedCapacity": { "type": "number" },
+        "activeStudentQuota": { "type": "number" }
+      },
+      "required": ["id", "practicePlaceId", "name"]
+    },
+    "Supervisor": {
+      "title": "Supervisor",
+      "description": "Universitet yoki klinika amaliyot rahbari",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "department": { "type": "string" },
+        "academicDegree": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "type": { "type": "string", "enum": ["university", "clinic"] },
+        "practicePlaceId": { "type": "string" },
+        "assignedStudentsCount": { "type": "number" }
+      },
+      "required": ["id", "fullName", "department", "type"]
+    },
+    "ClinicResponsible": {
+      "title": "ClinicResponsible",
+      "description": "Shifoxona mas'ul koordinatori",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "practicePlaceId": { "type": "string" },
+        "position": { "type": "string" },
+        "department": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["id", "fullName", "practicePlaceId"]
+    },
+    "Practice": {
+      "title": "Practice",
+      "description": "O'quv va klinik amaliyot buyrug'i",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "code": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "academicYear": { "type": "string" },
+        "facultyId": { "type": "string" },
+        "directionId": { "type": "string" },
+        "courseLevel": { "type": "number" },
+        "groupIds": { "type": "array" },
+        "practicePlaceIds": { "type": "array" },
+        "supervisorIds": { "type": "array" },
+        "status": { "type": "string", "enum": ["DRAFT", "ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"] },
+        "orderNumber": { "type": "string" },
+        "orderDate": { "type": "string" },
+        "totalHours": { "type": "number" },
+        "credits": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "type", "startDate", "endDate", "facultyId", "directionId", "status", "orderNumber"]
+    },
+    "PracticeAssignment": {
+      "title": "PracticeAssignment",
+      "description": "Talabani amaliyot bazasiga taqsimlash",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "practiceId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "practicePlaceId": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "supervisorId": { "type": "string" },
+        "clinicResponsibleId": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["ASSIGNED", "IN_PROGRESS", "COMPLETED", "FAILED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "practiceId", "studentId", "practicePlaceId", "supervisorId", "status"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Talabaning kundalik klinik davomati",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "practiceId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "assignmentId": { "type": "string" },
+        "practicePlaceId": { "type": "string" },
+        "date": { "type": "string" },
+        "checkInTime": { "type": "string" },
+        "checkOutTime": { "type": "string" },
+        "status": { "type": "string", "enum": ["PRESENT", "LATE", "ABSENT", "EXCUSED"] },
+        "qrId": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "locationVerified": { "type": "boolean" },
+        "deviceInfo": { "type": "string" },
+        "qrSessionId": { "type": "string" },
+        "qrTokenHash": { "type": "string" },
+        "note": { "type": "string" },
+        "verifiedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "practiceId", "studentId", "date", "status"]
+    },
+    "AttendanceSession": {
+      "title": "AttendanceSession",
+      "description": "Vaqtincha QR davomat sessiyasi (Klinika va rahbarlar uchun)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "practiceId": { "type": "string" },
+        "practicePlaceId": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["ACTIVE", "EXPIRED", "CANCELLED"] },
+        "token": { "type": "string" },
+        "durationMinutes": { "type": "number" },
+        "allowedRadius": { "type": "number" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" }
+      },
+      "required": ["id", "practiceId", "practicePlaceId", "createdBy", "createdAt", "expiresAt", "status", "token"]
+    },
+    "DailyJournal": {
+      "title": "DailyJournal",
+      "description": "Talabaning elektron amaliyot kundaligi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "practiceId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "date": { "type": "string" },
+        "department": { "type": "string" },
+        "patientsExaminedCount": { "type": "number" },
+        "proceduresDone": { "type": "array" },
+        "clinicalCasesSummary": { "type": "string" },
+        "questionsLearned": { "type": "string" },
+        "supervisorFeedback": { "type": "string" },
+        "supervisorRating": { "type": "number" },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "photoURLs": { "type": "array" },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "practiceId", "studentId", "date", "department", "status", "submittedAt"]
+    },
+    "Skill": {
+      "title": "Skill",
+      "description": "Tibbiy manipulyatsiya va ko'nikma ta'rifi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "requiredCount": { "type": "number" },
+        "description": { "type": "string" },
+        "difficulty": { "type": "string" }
+      },
+      "required": ["id", "name", "category", "requiredCount"]
+    },
+    "StudentSkill": {
+      "title": "StudentSkill",
+      "description": "Talabaning muayyan ko'nikmani bajarganlik hisobi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "practiceId": { "type": "string" },
+        "skillId": { "type": "string" },
+        "performedCount": { "type": "number" },
+        "targetCount": { "type": "number" },
+        "status": { "type": "string", "enum": ["NOT_STARTED", "IN_PROGRESS", "MASTERED"] },
+        "verifiedBySupervisor": { "type": "boolean" },
+        "lastPerformedDate": { "type": "string" }
+      },
+      "required": ["id", "studentId", "skillId", "performedCount", "targetCount", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Amaliyot rahbari bergan klinik topshiriq",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "practiceId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "deadline": { "type": "string" },
+        "status": { "type": "string", "enum": ["OPEN", "CLOSED"] }
+      },
+      "required": ["id", "practiceId", "title", "deadline"]
+    },
+    "Assessment": {
+      "title": "Assessment",
+      "description": "Oraliq va yakuniy attestatsiya bahosi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "practiceId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "attendanceScore": { "type": "number" },
+        "journalScore": { "type": "number" },
+        "skillsScore": { "type": "number" },
+        "finalExamScore": { "type": "number" },
+        "totalScore": { "type": "number" },
+        "grade": { "type": "string", "enum": ["5", "4", "3", "2"] },
+        "assessorId": { "type": "string" },
+        "assessorName": { "type": "string" },
+        "assessmentDate": { "type": "string" },
+        "feedback": { "type": "string" },
+        "status": { "type": "string", "enum": ["GRADED", "PENDING"] }
+      },
+      "required": ["id", "practiceId", "studentId", "totalScore", "grade", "status"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "Amaliyot buyrug'i, shartnomasi yoki yo'llanmasi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["order", "contract", "referral", "syllabus", "report"] },
+        "docNumber": { "type": "string" },
+        "issueDate": { "type": "string" },
+        "practiceId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "fileURL": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "ARCHIVED"] },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "title", "type", "docNumber", "issueDate"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Tizim bildirishnomasi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "recipientUserId": { "type": "string" },
+        "recipientRole": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "warning", "alert", "success"] },
+        "isRead": { "type": "boolean" },
+        "linkModule": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "message", "type", "isRead", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Xavfsizlik va o'zgarishlar auditi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userRole": { "type": "string" },
+        "action": {
+          "type": "string",
+          "enum": [
+            "login",
+            "logout",
+            "studentCreated",
+            "studentUpdated",
+            "studentDeleted",
+            "practiceCreated",
+            "practiceUpdated",
+            "practiceStatusChanged",
+            "assignmentCreated",
+            "assignmentRemoved",
+            "attendanceCreated",
+            "attendanceUpdated",
+            "journalSubmitted",
+            "journalReviewed",
+            "gradeUpdated",
+            "documentCreated",
+            "documentDeleted",
+            "systemReset"
+          ]
+        },
+        "entity": { "type": "string" },
+        "entityId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "string" }
+      },
+      "required": ["id", "userId", "action", "entity", "entityId", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Foydalanuvchilar profillari va rollari"
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Amaliyot talabalari bazasi"
+    },
+    "/faculties/{facultyId}": {
+      "schema": { "$ref": "#/entities/Faculty" },
+      "description": "Universitet fakultetlari"
+    },
+    "/directions/{directionId}": {
+      "schema": { "$ref": "#/entities/Direction" },
+      "description": "Ta'lim yo'nalishlari"
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "#/entities/Course" },
+      "description": "Kurslar"
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/Group" },
+      "description": "Akademik guruhlar"
+    },
+    "/practicePlaces/{practicePlaceId}": {
+      "schema": { "$ref": "#/entities/PracticePlace" },
+      "description": "Klinik bazalar va shifoxonalar"
+    },
+    "/practiceDepartments/{departmentId}": {
+      "schema": { "$ref": "#/entities/PracticeDepartment" },
+      "description": "Klinik bo'limlar"
+    },
+    "/supervisors/{supervisorId}": {
+      "schema": { "$ref": "#/entities/Supervisor" },
+      "description": "Amaliyot rahbarlari"
+    },
+    "/clinicResponsibles/{clinicResponsibleId}": {
+      "schema": { "$ref": "#/entities/ClinicResponsible" },
+      "description": "Klinik mas'ullar"
+    },
+    "/practices/{practiceId}": {
+      "schema": { "$ref": "#/entities/Practice" },
+      "description": "Amaliyot buyruqlari va rejalar"
+    },
+    "/practiceAssignments/{assignmentId}": {
+      "schema": { "$ref": "#/entities/PracticeAssignment" },
+      "description": "Talabani amaliyotga biriktirish yozuvlari"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": { "$ref": "#/entities/Attendance" },
+      "description": "Klinik davomat jurnali"
+    },
+    "/dailyJournals/{journalId}": {
+      "schema": { "$ref": "#/entities/DailyJournal" },
+      "description": "Talabaning kundalik hisobotlari"
+    },
+    "/skills/{skillId}": {
+      "schema": { "$ref": "#/entities/Skill" },
+      "description": "Amaliy ko'nikmalar reestri"
+    },
+    "/studentSkills/{studentSkillId}": {
+      "schema": { "$ref": "#/entities/StudentSkill" },
+      "description": "Talabaning ko'nikmalar bajarganlik qaydlari"
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Amaliyot vazifalari"
+    },
+    "/assessments/{assessmentId}": {
+      "schema": { "$ref": "#/entities/Assessment" },
+      "description": "Yakuniy attestatsiya va ballar"
+    },
+    "/documents/{documentId}": {
+      "schema": { "$ref": "#/entities/Document" },
+      "description": "Amaliyot hujjatlari"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Tizim bildirishnomalari"
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "O'zgarishlar va xavfsizlik audit loglari"
+    }
+  }
+}

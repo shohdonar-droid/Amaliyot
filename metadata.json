@@ -1,0 +1,6 @@
+{
+  "name": "Talabalar Amaliyoti Elektron Tizimi",
+  "description": "Tibbiyot oliy ta'lim muassasalari talabalari amaliyotini to'liq elektron boshqarish, taqsimlash, davomat, elektron kundalik va baholash platformasi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,255 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getUserRole() {
+      return isSignedIn() ? getUserData().role : '';
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && (
+        getUserRole() == 'SUPER_ADMIN' ||
+        request.auth.token.email == 'admin@tma.uz' ||
+        request.auth.token.email == 'shohdonar@gmail.com'
+      );
+    }
+
+    function isPracticeHead() {
+      return isSignedIn() && (isSuperAdmin() || getUserRole() == 'PRACTICE_HEAD');
+    }
+
+    function isPracticeStaff() {
+      return isSignedIn() && (isPracticeHead() || getUserRole() == 'PRACTICE_STAFF');
+    }
+
+    function isFacultyDean(facultyId) {
+      return isSignedIn() && (isPracticeStaff() || (getUserRole() == 'FACULTY_DEAN' && getUserData().facultyId == facultyId));
+    }
+
+    function isSupervisor() {
+      return isSignedIn() && (isPracticeStaff() || getUserRole() == 'PRACTICE_SUPERVISOR');
+    }
+
+    function isClinicResponsible(placeId) {
+      return isSignedIn() && (isPracticeStaff() || (getUserRole() == 'CLINIC_RESPONSIBLE' && getUserData().practicePlaceId == placeId));
+    }
+
+    function isStudentOwner(studentUserId) {
+      return isSignedIn() && request.auth.uid == studentUserId;
+    }
+
+    // --- USERS COLLECTION ---
+    match /users/{userId} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId ||
+        isPracticeStaff()
+      );
+      allow create: if isPracticeHead() || (isSignedIn() && request.auth.uid == userId);
+      allow update: if isSuperAdmin() || (
+        isSignedIn() && request.auth.uid == userId &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid'])
+      );
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- STUDENTS COLLECTION ---
+    match /students/{studentId} {
+      allow read: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        resource.data.userId == request.auth.uid ||
+        (getUserRole() == 'FACULTY_DEAN' && getUserData().facultyId == resource.data.facultyId) ||
+        (getUserRole() == 'CLINIC_RESPONSIBLE' && getUserData().practicePlaceId == resource.data.currentPracticePlaceId)
+      );
+      allow create, update: if isPracticeStaff();
+      allow delete: if isPracticeHead();
+    }
+
+    // --- ACADEMIC STRUCTURE (Faculties, Directions, Courses, Groups) ---
+    match /faculties/{facultyId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeHead();
+    }
+
+    match /directions/{directionId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeHead();
+    }
+
+    match /courses/{courseId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeHead();
+    }
+
+    match /groups/{groupId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeStaff();
+    }
+
+    // --- CLINICAL PLACES & DEPARTMENTS ---
+    match /practicePlaces/{placeId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeStaff();
+    }
+
+    match /practiceDepartments/{deptId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeStaff();
+    }
+
+    // --- SUPERVISORS & CLINIC RESPONSIBLES ---
+    match /supervisors/{supervisorId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeStaff();
+    }
+
+    match /clinicResponsibles/{responsibleId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeStaff();
+    }
+
+    // --- PRACTICES ---
+    match /practices/{practiceId} {
+      allow read: if isSignedIn();
+      allow create, update: if isPracticeStaff();
+      allow delete: if isPracticeHead();
+    }
+
+    // --- PRACTICE ASSIGNMENTS ---
+    match /practiceAssignments/{assignmentId} {
+      allow read: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        resource.data.studentId == getUserData().studentId ||
+        (getUserRole() == 'CLINIC_RESPONSIBLE' && getUserData().practicePlaceId == resource.data.practicePlaceId)
+      );
+      allow create, update, delete: if isPracticeStaff();
+    }
+
+    // --- ATTENDANCE ---
+    match /attendance/{attendanceId} {
+      allow read: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        resource.data.studentId == getUserData().studentId ||
+        (getUserRole() == 'CLINIC_RESPONSIBLE' && getUserData().practicePlaceId == resource.data.practicePlaceId)
+      );
+      allow create, update: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        getUserRole() == 'CLINIC_RESPONSIBLE' ||
+        (getUserRole() == 'STUDENT' && request.resource.data.studentId == getUserData().studentId)
+      );
+      allow delete: if isPracticeHead();
+    }
+
+    // --- ATTENDANCE SESSIONS (QR ATTENDANCE) ---
+    match /attendanceSessions/{sessionId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && (
+        isPracticeStaff() ||
+        getUserRole() == 'CLINIC_RESPONSIBLE' ||
+        isSupervisor()
+      );
+      allow delete: if isPracticeHead();
+    }
+
+    // --- DAILY JOURNALS ---
+    match /dailyJournals/{journalId} {
+      allow read: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        resource.data.studentId == getUserData().studentId ||
+        getUserRole() == 'CLINIC_RESPONSIBLE'
+      );
+      allow create: if isSignedIn() && (
+        isPracticeStaff() ||
+        (getUserRole() == 'STUDENT' && request.resource.data.studentId == getUserData().studentId)
+      );
+      allow update: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        (getUserRole() == 'STUDENT' && resource.data.studentId == getUserData().studentId && resource.data.status == 'PENDING')
+      );
+      allow delete: if isPracticeHead();
+    }
+
+    // --- SKILLS & STUDENT SKILLS ---
+    match /skills/{skillId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeStaff();
+    }
+
+    match /studentSkills/{studentSkillId} {
+      allow read: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        resource.data.studentId == getUserData().studentId
+      );
+      allow create, update: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        (getUserRole() == 'STUDENT' && request.resource.data.studentId == getUserData().studentId)
+      );
+      allow delete: if isPracticeHead();
+    }
+
+    // --- TASKS ---
+    match /tasks/{taskId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeStaff() || isSupervisor();
+    }
+
+    // --- ASSESSMENTS ---
+    match /assessments/{assessmentId} {
+      allow read: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        resource.data.studentId == getUserData().studentId
+      );
+      allow write: if isPracticeStaff() || isSupervisor();
+    }
+
+    // --- DOCUMENTS ---
+    match /documents/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeStaff();
+    }
+
+    // --- NOTIFICATIONS ---
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (
+        resource.data.recipientUserId == request.auth.uid ||
+        resource.data.recipientRole == getUserRole() ||
+        isPracticeHead()
+      );
+      allow create: if isPracticeStaff();
+      allow update: if isSignedIn() && (
+        resource.data.recipientUserId == request.auth.uid ||
+        isPracticeHead()
+      );
+      allow delete: if isPracticeHead();
+    }
+
+    // --- AUDIT LOGS (Immutable, Append-Only) ---
+    match /auditLogs/{logId} {
+      allow read: if isPracticeHead();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+  }
+}
