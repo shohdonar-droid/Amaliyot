@@ -17,13 +17,27 @@ import {
   DailyJournal,
   Skill,
   StudentSkill,
+  SkillRecord,
   SkillLogEntry,
   Task,
   Assessment,
+  AssessmentStatus,
+  FinalExam,
+  ExamStatus,
+  AttestationCommission,
+  AssessmentSettings,
+  AssessmentHistoryItem,
   DocumentRecord,
   AppNotification,
   AuditLog,
-  AuditAction
+  AuditAction,
+  StudentPracticeOverallStatus,
+  VedomostStatus,
+  VedomostStudentRow,
+  OfficialVedomost,
+  ProblemType,
+  ProblemStudent,
+  StudentTimelineStep
 } from '../types';
 
 const STORAGE_KEY_V2 = 'tma_amaliyot_cloud_db_v2';
@@ -54,6 +68,11 @@ export interface DatabaseStateV2 {
   skillCategories: string[];
   tasks: Task[];
   assessments: Assessment[];
+  finalExams: FinalExam[];
+  attestationCommissions: AttestationCommission[];
+  assessmentSettings: AssessmentSettings;
+  vedomosts: OfficialVedomost[];
+  problemStudents?: ProblemStudent[];
   documents: DocumentRecord[];
   notifications: AppNotification[];
   auditLogs: AuditLog[];
@@ -1651,22 +1670,303 @@ const DEFAULT_TASKS_V2: Task[] = [
   }
 ];
 
+const DEFAULT_ASSESSMENT_SETTINGS_V2: AssessmentSettings = {
+  id: 'setting-default',
+  attendanceMaxScore: 20,
+  journalMaxScore: 20,
+  skillsMaxScore: 30,
+  finalExamMaxScore: 30,
+  grade5Min: 86,
+  grade4Min: 71,
+  grade3Min: 56,
+  grade2Min: 0,
+  examCriteriaWeights: {
+    theoryMax: 6,
+    practicalMax: 8,
+    clinicalCaseMax: 8,
+    professionalismMax: 4,
+    safetyMax: 4
+  },
+  attendanceFormula: 'LINEAR',
+  updatedAt: '2026-09-01T08:00:00Z'
+};
+
+const DEFAULT_COMMISSIONS_V2: AttestationCommission[] = [
+  {
+    id: 'comm-1',
+    name: 'Davolash ishi 4-kurs Yakuniy attestatsiya komissiyasi №1',
+    chairpersonId: 'sup-1',
+    chairpersonName: 'Prof. Sobirov Alisher Tolipovich',
+    memberIds: ['sup-1', 'sup-2'],
+    memberNames: ['Prof. Sobirov Alisher Tolipovich', 'Dr. Rahmonova Nargiza Anvarovna'],
+    position: 'Kafedra mudiri, professor',
+    department: 'Gospital terapiya kafedrasi',
+    facultyId: 'fac-1',
+    facultyName: '1-son Davolash fakulteti',
+    isActive: true,
+    createdAt: '2026-08-25T09:00:00Z'
+  },
+  {
+    id: 'comm-2',
+    name: 'Pediatriya fakulteti Klinik attestatsiya komissiyasi №2',
+    chairpersonId: 'sup-3',
+    chairpersonName: 'Dr. Qodirova Gulchehra Olimovna',
+    memberIds: ['sup-3', 'sup-1'],
+    memberNames: ['Dr. Qodirova Gulchehra Olimovna', 'Prof. Sobirov Alisher Tolipovich'],
+    position: 'Dotsent',
+    department: 'Bolalar kasalliklari kafedrasi',
+    facultyId: 'fac-2',
+    facultyName: 'Pediatriya fakulteti',
+    isActive: true,
+    createdAt: '2026-08-25T09:30:00Z'
+  }
+];
+
+const DEFAULT_FINAL_EXAMS_V2: FinalExam[] = [
+  {
+    id: 'fexam-1',
+    practiceId: 'prac-1',
+    studentId: 'std-1',
+    assignmentId: 'asg-1',
+    examDate: '2026-09-28',
+    examTime: '10:00',
+    placeName: 'Respublika 1-son Shifoxonasi',
+    departmentName: 'Terapiya',
+    examinerIds: ['sup-1', 'sup-2'],
+    examinerNames: ['Prof. Sobirov Alisher Tolipovich', 'Dr. Rahmonova Nargiza Anvarovna'],
+    commissionId: 'comm-1',
+    theoryScore: 5,
+    practicalScore: 7,
+    clinicalCaseScore: 7,
+    professionalismScore: 4,
+    safetyScore: 4,
+    totalScore: 27,
+    maxScore: 30,
+    percentage: 90,
+    status: 'COMPLETED',
+    comments: 'Nazariy va amaliy manipulyatsiyalar yuqori darajada namoyish etildi.',
+    attemptNumber: 1,
+    gradedBy: 'Prof. Sobirov Alisher Tolipovich',
+    gradedAt: '2026-09-28T11:30:00Z',
+    createdAt: '2026-09-27T08:00:00Z'
+  },
+  {
+    id: 'fexam-2',
+    practiceId: 'prac-1',
+    studentId: 'std-2',
+    assignmentId: 'asg-2',
+    examDate: '2026-09-28',
+    examTime: '11:00',
+    placeName: 'Respublika 1-son Shifoxonasi',
+    departmentName: 'Kardiologiya',
+    examinerIds: ['sup-1'],
+    examinerNames: ['Prof. Sobirov Alisher Tolipovich'],
+    commissionId: 'comm-1',
+    theoryScore: 5,
+    practicalScore: 6,
+    clinicalCaseScore: 6,
+    professionalismScore: 4,
+    safetyScore: 3,
+    totalScore: 24,
+    maxScore: 30,
+    percentage: 80,
+    status: 'COMPLETED',
+    comments: 'Kardiologik EKG tahlilida mustaqil xulosa bera oldi.',
+    attemptNumber: 1,
+    gradedBy: 'Prof. Sobirov Alisher Tolipovich',
+    gradedAt: '2026-09-28T12:00:00Z',
+    createdAt: '2026-09-27T08:00:00Z'
+  },
+  {
+    id: 'fexam-3',
+    practiceId: 'prac-1',
+    studentId: 'std-4',
+    assignmentId: 'asg-4',
+    examDate: '2026-09-29',
+    examTime: '14:00',
+    placeName: 'Shahar tez tibbiy yordam klinik shifoxonasi',
+    departmentName: 'Xirurgiya',
+    examinerIds: ['sup-2'],
+    examinerNames: ['Dr. Rahmonova Nargiza Anvarovna'],
+    commissionId: 'comm-1',
+    theoryScore: 0,
+    practicalScore: 0,
+    clinicalCaseScore: 0,
+    professionalismScore: 0,
+    safetyScore: 0,
+    totalScore: 0,
+    maxScore: 30,
+    percentage: 0,
+    status: 'SCHEDULED',
+    comments: 'Imtihon rejalashtirilgan.',
+    attemptNumber: 1,
+    createdAt: '2026-09-28T09:00:00Z'
+  }
+];
+
 const DEFAULT_ASSESSMENTS_V2: Assessment[] = [
   {
     id: 'ass-1',
     practiceId: 'prac-1',
     studentId: 'std-1',
+    assignmentId: 'asg-1',
     attendanceScore: 19,
+    attendanceMaxScore: 20,
     journalScore: 19,
+    journalMaxScore: 20,
     skillsScore: 28,
-    finalExamScore: 28,
-    totalScore: 94,
+    skillsMaxScore: 30,
+    finalExamScore: 27,
+    finalExamMaxScore: 30,
+    totalScore: 93,
+    percentage: 93,
     grade: '5',
+    status: 'APPROVED',
+    commissionId: 'comm-1',
+    commissionName: 'Davolash ishi 4-kurs Yakuniy attestatsiya komissiyasi №1',
     assessorId: 'sup-1',
     assessorName: 'Prof. Sobirov Alisher Tolipovich',
-    assessmentDate: '2026-09-27',
-    feedback: 'Amaliy ko\'nikmalarni to\'liq o\'zlashtirgan. Intizomli.',
-    status: 'graded'
+    assessmentDate: '2026-09-28',
+    feedback: 'Barcha talablar a\'lo darajada bajarildi. Amaliy ko\'nikmalari yuqori.',
+    approvedBy: 'Prof. Sobirov Alisher Tolipovich',
+    approvedAt: '2026-09-28T14:30:00Z',
+    isAttendanceComplete: true,
+    isJournalComplete: true,
+    isSkillsComplete: true,
+    isExamComplete: true,
+    createdAt: '2026-09-28T12:00:00Z'
+  },
+  {
+    id: 'ass-2',
+    practiceId: 'prac-1',
+    studentId: 'std-2',
+    assignmentId: 'asg-2',
+    attendanceScore: 18,
+    attendanceMaxScore: 20,
+    journalScore: 17,
+    journalMaxScore: 20,
+    skillsScore: 24,
+    skillsMaxScore: 30,
+    finalExamScore: 24,
+    finalExamMaxScore: 30,
+    totalScore: 83,
+    percentage: 83,
+    grade: '4',
+    status: 'PENDING_APPROVAL',
+    commissionId: 'comm-1',
+    commissionName: 'Davolash ishi 4-kurs Yakuniy attestatsiya komissiyasi №1',
+    assessorId: 'sup-1',
+    assessorName: 'Prof. Sobirov Alisher Tolipovich',
+    assessmentDate: '2026-09-28',
+    feedback: 'Amaliyot dasturini to\'liq o\'zlashtirgan. Kardiologik muolajalarda faol.',
+    isAttendanceComplete: true,
+    isJournalComplete: true,
+    isSkillsComplete: true,
+    isExamComplete: true,
+    createdAt: '2026-09-28T12:15:00Z'
+  },
+  {
+    id: 'ass-3',
+    practiceId: 'prac-1',
+    studentId: 'std-4',
+    assignmentId: 'asg-4',
+    attendanceScore: 17,
+    attendanceMaxScore: 20,
+    journalScore: 16,
+    journalMaxScore: 20,
+    skillsScore: 21,
+    skillsMaxScore: 30,
+    finalExamScore: 0,
+    finalExamMaxScore: 30,
+    totalScore: 54,
+    percentage: 54,
+    grade: '2',
+    status: 'WAITING_FOR_EXAM',
+    commissionId: 'comm-1',
+    commissionName: 'Davolash ishi 4-kurs Yakuniy attestatsiya komissiyasi №1',
+    isAttendanceComplete: true,
+    isJournalComplete: true,
+    isSkillsComplete: true,
+    isExamComplete: false,
+    validationErrors: ['Yakuniy amaliyot imtihoni natijasi kiritilmagan'],
+    createdAt: '2026-09-28T13:00:00Z'
+  }
+];
+
+const DEFAULT_VEDOMOSTS_V2: OfficialVedomost[] = [
+  {
+    id: 'ved-1',
+    vedomostNumber: 'VED-2026-09-001',
+    title: '4-kurs Davolash ishi Terapiya amaliyoti yakuniy attestatsiya vedomosti',
+    academicYear: '2026-2027',
+    facultyId: 'fac-1',
+    facultyName: '1-son Davolash fakulteti',
+    directionId: 'dir-1',
+    directionName: 'Davolash ishi',
+    courseLevel: 4,
+    groupId: 'grp-1',
+    groupName: '401-guruh',
+    practiceId: 'prac-1',
+    practiceName: '4-kurs Davolash ishi klinik ishlab chiqarish amaliyoti',
+    practiceCode: 'PRAC-2025-MED4',
+    practiceStartDate: '2026-09-01',
+    practiceEndDate: '2026-09-30',
+    practicePlaceId: 'place-1',
+    practicePlaceName: 'Respublika 1-son Klinik Shifoxonasi',
+    commissionId: 'comm-1',
+    commissionName: 'Davolash ishi 4-kurs Yakuniy attestatsiya komissiyasi №1',
+    commissionChairperson: 'Prof. Sobirov Alisher Tolipovich',
+    commissionMembers: ['Dr. Rahmonova Nargiza Anvarovna', 'Dots. Mahmudov Shuxrat'],
+    departmentChair: 'Prof. Sobirov Alisher Tolipovich',
+    deanName: 'Prof. Xalimov Bobur Rustamovich',
+    issueDate: '2026-09-28',
+    status: 'APPROVED',
+    students: [
+      {
+        studentId: 'std-1',
+        fullName: 'Aliyev Jasur Rustamovich',
+        studentCode: 'TMA-2022-0142',
+        group: '401-guruh',
+        attendanceScore: 19,
+        journalScore: 19,
+        skillsScore: 28,
+        finalExamScore: 27,
+        totalScore: 93,
+        grade: '5',
+        gradeWord: "A'lo",
+        status: 'APPROVED'
+      },
+      {
+        studentId: 'std-2',
+        fullName: 'Karimova Dilnoza Botirovna',
+        studentCode: 'TMA-2022-0189',
+        group: '401-guruh',
+        attendanceScore: 18,
+        journalScore: 17,
+        skillsScore: 24,
+        finalExamScore: 24,
+        totalScore: 83,
+        grade: '4',
+        gradeWord: 'Yaxshi',
+        status: 'APPROVED'
+      }
+    ],
+    totalStudentsCount: 2,
+    grade5Count: 1,
+    grade4Count: 1,
+    grade3Count: 0,
+    grade2Count: 0,
+    masteryPercentage: 100,
+    qualityPercentage: 100,
+    retakeCount: 0,
+    verificationCode: 'TMA-VRF-98214',
+    qrPayload: 'https://ais-dev-jfkrtatp7imduu6bfeocus-226016755915.asia-east1.run.app/verify/TMA-VRF-98214',
+    signedAt: '2026-09-28T14:00:00Z',
+    signedBy: 'Prof. Sobirov Alisher Tolipovich',
+    approvedAt: '2026-09-28T15:30:00Z',
+    approvedBy: 'Prof. Xalimov Bobur Rustamovich',
+    createdAt: '2026-09-28T12:00:00Z',
+    updatedAt: '2026-09-28T15:30:00Z'
   }
 ];
 
@@ -1758,6 +2058,21 @@ class StorageServiceV2 {
           if (!parsed.skillCategories || parsed.skillCategories.length === 0) {
             parsed.skillCategories = DEFAULT_SKILL_CATEGORIES_V2;
           }
+          if (!parsed.finalExams || parsed.finalExams.length === 0) {
+            parsed.finalExams = DEFAULT_FINAL_EXAMS_V2;
+          }
+          if (!parsed.attestationCommissions || parsed.attestationCommissions.length === 0) {
+            parsed.attestationCommissions = DEFAULT_COMMISSIONS_V2;
+          }
+          if (!parsed.assessmentSettings) {
+            parsed.assessmentSettings = DEFAULT_ASSESSMENT_SETTINGS_V2;
+          }
+          if (!parsed.assessments || parsed.assessments.length === 0 || !parsed.assessments[0].attendanceMaxScore) {
+            parsed.assessments = DEFAULT_ASSESSMENTS_V2;
+          }
+          if (!parsed.vedomosts || parsed.vedomosts.length === 0) {
+            parsed.vedomosts = DEFAULT_VEDOMOSTS_V2;
+          }
           return parsed;
         }
       } catch (err) {
@@ -1788,6 +2103,10 @@ class StorageServiceV2 {
       skillCategories: DEFAULT_SKILL_CATEGORIES_V2,
       tasks: DEFAULT_TASKS_V2,
       assessments: DEFAULT_ASSESSMENTS_V2,
+      finalExams: DEFAULT_FINAL_EXAMS_V2,
+      attestationCommissions: DEFAULT_COMMISSIONS_V2,
+      assessmentSettings: DEFAULT_ASSESSMENT_SETTINGS_V2,
+      vedomosts: DEFAULT_VEDOMOSTS_V2,
       documents: DEFAULT_DOCUMENTS_V2,
       notifications: DEFAULT_NOTIFICATIONS_V2,
       auditLogs: DEFAULT_AUDIT_LOGS_V2
@@ -3022,6 +3341,69 @@ class StorageServiceV2 {
       state.dailyJournals[existingIdx] = linkedJournal;
     }
 
+    // Stage 6 Integration: auto-link journal procedures to skillRecords in PENDING status
+    if (linkedJournal.procedures && linkedJournal.procedures.length > 0) {
+      if (!state.skillLogs) state.skillLogs = [];
+      linkedJournal.procedures.forEach(proc => {
+        const matchingSkill = state.skills.find(
+          sk => (proc.skillId && sk.id === proc.skillId) || 
+                sk.name.toLowerCase().includes(proc.name.toLowerCase()) || 
+                proc.name.toLowerCase().includes(sk.name.toLowerCase())
+        );
+        if (matchingSkill) {
+          const partType = proc.participationType === 'Mustaqil'
+            ? 'INDEPENDENT'
+            : proc.participationType === 'Rahbar nazoratida'
+            ? 'SUPERVISED'
+            : 'OBSERVED';
+          
+          const exIdx = state.skillLogs.findIndex(
+            l => l.dailyJournalId === linkedJournal.id && l.skillId === matchingSkill.id
+          );
+
+          const recordId = exIdx >= 0 ? state.skillLogs[exIdx].id : `slog-j-${linkedJournal.id}-${matchingSkill.id}`;
+          const skillLog: SkillRecord = {
+            id: recordId,
+            studentId: linkedJournal.studentId,
+            practiceId: linkedJournal.practiceId,
+            skillId: matchingSkill.id,
+            date: linkedJournal.date,
+            participationType: partType,
+            performanceType: partType,
+            count: proc.count || 1,
+            notes: `Elektron kundalik muolajasi: ${proc.name}`,
+            description: `Elektron kundalik muolajasi: ${proc.name}`,
+            source: 'DAILY_JOURNAL',
+            dailyJournalId: linkedJournal.id,
+            journalId: linkedJournal.id,
+            status: 'PENDING',
+            createdAt: new Date().toISOString()
+          };
+
+          if (exIdx >= 0) {
+            state.skillLogs[exIdx] = skillLog;
+          } else {
+            state.skillLogs.unshift(skillLog);
+          }
+
+          this.recordAuditLog({
+            userId: actorUserId,
+            userRole: actorRole,
+            action: 'skillRecordCreated',
+            entity: 'skillRecords',
+            entityId: recordId,
+            metadata: JSON.stringify({
+              source: 'DAILY_JOURNAL',
+              journalId: linkedJournal.id,
+              skillId: matchingSkill.id,
+              skillName: matchingSkill.name,
+              count: proc.count
+            })
+          });
+        }
+      });
+    }
+
     // Add notification to supervisor / clinic responsible
     this.addNotification({
       recipientRoles: ['PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'PRACTICE_HEAD'],
@@ -3105,7 +3487,9 @@ class StorageServiceV2 {
       if (journal.procedures && journal.procedures.length > 0) {
         journal.procedures.forEach(proc => {
           const matchingSkill = state.skills.find(
-            sk => (proc.skillId && sk.id === proc.skillId) || sk.name.toLowerCase().includes(proc.name.toLowerCase()) || proc.name.toLowerCase().includes(sk.name.toLowerCase())
+            sk => (proc.skillId && sk.id === proc.skillId) || 
+                  sk.name.toLowerCase().includes(proc.name.toLowerCase()) || 
+                  proc.name.toLowerCase().includes(sk.name.toLowerCase())
           );
           if (matchingSkill) {
             // Synchronize with state.skillLogs
@@ -3119,22 +3503,34 @@ class StorageServiceV2 {
               ? 'SUPERVISED'
               : 'OBSERVED';
 
-            if (!existingLog) {
+            const logId = existingLog ? existingLog.id : `slog-j-${journal.id}-${matchingSkill.id}`;
+            if (existingLog) {
+              existingLog.status = 'APPROVED';
+              existingLog.verifiedBy = params.reviewerName;
+              existingLog.verifiedAt = now;
+              existingLog.supervisorFeedback = params.feedback;
+              existingLog.supervisorRating = params.rating;
+              existingLog.updatedAt = now;
+            } else {
               state.skillLogs.unshift({
-                id: `slog-j-${journal.id}-${matchingSkill.id}`,
+                id: logId,
                 studentId: journal.studentId,
                 practiceId: journal.practiceId,
                 skillId: matchingSkill.id,
                 date: journal.date,
                 participationType: partType,
+                performanceType: partType,
                 count: proc.count,
                 notes: `Kundalik orqali tasdiqlangan: ${proc.name}`,
+                description: `Kundalik orqali tasdiqlangan: ${proc.name}`,
+                source: 'DAILY_JOURNAL',
+                dailyJournalId: journal.id,
+                journalId: journal.id,
                 status: 'APPROVED',
                 verifiedBy: params.reviewerName,
                 verifiedAt: now,
                 supervisorFeedback: params.feedback,
                 supervisorRating: params.rating,
-                dailyJournalId: journal.id,
                 createdAt: now
               });
             }
@@ -3142,34 +3538,143 @@ class StorageServiceV2 {
             let ssk = state.studentSkills.find(
               s => s.studentId === journal.studentId && s.practiceId === journal.practiceId && s.skillId === matchingSkill.id
             );
+            const reqCount = matchingSkill.requiredCount || 10;
             if (!ssk) {
               ssk = {
                 id: `ssk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
                 studentId: journal.studentId,
                 practiceId: journal.practiceId,
                 skillId: matchingSkill.id,
+                requiredCount: reqCount,
+                targetCount: reqCount,
+                observedCount: 0,
+                supervisedCount: 0,
+                independentCount: 0,
+                totalPerformedCount: 0,
                 performedCount: 0,
-                targetCount: matchingSkill.requiredCount,
-                status: 'in_progress',
+                approvedCount: 0,
+                verifiedCount: 0,
+                progressPercent: 0,
+                status: 'IN_PROGRESS',
                 verifiedBySupervisor: true,
-                lastPerformedDate: journal.date
+                lastPerformedDate: journal.date,
+                lastPerformedAt: journal.date,
+                lastApprovedAt: now
               };
               state.studentSkills.push(ssk);
             }
-            ssk.performedCount = Math.min(ssk.targetCount, ssk.performedCount + proc.count);
-            ssk.verifiedCount = (ssk.verifiedCount || 0) + proc.count;
-            if (partType === 'INDEPENDENT') ssk.independentCount = (ssk.independentCount || 0) + proc.count;
-            else if (partType === 'SUPERVISED') ssk.supervisedCount = (ssk.supervisedCount || 0) + proc.count;
-            else ssk.observedCount = (ssk.observedCount || 0) + proc.count;
+
+            const currentApproved = (ssk.approvedCount || 0) + proc.count;
+            ssk.approvedCount = currentApproved;
+            ssk.verifiedCount = currentApproved;
+            ssk.totalPerformedCount = (ssk.totalPerformedCount || ssk.performedCount || 0) + proc.count;
+            ssk.performedCount = ssk.totalPerformedCount;
+
+            if (partType === 'INDEPENDENT') {
+              ssk.independentCount = (ssk.independentCount || 0) + proc.count;
+            } else if (partType === 'SUPERVISED') {
+              ssk.supervisedCount = (ssk.supervisedCount || 0) + proc.count;
+            } else {
+              ssk.observedCount = (ssk.observedCount || 0) + proc.count;
+            }
+
             ssk.lastPerformedDate = journal.date;
+            ssk.lastPerformedAt = journal.date;
+            ssk.lastApprovedAt = now;
             ssk.verifiedBySupervisor = true;
-            if (ssk.performedCount >= ssk.targetCount) {
-              ssk.status = 'mastered';
+            ssk.progressPercent = Math.min(100, Math.round((currentApproved / reqCount) * 100));
+
+            const wasCompleted = ssk.status === 'COMPLETED' || ssk.status === 'mastered' || ssk.status === 'MASTERED';
+            const isNowCompleted = currentApproved >= reqCount;
+            ssk.status = isNowCompleted ? 'COMPLETED' : 'IN_PROGRESS';
+
+            this.recordAuditLog({
+              userId: params.actorUserId,
+              userRole: params.actorRole,
+              action: 'skillRecordApproved',
+              entity: 'skillRecords',
+              entityId: logId,
+              metadata: JSON.stringify({
+                source: 'DAILY_JOURNAL',
+                journalId: journal.id,
+                skillId: matchingSkill.id,
+                count: proc.count
+              })
+            });
+
+            this.recordAuditLog({
+              userId: params.actorUserId,
+              userRole: params.actorRole,
+              action: 'skillProgressUpdated',
+              entity: 'studentSkills',
+              entityId: ssk.id,
+              metadata: JSON.stringify({
+                progressPercent: ssk.progressPercent,
+                approvedCount: ssk.approvedCount,
+                requiredCount: reqCount
+              })
+            });
+
+            if (isNowCompleted && !wasCompleted) {
+              this.recordAuditLog({
+                userId: params.actorUserId,
+                userRole: params.actorRole,
+                action: 'studentSkillCompleted',
+                entity: 'studentSkills',
+                entityId: ssk.id,
+                metadata: JSON.stringify({
+                  studentId: journal.studentId,
+                  skillId: matchingSkill.id,
+                  skillName: matchingSkill.name,
+                  targetCount: reqCount
+                })
+              });
+
+              this.addNotification({
+                recipientUserId: student?.userId,
+                recipientRoles: ['STUDENT'],
+                title: 'Minimal me\'yor bajarildi!',
+                message: `Tabriklaymiz! "${matchingSkill.name}" ko'nikmasi bo'yicha minimal talab me'yori to'liq bajarildi.`,
+                type: 'success',
+                linkModule: 'skills'
+              });
             }
           }
         });
       }
     } else {
+      if (journal.procedures && journal.procedures.length > 0) {
+        journal.procedures.forEach(proc => {
+          const matchingSkill = state.skills.find(
+            sk => (proc.skillId && sk.id === proc.skillId) || 
+                  sk.name.toLowerCase().includes(proc.name.toLowerCase()) || 
+                  proc.name.toLowerCase().includes(sk.name.toLowerCase())
+          );
+          if (matchingSkill && state.skillLogs) {
+            const existingLog = state.skillLogs.find(
+              l => l.dailyJournalId === journal.id && l.skillId === matchingSkill.id
+            );
+            if (existingLog) {
+              existingLog.status = 'REVISION';
+              existingLog.revisionReason = params.revisionReason || params.feedback;
+              existingLog.updatedAt = now;
+              this.recordAuditLog({
+                userId: params.actorUserId,
+                userRole: params.actorRole,
+                action: 'skillRecordRevisionRequested',
+                entity: 'skillRecords',
+                entityId: existingLog.id,
+                metadata: JSON.stringify({
+                  source: 'DAILY_JOURNAL',
+                  journalId: journal.id,
+                  revisionReason: existingLog.revisionReason
+                })
+              });
+            }
+          }
+        });
+      }
+
       this.addNotification({
         recipientUserId: student?.userId,
         recipientRoles: ['STUDENT'],
@@ -3471,7 +3976,7 @@ class StorageServiceV2 {
 
   public reviewSkillLog(params: {
     logId: string;
-    status: 'APPROVED' | 'REJECTED';
+    status: 'APPROVED' | 'REJECTED' | 'REVISION';
     feedback?: string;
     rating?: number;
     reviewerName: string;
@@ -3490,6 +3995,9 @@ class StorageServiceV2 {
     log.verifiedBy = params.reviewerName;
     log.verifiedAt = now;
     log.supervisorFeedback = params.feedback;
+    if (params.status === 'REVISION') {
+      log.revisionReason = params.feedback;
+    }
     log.supervisorRating = params.status === 'APPROVED' ? (params.rating || 5) : undefined;
 
     const student = state.students.find(s => s.id === log.studentId);
@@ -3503,22 +4011,27 @@ class StorageServiceV2 {
 
       const targetCount = skill ? skill.requiredCount : 10;
       if (!ssk) {
-        ssk = {
+        const newSsk: StudentSkill = {
           id: `ssk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           studentId: log.studentId,
           practiceId: log.practiceId,
           skillId: log.skillId,
+          requiredCount: targetCount,
+          targetCount,
           performedCount: 0,
+          totalPerformedCount: 0,
           independentCount: 0,
           supervisedCount: 0,
           observedCount: 0,
           verifiedCount: 0,
-          targetCount,
+          approvedCount: 0,
+          progressPercent: 0,
           status: 'in_progress',
           verifiedBySupervisor: true,
           lastPerformedDate: log.date
         };
-        state.studentSkills.push(ssk);
+        state.studentSkills.push(newSsk);
+        ssk = newSsk;
       }
 
       // Recalculate counts based on all approved logs for this skill
@@ -3542,14 +4055,20 @@ class StorageServiceV2 {
         }
       });
 
-      ssk.performedCount = totalCount;
-      ssk.verifiedCount = totalCount;
-      ssk.independentCount = indep;
-      ssk.supervisedCount = superv;
-      ssk.observedCount = observ;
-      ssk.lastPerformedDate = log.date;
-      ssk.verifiedBySupervisor = true;
-      ssk.status = totalCount >= ssk.targetCount ? 'mastered' : totalCount > 0 ? 'in_progress' : 'not_started';
+      if (ssk) {
+        ssk.performedCount = totalCount;
+        ssk.totalPerformedCount = totalCount;
+        ssk.verifiedCount = totalCount;
+        ssk.approvedCount = totalCount;
+        ssk.independentCount = indep;
+        ssk.supervisedCount = superv;
+        ssk.observedCount = observ;
+        ssk.lastPerformedDate = log.date;
+        ssk.verifiedBySupervisor = true;
+        const req = ssk.requiredCount || ssk.targetCount || targetCount || 10;
+        ssk.progressPercent = Math.min(100, Math.round((totalCount / req) * 100));
+        ssk.status = totalCount >= req ? 'mastered' : totalCount > 0 ? 'in_progress' : 'not_started';
+      }
 
       // Send positive notification to student
       this.addNotification({
@@ -3676,10 +4195,11 @@ class StorageServiceV2 {
           performedCount = approvedCount;
         }
       } else if (existingRecord) {
-        independent = existingRecord.independentCount || Math.round(existingRecord.performedCount * 0.6);
-        supervised = existingRecord.supervisedCount || Math.round(existingRecord.performedCount * 0.3);
-        observed = existingRecord.observedCount || Math.max(0, existingRecord.performedCount - independent - supervised);
-        approvedCount = existingRecord.verifiedCount || existingRecord.performedCount;
+        const perf = existingRecord.performedCount ?? existingRecord.totalPerformedCount ?? 0;
+        independent = existingRecord.independentCount ?? Math.round(perf * 0.6);
+        supervised = existingRecord.supervisedCount ?? Math.round(perf * 0.3);
+        observed = existingRecord.observedCount ?? Math.max(0, perf - independent - supervised);
+        approvedCount = existingRecord.approvedCount ?? existingRecord.verifiedCount ?? perf;
       }
 
       const required = sk.requiredCount || 10;
@@ -3767,16 +4287,598 @@ class StorageServiceV2 {
     this.saveState(state);
   }
 
-  // --- ASSESSMENTS ---
-  public getAssessments(): Assessment[] {
-    return this.getState().assessments;
+  // ==========================================
+  // --- STAGE 7: ATTESTATION & ASSESSMENT ---
+  // ==========================================
+
+  public getAssessmentSettings(): AssessmentSettings {
+    const state = this.getState();
+    if (!state.assessmentSettings) {
+      state.assessmentSettings = DEFAULT_ASSESSMENT_SETTINGS_V2;
+      this.saveState(state);
+    }
+    return state.assessmentSettings;
   }
 
-  public saveAssessment(assessment: Assessment, actorUserId = 'system', actorRole = 'PRACTICE_SUPERVISOR'): void {
+  public updateAssessmentSettings(
+    updates: Partial<AssessmentSettings>,
+    actorUserId = 'system',
+    actorRole = 'SUPER_ADMIN'
+  ): { success: boolean; settings: AssessmentSettings; error?: string } {
     const state = this.getState();
-    const idx = state.assessments.findIndex(
-      a => a.studentId === assessment.studentId && a.practiceId === assessment.practiceId
+    const current = this.getAssessmentSettings();
+    const merged: AssessmentSettings = {
+      ...current,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    const sum = Number(merged.attendanceMaxScore) + Number(merged.journalMaxScore) + Number(merged.skillsMaxScore) + Number(merged.finalExamMaxScore);
+    if (sum !== 100) {
+      return {
+        success: false,
+        settings: current,
+        error: `Maksimal ballar yig'indisi aynan 100 bo'lishi shart! (Hozirgi yig'indi: ${sum})`
+      };
+    }
+
+    state.assessmentSettings = merged;
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'assessmentSettingsUpdated',
+      entity: 'assessmentSettings',
+      entityId: merged.id,
+      metadata: JSON.stringify(merged)
+    });
+
+    this.saveState(state);
+    return { success: true, settings: merged };
+  }
+
+  // --- ATTESTATION COMMISSIONS ---
+  public getAttestationCommissions(): AttestationCommission[] {
+    const state = this.getState();
+    return state.attestationCommissions || [];
+  }
+
+  public getAttestationCommissionById(id: string): AttestationCommission | undefined {
+    return this.getAttestationCommissions().find(c => c.id === id);
+  }
+
+  public saveAttestationCommission(
+    commission: Omit<AttestationCommission, 'id' | 'createdAt'> & { id?: string },
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_HEAD'
+  ): AttestationCommission {
+    const state = this.getState();
+    if (!state.attestationCommissions) state.attestationCommissions = [];
+
+    const isNew = !commission.id;
+    const finalComm: AttestationCommission = {
+      id: commission.id || `comm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: commission.name,
+      chairpersonId: commission.chairpersonId,
+      chairpersonName: commission.chairpersonName,
+      memberIds: commission.memberIds || [],
+      memberNames: commission.memberNames || [],
+      position: commission.position,
+      department: commission.department,
+      facultyId: commission.facultyId,
+      facultyName: commission.facultyName,
+      isActive: commission.isActive !== undefined ? commission.isActive : true,
+      createdAt: isNew ? new Date().toISOString() : (state.attestationCommissions.find(c => c.id === commission.id)?.createdAt || new Date().toISOString()),
+      updatedAt: new Date().toISOString()
+    };
+
+    const idx = state.attestationCommissions.findIndex(c => c.id === finalComm.id);
+    if (idx >= 0) {
+      state.attestationCommissions[idx] = finalComm;
+    } else {
+      state.attestationCommissions.unshift(finalComm);
+    }
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: isNew ? 'commissionCreated' : 'commissionUpdated',
+      entity: 'attestationCommissions',
+      entityId: finalComm.id,
+      metadata: JSON.stringify({ name: finalComm.name, chair: finalComm.chairpersonName })
+    });
+
+    this.saveState(state);
+    return finalComm;
+  }
+
+  // --- FINAL EXAMS ---
+  public getFinalExams(filters?: { practiceId?: string; studentId?: string; status?: ExamStatus }): FinalExam[] {
+    const state = this.getState();
+    let exams = state.finalExams || [];
+    if (!filters) return exams;
+
+    if (filters.practiceId) exams = exams.filter(e => e.practiceId === filters.practiceId);
+    if (filters.studentId) exams = exams.filter(e => e.studentId === filters.studentId);
+    if (filters.status) exams = exams.filter(e => e.status === filters.status);
+    return exams;
+  }
+
+  public getFinalExamById(id: string): FinalExam | undefined {
+    return (this.getState().finalExams || []).find(e => e.id === id);
+  }
+
+  public createFinalExam(
+    examData: {
+      practiceId: string;
+      studentId: string;
+      assignmentId?: string;
+      examDate: string;
+      examTime?: string;
+      placeName?: string;
+      departmentName?: string;
+      examinerIds: string[];
+      examinerNames?: string[];
+      commissionId?: string;
+      comments?: string;
+    },
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_SUPERVISOR'
+  ): FinalExam {
+    const state = this.getState();
+    if (!state.finalExams) state.finalExams = [];
+
+    const existingAttempts = state.finalExams.filter(
+      e => e.studentId === examData.studentId && e.practiceId === examData.practiceId
     );
+
+    const newExam: FinalExam = {
+      id: `fexam-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      practiceId: examData.practiceId,
+      studentId: examData.studentId,
+      assignmentId: examData.assignmentId,
+      examDate: examData.examDate,
+      examTime: examData.examTime || '10:00',
+      placeName: examData.placeName,
+      departmentName: examData.departmentName,
+      examinerIds: examData.examinerIds || [],
+      examinerNames: examData.examinerNames || [],
+      commissionId: examData.commissionId,
+      theoryScore: 0,
+      practicalScore: 0,
+      clinicalCaseScore: 0,
+      professionalismScore: 0,
+      safetyScore: 0,
+      totalScore: 0,
+      maxScore: this.getAssessmentSettings().finalExamMaxScore,
+      percentage: 0,
+      status: 'SCHEDULED',
+      comments: examData.comments || '',
+      attemptNumber: existingAttempts.length + 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    state.finalExams.unshift(newExam);
+
+    const student = state.students.find(s => s.id === examData.studentId);
+    this.addNotification({
+      recipientUserId: student?.userId,
+      recipientRoles: ['STUDENT'],
+      title: 'Yakuniy imtihon belgilandi',
+      message: `Sizga ${examData.examDate} kuni soat ${newExam.examTime} da amaliyot yakuniy imtihoni belgilandi.`,
+      type: 'info',
+      linkModule: 'assessment'
+    });
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'examCreated',
+      entity: 'finalExams',
+      entityId: newExam.id,
+      metadata: JSON.stringify({ studentId: newExam.studentId, examDate: newExam.examDate })
+    });
+
+    this.saveState(state);
+    return newExam;
+  }
+
+  public gradeFinalExam(
+    examId: string,
+    scores: {
+      theoryScore: number;
+      practicalScore: number;
+      clinicalCaseScore: number;
+      professionalismScore: number;
+      safetyScore: number;
+      comments?: string;
+      examinerName?: string;
+    },
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_SUPERVISOR'
+  ): { success: boolean; exam?: FinalExam; error?: string } {
+    const state = this.getState();
+    const exam = (state.finalExams || []).find(e => e.id === examId);
+    if (!exam) return { success: false, error: "Imtihon yozuvi topilmadi." };
+
+    const settings = this.getAssessmentSettings();
+    const weights = settings.examCriteriaWeights;
+
+    // Validate scores are non-negative and don't exceed criterion max
+    const th = Math.max(0, Math.min(weights.theoryMax, Number(scores.theoryScore) || 0));
+    const pr = Math.max(0, Math.min(weights.practicalMax, Number(scores.practicalScore) || 0));
+    const cc = Math.max(0, Math.min(weights.clinicalCaseMax, Number(scores.clinicalCaseScore) || 0));
+    const pf = Math.max(0, Math.min(weights.professionalismMax, Number(scores.professionalismScore) || 0));
+    const sf = Math.max(0, Math.min(weights.safetyMax, Number(scores.safetyScore) || 0));
+
+    const total = Math.min(settings.finalExamMaxScore, Math.max(0, th + pr + cc + pf + sf));
+    const pct = Math.round((total / settings.finalExamMaxScore) * 100);
+
+    exam.theoryScore = th;
+    exam.practicalScore = pr;
+    exam.clinicalCaseScore = cc;
+    exam.professionalismScore = pf;
+    exam.safetyScore = sf;
+    exam.totalScore = total;
+    exam.percentage = pct;
+    exam.status = 'COMPLETED';
+    exam.comments = scores.comments || exam.comments;
+    exam.gradedBy = scores.examinerName || 'Imtihonchi rahbar';
+    exam.gradedAt = new Date().toISOString();
+    exam.updatedAt = new Date().toISOString();
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'examScoreEntered',
+      entity: 'finalExams',
+      entityId: exam.id,
+      metadata: JSON.stringify({
+        studentId: exam.studentId,
+        totalScore: total,
+        theory: th,
+        practical: pr,
+        clinicalCase: cc
+      })
+    });
+
+    this.saveState(state);
+
+    // Auto-update or recalculate the student's Assessment record
+    this.calculateAndSaveAssessment(exam.studentId, exam.practiceId, actorUserId, actorRole);
+
+    const student = state.students.find(s => s.id === exam.studentId);
+    this.addNotification({
+      recipientUserId: student?.userId,
+      recipientRoles: ['STUDENT'],
+      title: 'Yakuniy baholash natijangiz tayyor.',
+      message: `Yakuniy imtihon bahongiz kiritildi: ${total} / ${settings.finalExamMaxScore} ball (${pct}%).`,
+      type: 'success',
+      linkModule: 'assessment'
+    });
+
+    return { success: true, exam };
+  }
+
+  // --- SECTION 5: DAVOMAT BALLI HISOBLASH ---
+  public calculateStudentAttendanceScore(studentId: string, practiceId?: string): {
+    score: number;
+    maxScore: number;
+    percentage: number;
+    presentCount: number;
+    lateCount: number;
+    absentCount: number;
+    excusedCount: number;
+    totalDays: number;
+  } {
+    const state = this.getState();
+    const settings = this.getAssessmentSettings();
+    const maxScore = settings.attendanceMaxScore;
+
+    let targetPracticeId = practiceId;
+    if (!targetPracticeId) {
+      const asg = state.practiceAssignments.find(a => a.studentId === studentId);
+      targetPracticeId = asg?.practiceId || 'prac-1';
+    }
+
+    const practice = state.practices.find(p => p.id === targetPracticeId);
+    const plannedDays = practice ? Math.max(1, practice.durationDays || 24) : 24;
+
+    const studentAtt = (state.attendance || []).filter(
+      a => a.studentId === studentId && (practiceId ? a.practiceId === practiceId : true)
+    );
+
+    let presentCount = 0;
+    let lateCount = 0;
+    let absentCount = 0;
+    let excusedCount = 0;
+
+    studentAtt.forEach(a => {
+      const st = (a.status || '').toUpperCase();
+      if (st === 'PRESENT' || st === 'HOZIR') presentCount++;
+      else if (st === 'LATE' || st === 'KECHIKDI') lateCount++;
+      else if (st === 'EXCUSED' || st === 'SABABLI') excusedCount++;
+      else absentCount++;
+    });
+
+    const activeDays = presentCount + lateCount;
+    const percentage = Math.min(100, Math.round((activeDays / plannedDays) * 100));
+    const score = Math.min(maxScore, Math.max(0, Math.round((percentage / 100) * maxScore)));
+
+    return {
+      score,
+      maxScore,
+      percentage,
+      presentCount,
+      lateCount,
+      absentCount,
+      excusedCount,
+      totalDays: studentAtt.length > 0 ? studentAtt.length : plannedDays
+    };
+  }
+
+  // --- SECTION 6: ELEKTRON KUNDALIK BALLI HISOBLASH ---
+  public calculateStudentJournalScore(studentId: string, practiceId?: string): {
+    score: number;
+    maxScore: number;
+    submittedCount: number;
+    approvedCount: number;
+    revisionCount: number;
+    avgRating: number;
+    completionPct: number;
+  } {
+    const state = this.getState();
+    const settings = this.getAssessmentSettings();
+    const maxScore = settings.journalMaxScore;
+
+    let targetPracticeId = practiceId;
+    if (!targetPracticeId) {
+      const asg = state.practiceAssignments.find(a => a.studentId === studentId);
+      targetPracticeId = asg?.practiceId || 'prac-1';
+    }
+
+    const practice = state.practices.find(p => p.id === targetPracticeId);
+    const expectedJournals = practice ? Math.max(1, practice.durationDays || 20) : 20;
+
+    const journals = (state.dailyJournals || []).filter(
+      j => j.studentId === studentId && (practiceId ? j.practiceId === practiceId : true)
+    );
+
+    const submittedCount = journals.length;
+    const approvedJournals = journals.filter(j => j.status === 'APPROVED');
+    const approvedCount = approvedJournals.length;
+    const revisionCount = journals.filter(j => j.status === 'REVISION').length;
+
+    let ratingSum = 0;
+    approvedJournals.forEach(j => {
+      ratingSum += (j.supervisorRating || 5);
+    });
+    const avgRating = approvedCount > 0 ? Number((ratingSum / approvedCount).toFixed(1)) : 5.0;
+
+    // Weighting: 70% approval ratio against expected journals + 30% quality rating
+    const approvalRatio = Math.min(1.0, approvedCount / expectedJournals);
+    const ratingPct = Math.min(1.0, avgRating / 5.0);
+    const completionPct = Math.min(100, Math.round((approvalRatio * 0.7 + ratingPct * 0.3) * 100));
+    const score = Math.min(maxScore, Math.max(0, Math.round((completionPct / 100) * maxScore)));
+
+    return {
+      score,
+      maxScore,
+      submittedCount,
+      approvedCount,
+      revisionCount,
+      avgRating,
+      completionPct
+    };
+  }
+
+  // --- SECTION 7: AMALIY KO'NIKMALAR BALLI HISOBLASH ---
+  public calculateStudentSkillsScore(studentId: string, practiceId?: string): {
+    score: number;
+    maxScore: number;
+    skillProgressPercent: number;
+    totalSkills: number;
+    completedSkills: number;
+    unmasteredMandatorySkills: string[];
+  } {
+    const settings = this.getAssessmentSettings();
+    const maxScore = settings.skillsMaxScore;
+    const passport = this.getStudentPassportSummary(studentId, practiceId);
+
+    const progressPct = passport.minimalQuotaMetPct;
+    const score = Math.min(maxScore, Math.max(0, Math.round((progressPct / 100) * maxScore)));
+
+    const unmasteredMandatorySkills = passport.detailedSkills
+      .filter(s => s.skill.importance === 'MANDATORY' && !s.isMastered)
+      .map(s => s.skill.name);
+
+    return {
+      score,
+      maxScore,
+      skillProgressPercent: progressPct,
+      totalSkills: passport.totalSkills,
+      completedSkills: passport.completedSkills,
+      unmasteredMandatorySkills
+    };
+  }
+
+  // --- SECTION 8 & 10: YAKUNIY IMTIHON BALLI ---
+  public calculateStudentFinalExamScore(studentId: string, practiceId?: string): {
+    score: number;
+    maxScore: number;
+    exam?: FinalExam;
+    status: ExamStatus;
+  } {
+    const settings = this.getAssessmentSettings();
+    const maxScore = settings.finalExamMaxScore;
+
+    const exams = this.getFinalExams({ studentId, practiceId });
+    const completedExam = exams.find(e => e.status === 'COMPLETED');
+    const latestExam = exams[0];
+
+    const exam = completedExam || latestExam;
+    const score = completedExam ? Math.min(maxScore, Math.max(0, completedExam.totalScore)) : 0;
+    const status: ExamStatus = exam ? exam.status : 'SCHEDULED';
+
+    return {
+      score,
+      maxScore,
+      exam,
+      status
+    };
+  }
+
+  // --- FULL 100-POINT SYSTEM ASSESSMENT CALCULATION ---
+  public calculateStudentAssessment(studentId: string, practiceId?: string): Assessment {
+    const state = this.getState();
+    const settings = this.getAssessmentSettings();
+
+    const asg = state.practiceAssignments.find(a => a.studentId === studentId);
+    const targetPracticeId = practiceId || asg?.practiceId || 'prac-1';
+
+    const existingAss = (state.assessments || []).find(
+      a => a.studentId === studentId && a.practiceId === targetPracticeId
+    );
+
+    const att = this.calculateStudentAttendanceScore(studentId, targetPracticeId);
+    const jnl = this.calculateStudentJournalScore(studentId, targetPracticeId);
+    const skl = this.calculateStudentSkillsScore(studentId, targetPracticeId);
+    const exm = this.calculateStudentFinalExamScore(studentId, targetPracticeId);
+
+    const total = Math.min(100, Math.max(0, att.score + jnl.score + skl.score + exm.score));
+    const percentage = total;
+
+    // Grade threshold
+    let grade: '5' | '4' | '3' | '2' = '2';
+    if (total >= settings.grade5Min) grade = '5';
+    else if (total >= settings.grade4Min) grade = '4';
+    else if (total >= settings.grade3Min) grade = '3';
+    else grade = '2';
+
+    // Status logic
+    let status: AssessmentStatus = existingAss?.status || 'IN_PROGRESS';
+    const isAttendanceComplete = att.totalDays > 0;
+    const isJournalComplete = jnl.approvedCount > 0;
+    const isSkillsComplete = skl.completedSkills > 0 || skl.skillProgressPercent >= 60;
+    const isExamComplete = exm.exam !== undefined && exm.exam.status === 'COMPLETED';
+
+    const validationErrors: string[] = [];
+    if (!isAttendanceComplete) validationErrors.push("Davomat ma'lumotlari mavjud emas.");
+    if (!isJournalComplete) validationErrors.push("Tasdiqlangan amaliyot kundaliklari mavjud emas.");
+    if (!isSkillsComplete) validationErrors.push("Amaliy ko'nikmalar minimal me'yori bajarilmagan.");
+    if (!isExamComplete) validationErrors.push("Yakuniy amaliyot imtihoni natijasi kiritilmagan.");
+
+    if (existingAss?.status === 'APPROVED' || existingAss?.status === 'COMPLETED') {
+      status = existingAss.status;
+    } else if (existingAss?.status === 'RETAKE_REQUIRED') {
+      status = 'RETAKE_REQUIRED';
+    } else if (isExamComplete) {
+      status = total >= settings.grade3Min ? 'PENDING_APPROVAL' : 'FAILED';
+    } else {
+      status = 'WAITING_FOR_EXAM';
+    }
+
+    const defaultCommission = (state.attestationCommissions || [])[0];
+
+    const result: Assessment = {
+      id: existingAss?.id || `ass-${Date.now()}-${studentId}`,
+      practiceId: targetPracticeId,
+      studentId,
+      assignmentId: asg?.id,
+      attendanceScore: att.score,
+      attendanceMaxScore: settings.attendanceMaxScore,
+      journalScore: jnl.score,
+      journalMaxScore: settings.journalMaxScore,
+      skillsScore: skl.score,
+      skillsMaxScore: settings.skillsMaxScore,
+      finalExamScore: exm.score,
+      finalExamMaxScore: settings.finalExamMaxScore,
+      totalScore: total,
+      percentage,
+      grade,
+      status,
+      commissionId: existingAss?.commissionId || defaultCommission?.id,
+      commissionName: existingAss?.commissionName || defaultCommission?.name,
+      assessorId: existingAss?.assessorId || asg?.supervisorId,
+      assessorName: existingAss?.assessorName || 'Prof. Sobirov Alisher Tolipovich',
+      assessmentDate: existingAss?.assessmentDate || new Date().toISOString().split('T')[0],
+      feedback: existingAss?.feedback || '',
+      approvedBy: existingAss?.approvedBy,
+      approvedAt: existingAss?.approvedAt,
+      retakeReason: existingAss?.retakeReason,
+      retakeExamDate: existingAss?.retakeExamDate,
+      retakeCount: existingAss?.retakeCount || 0,
+      history: existingAss?.history || [],
+      isAttendanceComplete,
+      isJournalComplete,
+      isSkillsComplete,
+      isExamComplete,
+      validationErrors,
+      createdAt: existingAss?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    return result;
+  }
+
+  public calculateAndSaveAssessment(
+    studentId: string,
+    practiceId?: string,
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_SUPERVISOR'
+  ): Assessment {
+    const calculated = this.calculateStudentAssessment(studentId, practiceId);
+    this.saveAssessment(calculated, actorUserId, actorRole);
+    return calculated;
+  }
+
+  public getAssessments(filters?: {
+    practiceId?: string;
+    studentId?: string;
+    status?: AssessmentStatus;
+    grade?: string;
+  }): Assessment[] {
+    const state = this.getState();
+    let list = state.assessments || [];
+    if (!filters) return list;
+
+    if (filters.practiceId) list = list.filter(a => a.practiceId === filters.practiceId);
+    if (filters.studentId) list = list.filter(a => a.studentId === filters.studentId);
+    if (filters.status) list = list.filter(a => a.status === filters.status);
+    if (filters.grade) list = list.filter(a => a.grade === filters.grade);
+    return list;
+  }
+
+  public getAssessmentById(id: string): Assessment | undefined {
+    return (this.getState().assessments || []).find(a => a.id === id);
+  }
+
+  public getAssessmentByStudent(studentId: string, practiceId?: string): Assessment | undefined {
+    const list = this.getAssessments({ studentId, practiceId });
+    if (list.length > 0) return list[0];
+    // If not existing yet, calculate on the fly
+    return this.calculateStudentAssessment(studentId, practiceId);
+  }
+
+  public saveAssessment(
+    assessment: Assessment,
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_SUPERVISOR'
+  ): void {
+    const state = this.getState();
+    if (!state.assessments) state.assessments = [];
+
+    // Ensure non-negative and <= 100
+    const clampedTotal = Math.min(100, Math.max(0, assessment.totalScore));
+    assessment.totalScore = clampedTotal;
+    assessment.percentage = clampedTotal;
+    assessment.updatedAt = new Date().toISOString();
+
+    const idx = state.assessments.findIndex(
+      a => a.id === assessment.id || (a.studentId === assessment.studentId && a.practiceId === assessment.practiceId)
+    );
+
     if (idx >= 0) {
       state.assessments[idx] = assessment;
     } else {
@@ -3786,13 +4888,244 @@ class StorageServiceV2 {
     this.recordAuditLog({
       userId: actorUserId,
       userRole: actorRole,
-      action: 'gradeUpdated',
+      action: 'assessmentCalculated',
       entity: 'assessments',
       entityId: assessment.id,
-      metadata: JSON.stringify({ studentId: assessment.studentId, totalScore: assessment.totalScore, grade: assessment.grade })
+      metadata: JSON.stringify({
+        studentId: assessment.studentId,
+        totalScore: assessment.totalScore,
+        grade: assessment.grade,
+        status: assessment.status
+      })
     });
 
     this.saveState(state);
+  }
+
+  // --- SECTION 15: ATTESTATSIYANI TASDIQLASH (VALIDATSIYA VA TASDIQ) ---
+  public approveAssessment(
+    assessmentId: string,
+    reviewerId: string,
+    reviewerName: string,
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_SUPERVISOR'
+  ): { success: boolean; assessment?: Assessment; error?: string } {
+    const state = this.getState();
+    const assessment = (state.assessments || []).find(a => a.id === assessmentId);
+    if (!assessment) return { success: false, error: "Attestatsiya yozuvi topilmadi." };
+
+    // Validation 1: Davomat mavjudmi?
+    const att = this.calculateStudentAttendanceScore(assessment.studentId, assessment.practiceId);
+    if (att.totalDays === 0 || (att.presentCount + att.lateCount) === 0) {
+      return {
+        success: false,
+        error: "Tasdiqlash mumkin emas: Talabaning amaliyot davomati ma'lumotlari kiritilmagan yoki qoniqarsiz."
+      };
+    }
+
+    // Validation 2: Kundaliklar tekshirilganmi?
+    const jnl = this.calculateStudentJournalScore(assessment.studentId, assessment.practiceId);
+    if (jnl.approvedCount === 0) {
+      return {
+        success: false,
+        error: "Tasdiqlash mumkin emas: Talabaning tasdiqlangan elektron kundaliklari mavjud emas."
+      };
+    }
+
+    // Validation 3: Ko'nikmalar tasdiqlanganmi?
+    const skl = this.calculateStudentSkillsScore(assessment.studentId, assessment.practiceId);
+    if (skl.completedSkills === 0 && skl.skillProgressPercent < 50) {
+      return {
+        success: false,
+        error: "Tasdiqlash mumkin emas: Amaliy ko'nikmalar pasporti minimal me'yori (kamida 50%) bajarilmagan."
+      };
+    }
+
+    // Validation 4: Imtihon natijasi mavjudmi?
+    const exm = this.calculateStudentFinalExamScore(assessment.studentId, assessment.practiceId);
+    if (!exm.exam || exm.status !== 'COMPLETED') {
+      return {
+        success: false,
+        error: "Tasdiqlash mumkin emas: Yakuniy amaliyot imtihoni o'tkazilmagan yoki natijasi kiritilmagan."
+      };
+    }
+
+    const now = new Date().toISOString();
+    assessment.status = 'APPROVED';
+    assessment.approvedBy = reviewerName;
+    assessment.approvedAt = now;
+    assessment.updatedAt = now;
+
+    // Send notification to student (Section 21)
+    const student = state.students.find(s => s.id === assessment.studentId);
+    this.addNotification({
+      recipientUserId: student?.userId,
+      recipientRoles: ['STUDENT'],
+      title: 'Attestatsiya natijangiz tasdiqlandi.',
+      message: `Sizning amaliyot attestatsiyangiz tasdiqlandi. Yakuniy ball: ${assessment.totalScore}/100, Baho: ${assessment.grade}.`,
+      type: 'success',
+      linkModule: 'assessment'
+    });
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'assessmentApproved',
+      entity: 'assessments',
+      entityId: assessment.id,
+      metadata: JSON.stringify({
+        studentId: assessment.studentId,
+        totalScore: assessment.totalScore,
+        grade: assessment.grade,
+        approvedBy: reviewerName
+      })
+    });
+
+    this.saveState(state);
+    return { success: true, assessment };
+  }
+
+  // --- SECTION 17: QAYTA TOPSHIRISH (RETAKE WORKFLOW) ---
+  public requestRetake(
+    assessmentId: string,
+    params: {
+      reason: string;
+      nextExamDate: string;
+      examinerId?: string;
+      reviewerName?: string;
+    },
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_SUPERVISOR'
+  ): { success: boolean; assessment?: Assessment; error?: string } {
+    const state = this.getState();
+    const assessment = (state.assessments || []).find(a => a.id === assessmentId);
+    if (!assessment) return { success: false, error: "Attestatsiya yozuvi topilmadi." };
+
+    if (!params.reason.trim()) {
+      return { success: false, error: "Qayta topshirish sababini ko'rsatish majburiy." };
+    }
+    if (!params.nextExamDate) {
+      return { success: false, error: "Yangi imtihon sanasini belgilash majburiy." };
+    }
+
+    if (!assessment.history) assessment.history = [];
+    assessment.history.push({
+      attempt: (assessment.retakeCount || 0) + 1,
+      date: assessment.assessmentDate || new Date().toISOString().split('T')[0],
+      attendanceScore: assessment.attendanceScore,
+      journalScore: assessment.journalScore,
+      skillsScore: assessment.skillsScore,
+      finalExamScore: assessment.finalExamScore,
+      totalScore: assessment.totalScore,
+      grade: assessment.grade,
+      status: assessment.status,
+      reason: params.reason,
+      evaluator: params.reviewerName || 'Komissiya'
+    });
+
+    assessment.status = 'RETAKE_REQUIRED';
+    assessment.retakeReason = params.reason;
+    assessment.retakeExamDate = params.nextExamDate;
+    assessment.retakeCount = (assessment.retakeCount || 0) + 1;
+    assessment.updatedAt = new Date().toISOString();
+
+    // Schedule next exam attempt
+    this.createFinalExam(
+      {
+        practiceId: assessment.practiceId,
+        studentId: assessment.studentId,
+        assignmentId: assessment.assignmentId,
+        examDate: params.nextExamDate,
+        examTime: '10:00',
+        examinerIds: params.examinerId ? [params.examinerId] : [],
+        comments: `Qayta topshirish #${assessment.retakeCount}: ${params.reason}`
+      },
+      actorUserId,
+      actorRole
+    );
+
+    // Notification (Section 21)
+    const student = state.students.find(s => s.id === assessment.studentId);
+    this.addNotification({
+      recipientUserId: student?.userId,
+      recipientRoles: ['STUDENT'],
+      title: 'Yakuniy imtihon qayta topshirishga belgilandi.',
+      message: `Attestatsiya natijasi bo'yicha qayta topshirish belgilandi. Yangi imtihon sanasi: ${params.nextExamDate}. Sabab: ${params.reason}`,
+      type: 'warning',
+      linkModule: 'assessment'
+    });
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'retakeRequested',
+      entity: 'assessments',
+      entityId: assessment.id,
+      metadata: JSON.stringify({
+        studentId: assessment.studentId,
+        retakeExamDate: params.nextExamDate,
+        reason: params.reason
+      })
+    });
+
+    this.saveState(state);
+    return { success: true, assessment };
+  }
+
+  // --- KPI STATISTICS FOR ATTESTATION DASHBOARD (SECTION 3) ---
+  public getAttestationKPIs(practiceId?: string): {
+    totalAssessments: number;
+    completedCount: number;
+    pendingApprovalCount: number;
+    waitingExamCount: number;
+    approvedCount: number;
+    retakeCount: number;
+    averageScore: number;
+    gradeDistribution: { grade5: number; grade4: number; grade3: number; grade2: number };
+  } {
+    const assessments = this.getAssessments({ practiceId });
+    const total = assessments.length;
+
+    let completed = 0;
+    let pending = 0;
+    let waiting = 0;
+    let approved = 0;
+    let retake = 0;
+    let scoreSum = 0;
+
+    const grades = { grade5: 0, grade4: 0, grade3: 0, grade2: 0 };
+
+    assessments.forEach(a => {
+      scoreSum += a.totalScore;
+      if (a.status === 'APPROVED' || a.status === 'COMPLETED') {
+        completed++;
+        approved++;
+      } else if (a.status === 'PENDING_APPROVAL') {
+        pending++;
+      } else if (a.status === 'WAITING_FOR_EXAM') {
+        waiting++;
+      } else if (a.status === 'RETAKE_REQUIRED' || a.status === 'FAILED') {
+        retake++;
+      }
+
+      if (a.grade === '5') grades.grade5++;
+      else if (a.grade === '4') grades.grade4++;
+      else if (a.grade === '3') grades.grade3++;
+      else grades.grade2++;
+    });
+
+    const averageScore = total > 0 ? Number((scoreSum / total).toFixed(1)) : 85.0;
+
+    return {
+      totalAssessments: total,
+      completedCount: completed,
+      pendingApprovalCount: pending,
+      waitingExamCount: waiting,
+      approvedCount: approved,
+      retakeCount: retake,
+      averageScore,
+      gradeDistribution: grades
+    };
   }
 
   // --- DOCUMENTS ---
@@ -3848,6 +5181,955 @@ class StorageServiceV2 {
     const state = this.getState();
     state.notifications.forEach(n => { n.isRead = true; });
     this.saveState(state);
+  }
+
+  // ==========================================
+  // --- STAGE 8: YAKUNIY HISOBOTLAR VA NAZORAT MARKAZI ---
+  // ==========================================
+
+  public calculateStudentOverallStatus(studentId: string, practiceId?: string): StudentPracticeOverallStatus {
+    const state = this.getState();
+    const asg = (state.practiceAssignments || []).find(
+      a => a.studentId === studentId && (!practiceId || a.practiceId === practiceId)
+    );
+    if (!asg) return 'NOT_STARTED';
+
+    const targetPracticeId = practiceId || asg.practiceId;
+    const practice = state.practices.find(p => p.id === targetPracticeId);
+    const assessment = (state.assessments || []).find(
+      a => a.studentId === studentId && a.practiceId === targetPracticeId
+    );
+    const exam = (state.finalExams || []).find(
+      e => e.studentId === studentId && e.practiceId === targetPracticeId && e.status === 'COMPLETED'
+    );
+    const scheduledExam = (state.finalExams || []).find(
+      e => e.studentId === studentId && e.practiceId === targetPracticeId && (e.status === 'SCHEDULED' || e.status === 'IN_PROGRESS')
+    );
+
+    if (assessment?.status === 'APPROVED' || assessment?.status === 'COMPLETED') {
+      return 'COMPLETED';
+    }
+    if (assessment?.status === 'RETAKE_REQUIRED' || assessment?.status === 'FAILED') {
+      return 'RETAKE_REQUIRED';
+    }
+    if (exam && (!assessment || assessment.status === 'PENDING_APPROVAL' || assessment.status === 'WAITING_FOR_APPROVAL')) {
+      return 'WAITING_FOR_APPROVAL';
+    }
+    if (scheduledExam) {
+      return 'WAITING_FOR_EXAM';
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isPracticePeriodEnded = practice ? practice.endDate < todayStr : false;
+
+    if (isPracticePeriodEnded) {
+      return 'PRACTICE_COMPLETED';
+    }
+
+    return 'IN_PROGRESS';
+  }
+
+  public getOverallMonitoringRows(filters?: {
+    practiceId?: string;
+    facultyId?: string;
+    directionId?: string;
+    courseLevel?: number;
+    groupId?: string;
+    clinicId?: string;
+    supervisorId?: string;
+    status?: string;
+    grade?: string;
+    searchQuery?: string;
+  }) {
+    const state = this.getState();
+    const students = state.students || [];
+    const practices = state.practices || [];
+    const assignments = state.practiceAssignments || [];
+    const places = state.practicePlaces || [];
+    const supervisors = state.supervisors || [];
+    const faculties = state.faculties || [];
+    const directions = state.directions || [];
+    const groups = state.groups || [];
+    const settings = this.getAssessmentSettings();
+
+    const activePracticeId = filters?.practiceId || practices[0]?.id || 'prac-1';
+    const activePractice = practices.find(p => p.id === activePracticeId) || practices[0];
+
+    const practiceStudents = students.filter(s => {
+      const hasAsg = assignments.some(a => a.studentId === s.id && a.practiceId === activePracticeId);
+      const inPracGroups = activePractice ? activePractice.groupIds.includes(s.groupId) : true;
+      return hasAsg || inPracGroups;
+    });
+
+    const rows = practiceStudents.map((std, index) => {
+      const asg = assignments.find(a => a.studentId === std.id && a.practiceId === activePracticeId);
+      const place = places.find(p => p.id === asg?.practicePlaceId);
+      const sup = supervisors.find(s => s.id === asg?.supervisorId);
+      const faculty = faculties.find(f => f.id === std.facultyId);
+      const direction = directions.find(d => d.id === std.directionId);
+      const group = groups.find(g => g.id === std.groupId);
+
+      const att = this.calculateStudentAttendanceScore(std.id, activePracticeId);
+      const jnl = this.calculateStudentJournalScore(std.id, activePracticeId);
+      const skl = this.calculateStudentSkillsScore(std.id, activePracticeId);
+      const exm = this.calculateStudentFinalExamScore(std.id, activePracticeId);
+      const ass = this.getAssessmentByStudent(std.id, activePracticeId);
+      const overallStatus = this.calculateStudentOverallStatus(std.id, activePracticeId);
+
+      let problemLabel = '';
+      if (att.percentage < 70) {
+        problemLabel = `Davomat past (${att.percentage}%)`;
+      } else if (jnl.approvedCount === 0) {
+        problemLabel = 'Kundalik topshirilmagan';
+      } else if (jnl.revisionCount > 0) {
+        problemLabel = `${jnl.revisionCount} ta kundalik qaytarilgan`;
+      } else if (skl.skillProgressPercent < 50) {
+        problemLabel = `Ko'nikmalar me'yori yetarli emas (${skl.skillProgressPercent}%)`;
+      } else if (skl.unmasteredMandatorySkills.length > 0) {
+        problemLabel = `${skl.unmasteredMandatorySkills.length} ta majburiy ko'nikma bajarilmagan`;
+      } else if (!exm.exam) {
+        problemLabel = 'Yakuniy imtihon belgilanmagan';
+      } else if (ass && ass.status === 'RETAKE_REQUIRED') {
+        problemLabel = 'Qayta topshirishga yuborilgan';
+      }
+
+      const totalScore = ass?.totalScore ?? (att.score + jnl.score + skl.score + exm.score);
+      const grade = ass?.grade || (totalScore >= settings.grade5Min ? '5' : totalScore >= settings.grade4Min ? '4' : totalScore >= settings.grade3Min ? '3' : '2');
+
+      return {
+        number: index + 1,
+        student: std,
+        assignment: asg,
+        practice: activePractice,
+        practicePlace: place,
+        supervisor: sup,
+        facultyName: faculty?.name || std.faculty || 'Davolash fakulteti',
+        directionName: direction?.name || std.direction || 'Davolash ishi',
+        groupName: group?.name || std.group || std.groupId,
+        courseLevel: std.courseId || 4,
+        attendancePercentage: att.percentage,
+        attendanceScore: att.score,
+        attendanceMax: settings.attendanceMaxScore,
+        journalCompletionPct: jnl.completionPct,
+        journalScore: jnl.score,
+        journalMax: settings.journalMaxScore,
+        skillsProgressPct: skl.skillProgressPercent,
+        skillsScore: skl.score,
+        skillsMax: settings.skillsMaxScore,
+        examScore: exm.score,
+        examMax: settings.finalExamMaxScore,
+        examStatus: exm.status,
+        totalScore,
+        grade,
+        status: overallStatus,
+        problem: problemLabel,
+        lastUpdated: ass?.updatedAt ? ass.updatedAt.split('T')[0] : (asg?.createdAt?.split('T')[0] || '2026-09-28')
+      };
+    });
+
+    return rows.filter(row => {
+      if (filters?.facultyId && row.student.facultyId !== filters.facultyId) return false;
+      if (filters?.directionId && row.student.directionId !== filters.directionId) return false;
+      if (filters?.groupId && row.student.groupId !== filters.groupId) return false;
+      if (filters?.clinicId && row.assignment?.practicePlaceId !== filters.clinicId) return false;
+      if (filters?.supervisorId && row.assignment?.supervisorId !== filters.supervisorId) return false;
+      if (filters?.status && filters.status !== 'ALL' && row.status !== filters.status) return false;
+      if (filters?.grade && filters.grade !== 'ALL' && row.grade !== filters.grade) return false;
+      if (filters?.searchQuery?.trim()) {
+        const q = filters.searchQuery.toLowerCase();
+        const matchesName = row.student.fullName.toLowerCase().includes(q);
+        const matchesId = row.student.studentId.toLowerCase().includes(q);
+        const matchesGroup = row.groupName.toLowerCase().includes(q);
+        if (!matchesName && !matchesId && !matchesGroup) return false;
+      }
+      return true;
+    });
+  }
+
+  public getProblemStudents(filters?: { practiceId?: string; facultyId?: string; problemType?: string }): ProblemStudent[] {
+    const rows = this.getOverallMonitoringRows({ practiceId: filters?.practiceId, facultyId: filters?.facultyId });
+    const problems: ProblemStudent[] = [];
+
+    rows.forEach(r => {
+      const std = r.student;
+      const att = this.calculateStudentAttendanceScore(std.id, r.practice?.id);
+      const jnl = this.calculateStudentJournalScore(std.id, r.practice?.id);
+      const skl = this.calculateStudentSkillsScore(std.id, r.practice?.id);
+      const exm = this.calculateStudentFinalExamScore(std.id, r.practice?.id);
+      const ass = this.getAssessmentByStudent(std.id, r.practice?.id);
+
+      if (att.percentage < 80) {
+        problems.push({
+          id: `prob-att-${std.id}`,
+          studentId: std.id,
+          studentName: std.fullName,
+          group: r.groupName,
+          faculty: r.facultyName,
+          practiceId: r.practice?.id || 'prac-1',
+          practiceName: r.practice?.name || 'Amaliyot',
+          practicePlaceName: r.practicePlace?.name,
+          supervisorName: r.supervisor?.fullName,
+          problemType: 'ATTENDANCE_INSUFFICIENT',
+          problemLabel: `Davomat yetarli emas (${att.percentage}%)`,
+          detectedDate: '2026-09-28',
+          responsiblePerson: r.supervisor?.fullName || 'Amaliyot rahbari',
+          severity: att.percentage < 60 ? 'HIGH' : 'MEDIUM',
+          status: 'OPEN',
+          comment: `${att.absentCount} kun sababsiz dars qoldirilgan. Talabaga ogohlantirish berilsin.`
+        });
+      }
+
+      if (jnl.revisionCount > 0) {
+        problems.push({
+          id: `prob-jnl-${std.id}`,
+          studentId: std.id,
+          studentName: std.fullName,
+          group: r.groupName,
+          faculty: r.facultyName,
+          practiceId: r.practice?.id || 'prac-1',
+          practiceName: r.practice?.name || 'Amaliyot',
+          practicePlaceName: r.practicePlace?.name,
+          supervisorName: r.supervisor?.fullName,
+          problemType: 'JOURNAL_REVISION',
+          problemLabel: 'Kundalik REVISION holatida',
+          detectedDate: '2026-09-27',
+          responsiblePerson: r.supervisor?.fullName || 'Klinik rahbar',
+          severity: 'MEDIUM',
+          status: 'IN_REVIEW',
+          comment: `${jnl.revisionCount} ta elektron kundalik qayta ishlashga yuborilgan.`
+        });
+      }
+
+      if (jnl.submittedCount === 0 && att.totalDays > 3) {
+        problems.push({
+          id: `prob-jnl0-${std.id}`,
+          studentId: std.id,
+          studentName: std.fullName,
+          group: r.groupName,
+          faculty: r.facultyName,
+          practiceId: r.practice?.id || 'prac-1',
+          practiceName: r.practice?.name || 'Amaliyot',
+          practicePlaceName: r.practicePlace?.name,
+          supervisorName: r.supervisor?.fullName,
+          problemType: 'JOURNAL_MISSING',
+          problemLabel: 'Kundalik topshirilmagan',
+          detectedDate: '2026-09-28',
+          responsiblePerson: r.supervisor?.fullName || 'Amaliyot rahbari',
+          severity: 'HIGH',
+          status: 'OPEN',
+          comment: 'Birorta ham kundalik tizimga kiritilmagan.'
+        });
+      }
+
+      if (skl.skillProgressPercent < 60 || skl.unmasteredMandatorySkills.length > 0) {
+        problems.push({
+          id: `prob-skl-${std.id}`,
+          studentId: std.id,
+          studentName: std.fullName,
+          group: r.groupName,
+          faculty: r.facultyName,
+          practiceId: r.practice?.id || 'prac-1',
+          practiceName: r.practice?.name || 'Amaliyot',
+          practicePlaceName: r.practicePlace?.name,
+          supervisorName: r.supervisor?.fullName,
+          problemType: 'SKILLS_QUOTA_UNMET',
+          problemLabel: 'Ko\'nikmalar minimal me\'yori bajarilmagan',
+          detectedDate: '2026-09-28',
+          responsiblePerson: r.supervisor?.fullName || 'Klinik mas\'ul',
+          severity: 'MEDIUM',
+          status: 'OPEN',
+          comment: skl.unmasteredMandatorySkills.length > 0
+            ? `Majburiy ko'nikmalar to'liq emas: ${skl.unmasteredMandatorySkills.slice(0, 2).join(', ')}`
+            : `Umumiy ko'nikmalar bajarilishi: ${skl.skillProgressPercent}%`
+        });
+      }
+
+      if (ass?.status === 'RETAKE_REQUIRED' || r.totalScore < 55) {
+        problems.push({
+          id: `prob-ret-${std.id}`,
+          studentId: std.id,
+          studentName: std.fullName,
+          group: r.groupName,
+          faculty: r.facultyName,
+          practiceId: r.practice?.id || 'prac-1',
+          practiceName: r.practice?.name || 'Amaliyot',
+          practicePlaceName: r.practicePlace?.name,
+          supervisorName: r.supervisor?.fullName,
+          problemType: 'RETAKE_REQUIRED',
+          problemLabel: 'Qayta topshirish kerak (< 55 ball)',
+          detectedDate: '2026-09-28',
+          responsiblePerson: 'Attestatsiya komissiyasi',
+          severity: 'HIGH',
+          status: 'OPEN',
+          comment: ass?.retakeReason || `Yakuniy ball: ${r.totalScore} ball (Baho: 2). Qayta imtihon belgilansin.`
+        });
+      }
+
+      if (!exm.exam) {
+        problems.push({
+          id: `prob-exm-${std.id}`,
+          studentId: std.id,
+          studentName: std.fullName,
+          group: r.groupName,
+          faculty: r.facultyName,
+          practiceId: r.practice?.id || 'prac-1',
+          practiceName: r.practice?.name || 'Amaliyot',
+          practicePlaceName: r.practicePlace?.name,
+          supervisorName: r.supervisor?.fullName,
+          problemType: 'EXAM_UNSCHEDULED',
+          problemLabel: 'Yakuniy imtihon belgilanmagan',
+          detectedDate: '2026-09-28',
+          responsiblePerson: 'Kafedra mudiri',
+          severity: 'LOW',
+          status: 'OPEN',
+          comment: 'Talabaga yakuniy imtihon jadvali belgilanmagan.'
+        });
+      }
+    });
+
+    if (filters?.problemType && filters.problemType !== 'ALL') {
+      return problems.filter(p => p.problemType === filters.problemType);
+    }
+    return problems;
+  }
+
+  public getGroupSummaryReports(practiceId?: string) {
+    const rows = this.getOverallMonitoringRows({ practiceId });
+    const groupMap: { [groupId: string]: any } = {};
+
+    rows.forEach(r => {
+      const gId = r.student.groupId || 'grp-1';
+      if (!groupMap[gId]) {
+        groupMap[gId] = {
+          groupId: gId,
+          groupName: r.groupName,
+          facultyName: r.facultyName,
+          totalStudents: 0,
+          inPractice: 0,
+          completed: 0,
+          attendanceSum: 0,
+          journalSum: 0,
+          skillsSum: 0,
+          examCount: 0,
+          totalScoreSum: 0,
+          grade5Count: 0,
+          grade4Count: 0,
+          grade3Count: 0,
+          grade2Count: 0,
+          retakeCount: 0,
+          approvedCount: 0,
+          incompleteCount: 0,
+          students: []
+        };
+      }
+
+      const g = groupMap[gId];
+      g.totalStudents++;
+      g.students.push(r);
+      if (r.status !== 'NOT_STARTED') g.inPractice++;
+      if (r.status === 'COMPLETED' || r.status === 'APPROVED') g.completed++;
+      if (r.status === 'APPROVED' || r.status === 'COMPLETED') g.approvedCount++;
+      if (r.status === 'RETAKE_REQUIRED' || r.grade === '2') g.retakeCount++;
+      if (r.status === 'IN_PROGRESS' || r.status === 'WAITING_FOR_EXAM') g.incompleteCount++;
+
+      g.attendanceSum += r.attendancePercentage;
+      g.journalSum += r.journalCompletionPct;
+      g.skillsSum += r.skillsProgressPct;
+      if (r.examScore > 0) g.examCount++;
+      g.totalScoreSum += r.totalScore;
+
+      if (r.grade === '5') g.grade5Count++;
+      else if (r.grade === '4') g.grade4Count++;
+      else if (r.grade === '3') g.grade3Count++;
+      else g.grade2Count++;
+    });
+
+    return Object.values(groupMap).map(g => {
+      const cnt = g.totalStudents || 1;
+      const assessedCnt = (g.grade5Count + g.grade4Count + g.grade3Count + g.grade2Count) || 1;
+      const passedCnt = g.grade5Count + g.grade4Count + g.grade3Count;
+      const masteryPct = Math.round((passedCnt / assessedCnt) * 100);
+      const qualityPct = Math.round(((g.grade5Count + g.grade4Count) / assessedCnt) * 100);
+
+      return {
+        ...g,
+        avgAttendance: Math.round(g.attendanceSum / cnt),
+        avgJournal: Math.round(g.journalSum / cnt),
+        avgSkills: Math.round(g.skillsSum / cnt),
+        avgScore: Number((g.totalScoreSum / cnt).toFixed(1)),
+        masteryPercentage: masteryPct,
+        qualityPercentage: qualityPct
+      };
+    });
+  }
+
+  public getFacultyDirectionReports(practiceId?: string) {
+    const rows = this.getOverallMonitoringRows({ practiceId });
+    const facultyMap: { [facId: string]: any } = {};
+
+    rows.forEach(r => {
+      const fId = r.student.facultyId || 'fac-1';
+      if (!facultyMap[fId]) {
+        facultyMap[fId] = {
+          facultyId: fId,
+          facultyName: r.facultyName,
+          studentsCount: 0,
+          practicesCount: 1,
+          attendanceSum: 0,
+          journalSum: 0,
+          skillsSum: 0,
+          examCount: 0,
+          totalScoreSum: 0,
+          grade5: 0,
+          grade4: 0,
+          grade3: 0,
+          grade2: 0,
+          retakeCount: 0,
+          clinics: new Set<string>(),
+          supervisors: new Set<string>()
+        };
+      }
+
+      const f = facultyMap[fId];
+      f.studentsCount++;
+      f.attendanceSum += r.attendancePercentage;
+      f.journalSum += r.journalCompletionPct;
+      f.skillsSum += r.skillsProgressPct;
+      if (r.examScore > 0) f.examCount++;
+      f.totalScoreSum += r.totalScore;
+
+      if (r.practicePlace?.id) f.clinics.add(r.practicePlace.id);
+      if (r.supervisor?.id) f.supervisors.add(r.supervisor.id);
+
+      if (r.grade === '5') f.grade5++;
+      else if (r.grade === '4') f.grade4++;
+      else if (r.grade === '3') f.grade3++;
+      else f.grade2++;
+
+      if (r.grade === '2' || r.status === 'RETAKE_REQUIRED') f.retakeCount++;
+    });
+
+    return Object.values(facultyMap).map(f => {
+      const cnt = f.studentsCount || 1;
+      const assessed = (f.grade5 + f.grade4 + f.grade3 + f.grade2) || 1;
+      const passed = f.grade5 + f.grade4 + f.grade3;
+      return {
+        ...f,
+        clinicsCount: f.clinics.size,
+        supervisorsCount: f.supervisors.size,
+        avgAttendance: Math.round(f.attendanceSum / cnt),
+        avgJournal: Math.round(f.journalSum / cnt),
+        avgSkills: Math.round(f.skillsSum / cnt),
+        avgScore: Number((f.totalScoreSum / cnt).toFixed(1)),
+        masteryPercentage: Math.round((passed / assessed) * 100),
+        qualityPercentage: Math.round(((f.grade5 + f.grade4) / assessed) * 100)
+      };
+    });
+  }
+
+  public getClinicReports(practiceId?: string) {
+    const rows = this.getOverallMonitoringRows({ practiceId });
+    const clinicMap: { [cId: string]: any } = {};
+
+    rows.forEach(r => {
+      const cId = r.practicePlace?.id || 'place-1';
+      if (!clinicMap[cId]) {
+        clinicMap[cId] = {
+          clinicId: cId,
+          clinicName: r.practicePlace?.name || 'Klinik baza',
+          type: r.practicePlace?.type || 'Shifoxona',
+          department: r.assignment?.department || 'Bo\'lim',
+          studentsCount: 0,
+          supervisors: new Set<string>(),
+          attendanceSum: 0,
+          journalSum: 0,
+          skillsSum: 0,
+          examCount: 0,
+          totalScoreSum: 0,
+          problemCount: 0,
+          approvedCount: 0
+        };
+      }
+
+      const c = clinicMap[cId];
+      c.studentsCount++;
+      if (r.supervisor?.fullName) c.supervisors.add(r.supervisor.fullName);
+      c.attendanceSum += r.attendancePercentage;
+      c.journalSum += r.journalCompletionPct;
+      c.skillsSum += r.skillsProgressPct;
+      if (r.examScore > 0) c.examCount++;
+      c.totalScoreSum += r.totalScore;
+      if (r.problem) c.problemCount++;
+      if (r.status === 'APPROVED' || r.status === 'COMPLETED') c.approvedCount++;
+    });
+
+    return Object.values(clinicMap).map(c => {
+      const cnt = c.studentsCount || 1;
+      return {
+        ...c,
+        supervisorsCount: c.supervisors.size,
+        supervisorsList: Array.from(c.supervisors),
+        avgAttendance: Math.round(c.attendanceSum / cnt),
+        avgJournal: Math.round(c.journalSum / cnt),
+        avgSkills: Math.round(c.skillsSum / cnt),
+        avgScore: Number((c.totalScoreSum / cnt).toFixed(1))
+      };
+    });
+  }
+
+  public getSupervisorReports(practiceId?: string) {
+    const state = this.getState();
+    const rows = this.getOverallMonitoringRows({ practiceId });
+    const supList = state.supervisors || [];
+
+    return supList.map(sup => {
+      const assignedRows = rows.filter(r => r.supervisor?.id === sup.id);
+      const studentIds = assignedRows.map(r => r.student.id);
+
+      const allJournals = (state.dailyJournals || []).filter(j => studentIds.includes(j.studentId));
+      const reviewedCount = allJournals.filter(j => j.status === 'APPROVED' || j.status === 'REVISION').length;
+      const pendingCount = allJournals.filter(j => j.status === 'PENDING' || !j.status).length;
+      const approvedCount = allJournals.filter(j => j.status === 'APPROVED').length;
+      const revisionCount = allJournals.filter(j => j.status === 'REVISION').length;
+
+      const allSkillLogs = (state.skillLogs || []).filter(l => studentIds.includes(l.studentId));
+      const skillsReviewed = allSkillLogs.filter(l => l.status === 'APPROVED' || l.status === 'REJECTED').length;
+      const skillsPending = allSkillLogs.filter(l => l.status === 'PENDING').length;
+
+      const completedStudents = assignedRows.filter(r => r.status === 'APPROVED' || r.status === 'COMPLETED').length;
+
+      return {
+        supervisorId: sup.id,
+        fullName: sup.fullName,
+        clinicName: assignedRows[0]?.practicePlace?.name || 'Respublika Shifoxonasi',
+        department: sup.department,
+        assignedStudentsCount: assignedRows.length,
+        reviewedJournalsCount: reviewedCount,
+        pendingJournalsCount: pendingCount,
+        approvedJournalsCount: approvedCount,
+        revisionJournalsCount: revisionCount,
+        skillsReviewedCount: skillsReviewed,
+        skillsPendingCount: skillsPending,
+        attestationApprovedCount: completedStudents,
+        needsActionCount: pendingCount + skillsPending,
+        lastActivityDate: '2026-09-28'
+      };
+    });
+  }
+
+  // --- VEDOMOSTS MANAGEMENT ---
+  public getVedomosts(filters?: { practiceId?: string; facultyId?: string; status?: VedomostStatus }): OfficialVedomost[] {
+    const state = this.getState();
+    let list = state.vedomosts || [];
+    if (!filters) return list;
+    if (filters.practiceId) list = list.filter(v => v.practiceId === filters.practiceId);
+    if (filters.facultyId) list = list.filter(v => v.facultyId === filters.facultyId);
+    if (filters.status) list = list.filter(v => v.status === filters.status);
+    return list;
+  }
+
+  public getVedomostById(id: string): OfficialVedomost | undefined {
+    return (this.getState().vedomosts || []).find(v => v.id === id);
+  }
+
+  public getVedomostByVerificationCode(code: string): OfficialVedomost | undefined {
+    return (this.getState().vedomosts || []).find(v => v.verificationCode === code.trim());
+  }
+
+  public createVedomost(
+    params: {
+      practiceId: string;
+      facultyId: string;
+      groupId: string;
+      directionId?: string;
+      commissionId?: string;
+      title?: string;
+      academicYear?: string;
+    },
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_HEAD'
+  ): OfficialVedomost {
+    const state = this.getState();
+    if (!state.vedomosts) state.vedomosts = [];
+
+    const practice = state.practices.find(p => p.id === params.practiceId);
+    const faculty = state.faculties.find(f => f.id === params.facultyId);
+    const group = state.groups.find(g => g.id === params.groupId);
+    const direction = state.directions.find(d => d.id === params.directionId);
+    const commission = (state.attestationCommissions || []).find(c => c.id === params.commissionId) || (state.attestationCommissions || [])[0];
+
+    const rows = this.getOverallMonitoringRows({
+      practiceId: params.practiceId,
+      groupId: params.groupId
+    });
+
+    const studentRows: VedomostStudentRow[] = rows.map(r => ({
+      studentId: r.student.id,
+      fullName: r.student.fullName,
+      studentCode: r.student.studentId,
+      group: r.groupName,
+      attendanceScore: r.attendanceScore,
+      journalScore: r.journalScore,
+      skillsScore: r.skillsScore,
+      finalExamScore: r.examScore,
+      totalScore: r.totalScore,
+      grade: r.grade as '5' | '4' | '3' | '2',
+      gradeWord: r.grade === '5' ? "A'lo" : r.grade === '4' ? "Yaxshi" : r.grade === '3' ? "Qoniqarli" : "Qoniqarsiz",
+      status: r.status,
+      signature: r.status === 'APPROVED' ? 'Elektron tasdiq' : ''
+    }));
+
+    const totalCnt = studentRows.length;
+    const g5 = studentRows.filter(s => s.grade === '5').length;
+    const g4 = studentRows.filter(s => s.grade === '4').length;
+    const g3 = studentRows.filter(s => s.grade === '3').length;
+    const g2 = studentRows.filter(s => s.grade === '2').length;
+    const assessed = (g5 + g4 + g3 + g2) || 1;
+    const passed = g5 + g4 + g3;
+    const masteryPct = Math.round((passed / assessed) * 100);
+    const qualityPct = Math.round(((g5 + g4) / assessed) * 100);
+
+    const now = new Date();
+    const verifCode = `TMA-VRF-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    const newVedomost: OfficialVedomost = {
+      id: `ved-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      vedomostNumber: `VED-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(state.vedomosts.length + 1).padStart(3, '0')}`,
+      title: params.title || `${group?.name || 'Guruh'} ${practice?.name || 'Amaliyot'} Yakuniy Attestatsiya Vedomosti`,
+      academicYear: params.academicYear || practice?.academicYear || '2026-2027',
+      facultyId: params.facultyId,
+      facultyName: faculty?.name,
+      directionId: params.directionId,
+      directionName: direction?.name,
+      courseLevel: 4,
+      groupId: params.groupId,
+      groupName: group?.name,
+      practiceId: params.practiceId,
+      practiceName: practice?.name,
+      practiceCode: practice?.code,
+      practiceStartDate: practice?.startDate,
+      practiceEndDate: practice?.endDate,
+      commissionId: commission?.id,
+      commissionName: commission?.name,
+      commissionChairperson: commission?.chairpersonName,
+      commissionMembers: commission?.memberNames,
+      issueDate: now.toISOString().split('T')[0],
+      status: 'GENERATED',
+      students: studentRows,
+      totalStudentsCount: totalCnt,
+      grade5Count: g5,
+      grade4Count: g4,
+      grade3Count: g3,
+      grade2Count: g2,
+      masteryPercentage: masteryPct,
+      qualityPercentage: qualityPct,
+      retakeCount: g2,
+      verificationCode: verifCode,
+      qrPayload: `https://ais-dev-jfkrtatp7imduu6bfeocus-226016755915.asia-east1.run.app/verify/${verifCode}`,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+
+    state.vedomosts.unshift(newVedomost);
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'vedomostCreated',
+      entity: 'vedomosts',
+      entityId: newVedomost.id,
+      metadata: JSON.stringify({ number: newVedomost.vedomostNumber, group: newVedomost.groupName })
+    });
+
+    this.saveState(state);
+    return newVedomost;
+  }
+
+  public signVedomost(
+    vedomostId: string,
+    signerName: string,
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_SUPERVISOR'
+  ): { success: boolean; vedomost?: OfficialVedomost; error?: string } {
+    const state = this.getState();
+    const v = (state.vedomosts || []).find(item => item.id === vedomostId);
+    if (!v) return { success: false, error: 'Vedomost topilmadi.' };
+
+    v.status = 'SIGNED';
+    v.signedAt = new Date().toISOString();
+    v.signedBy = signerName;
+    v.updatedAt = new Date().toISOString();
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'vedomostSigned',
+      entity: 'vedomosts',
+      entityId: v.id,
+      metadata: JSON.stringify({ signedBy: signerName })
+    });
+
+    this.saveState(state);
+    return { success: true, vedomost: v };
+  }
+
+  public approveVedomost(
+    vedomostId: string,
+    approverName: string,
+    actorUserId = 'system',
+    actorRole = 'FACULTY_DEAN'
+  ): { success: boolean; vedomost?: OfficialVedomost; error?: string } {
+    const state = this.getState();
+    const v = (state.vedomosts || []).find(item => item.id === vedomostId);
+    if (!v) return { success: false, error: 'Vedomost topilmadi.' };
+
+    v.status = 'APPROVED';
+    v.approvedAt = new Date().toISOString();
+    v.approvedBy = approverName;
+    v.updatedAt = new Date().toISOString();
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'vedomostApproved',
+      entity: 'vedomosts',
+      entityId: v.id,
+      metadata: JSON.stringify({ approvedBy: approverName })
+    });
+
+    this.saveState(state);
+    return { success: true, vedomost: v };
+  }
+
+  public archiveVedomost(
+    vedomostId: string,
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_HEAD'
+  ): { success: boolean; vedomost?: OfficialVedomost; error?: string } {
+    const state = this.getState();
+    const v = (state.vedomosts || []).find(item => item.id === vedomostId);
+    if (!v) return { success: false, error: 'Vedomost topilmadi.' };
+
+    v.status = 'ARCHIVED';
+    v.updatedAt = new Date().toISOString();
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'vedomostArchived',
+      entity: 'vedomosts',
+      entityId: v.id,
+      metadata: JSON.stringify({ archivedAt: v.updatedAt })
+    });
+
+    this.saveState(state);
+    return { success: true, vedomost: v };
+  }
+
+  // --- STUDENT TIMELINE (SECTION 16) ---
+  public getStudentTimeline(studentId: string, practiceId?: string): StudentTimelineStep[] {
+    const state = this.getState();
+    const asg = (state.practiceAssignments || []).find(
+      a => a.studentId === studentId && (!practiceId || a.practiceId === practiceId)
+    );
+    const targetPracId = practiceId || asg?.practiceId || 'prac-1';
+    const att = this.calculateStudentAttendanceScore(studentId, targetPracId);
+    const jnl = this.calculateStudentJournalScore(studentId, targetPracId);
+    const skl = this.calculateStudentSkillsScore(studentId, targetPracId);
+    const exm = this.calculateStudentFinalExamScore(studentId, targetPracId);
+    const ass = this.getAssessmentByStudent(studentId, targetPracId);
+    const vedomost = (state.vedomosts || []).find(v => v.students.some(s => s.studentId === studentId));
+
+    return [
+      {
+        stepNumber: 1,
+        title: 'Amaliyotga biriktirildi',
+        status: asg ? 'COMPLETED' : 'PENDING',
+        date: asg?.createdAt?.split('T')[0] || '2026-08-30',
+        description: asg ? 'Klinik baza va amaliyot rahbariga biriktirildi.' : 'Taqsimot kutilmoqda.'
+      },
+      {
+        stepNumber: 2,
+        title: 'Amaliyot boshlandi',
+        status: asg && att.totalDays > 0 ? 'COMPLETED' : 'PENDING',
+        date: asg?.startDate || '2026-09-01',
+        description: 'Tibbiyot muassasasida amaliyot o\'tash davri boshlandi.'
+      },
+      {
+        stepNumber: 3,
+        title: 'Davomat qayd etish',
+        status: att.percentage >= 80 ? 'COMPLETED' : att.percentage > 0 ? 'IN_PROGRESS' : 'PROBLEM',
+        description: `Qatnashish ko'rsatkichi: ${att.percentage}% (${att.presentCount + att.lateCount} kun).`
+      },
+      {
+        stepNumber: 4,
+        title: 'Elektron kundalik yuritish',
+        status: jnl.approvedCount >= 5 ? 'COMPLETED' : jnl.submittedCount > 0 ? 'IN_PROGRESS' : 'PENDING',
+        description: `${jnl.approvedCount} ta kundalik tasdiqlangan, reyting: ${jnl.avgRating} ⭐.`
+      },
+      {
+        stepNumber: 5,
+        title: 'Amaliy ko\'nikmalar (Skills Logbook)',
+        status: skl.skillProgressPercent >= 80 ? 'COMPLETED' : skl.skillProgressPercent > 0 ? 'IN_PROGRESS' : 'PENDING',
+        description: `Minimal me'yor bajarilishi: ${skl.skillProgressPercent}% (${skl.completedSkills}/${skl.totalSkills} ta ko'nikma).`
+      },
+      {
+        stepNumber: 6,
+        title: 'Supervisor tasdig\'i',
+        status: jnl.approvedCount > 0 && skl.completedSkills > 0 ? 'COMPLETED' : 'PENDING',
+        description: 'Rahbar tomonidan kundaliklar va manipulyatsiyalar ko\'rib chiqildi.'
+      },
+      {
+        stepNumber: 7,
+        title: 'Yakuniy imtihon',
+        status: exm.status === 'COMPLETED' ? 'COMPLETED' : exm.exam ? 'IN_PROGRESS' : 'PENDING',
+        date: exm.exam?.examDate,
+        description: exm.status === 'COMPLETED' ? `5 ta mezon bo'yicha ${exm.score}/30 ball olindi.` : 'Imtihon rejalashtirilgan.'
+      },
+      {
+        stepNumber: 8,
+        title: '100 ballik attestatsiya shakllantirildi',
+        status: ass ? 'COMPLETED' : 'PENDING',
+        description: ass ? `Jami to'plangan: ${ass.totalScore} / 100 ball (Baho: ${ass.grade}).` : 'Hisob-kitob kutilmoqda.'
+      },
+      {
+        stepNumber: 9,
+        title: 'Komissiya tasdig\'i',
+        status: ass?.status === 'APPROVED' ? 'COMPLETED' : ass?.status === 'RETAKE_REQUIRED' ? 'PROBLEM' : 'PENDING',
+        date: ass?.approvedAt?.split('T')[0],
+        description: ass?.status === 'APPROVED' ? `Tasdiqladi: ${ass.approvedBy}` : ass?.status === 'RETAKE_REQUIRED' ? 'Qayta topshirish belgilandi.' : 'Komissiya ko\'rib chiqmoqda.'
+      },
+      {
+        stepNumber: 10,
+        title: 'Yakuniy natija e\'lon qilindi',
+        status: ass?.status === 'APPROVED' ? 'COMPLETED' : 'PENDING',
+        description: ass?.status === 'APPROVED' ? `Rasmiy baho: ${ass.grade} (${ass.grade === '5' ? 'A\'lo' : ass.grade === '4' ? 'Yaxshi' : 'Qoniqarli'}).` : 'Natija kutilmoqda.'
+      },
+      {
+        stepNumber: 11,
+        title: 'Vedomostga kiritildi',
+        status: vedomost ? 'COMPLETED' : 'PENDING',
+        date: vedomost?.issueDate,
+        description: vedomost ? `Rasmiy vedomost: № ${vedomost.vedomostNumber} (${vedomost.status}).` : 'Vedomost shakllantirilmoqda.'
+      }
+    ];
+  }
+
+  // --- SYNC ALL STUDENT STATUSES (SECTION 19) ---
+  public syncAllStudentStatuses(actorUserId = 'system', actorRole = 'SUPER_ADMIN'): { success: boolean; syncedCount: number } {
+    const state = this.getState();
+    const students = state.students || [];
+    let count = 0;
+
+    students.forEach(std => {
+      this.calculateAndSaveAssessment(std.id, undefined, actorUserId, actorRole);
+      count++;
+    });
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'studentStatusSynced',
+      entity: 'students',
+      entityId: 'all',
+      metadata: JSON.stringify({ syncedCount: count, timestamp: new Date().toISOString() })
+    });
+
+    return { success: true, syncedCount: count };
+  }
+
+  // --- 12 KPIS FOR FINAL REPORTS CONTROL CENTER (SECTION 2) ---
+  public getFinalReportsKPIs(practiceId?: string) {
+    const rows = this.getOverallMonitoringRows({ practiceId });
+    const total = rows.length;
+
+    let assigned = 0;
+    let started = 0;
+    let finished = 0;
+    let fullAttendance = 0;
+    let fullJournal = 0;
+    let fullSkills = 0;
+    let examTaken = 0;
+    let approved = 0;
+    let retake = 0;
+    let incomplete = 0;
+
+    rows.forEach(r => {
+      if (r.assignment) assigned++;
+      if (r.status !== 'NOT_STARTED') started++;
+      if (r.status === 'COMPLETED' || r.status === 'APPROVED') finished++;
+      if (r.attendancePercentage >= 95) fullAttendance++;
+      if (r.journalCompletionPct >= 90) fullJournal++;
+      if (r.skillsProgressPct >= 100) fullSkills++;
+      if (r.examScore > 0) examTaken++;
+      if (r.status === 'APPROVED' || r.status === 'COMPLETED') approved++;
+      if (r.status === 'RETAKE_REQUIRED' || r.grade === '2') retake++;
+      if (r.status === 'IN_PROGRESS' || r.status === 'WAITING_FOR_EXAM' || r.status === 'WAITING_FOR_APPROVAL') incomplete++;
+    });
+
+    const problems = this.getProblemStudents({ practiceId });
+
+    return {
+      totalStudents: total,
+      assignedCount: assigned,
+      startedCount: started,
+      finishedCount: finished,
+      fullAttendanceCount: fullAttendance,
+      fullJournalCount: fullJournal,
+      fullSkillsCount: fullSkills,
+      examTakenCount: examTaken,
+      approvedCount: approved,
+      retakeCount: retake,
+      incompleteCount: incomplete,
+      problemStudentsCount: problems.length
+    };
+  }
+
+  // --- SAFE QR VERIFICATION DATA (SECTION 15) ---
+  public getVerificationData(code: string): {
+    isValid: boolean;
+    vedomost?: {
+      number: string;
+      title: string;
+      academicYear: string;
+      faculty: string;
+      practice: string;
+      commission: string;
+      chairperson: string;
+      issueDate: string;
+      totalStudents: number;
+      masteryPercentage: number;
+      qualityPercentage: number;
+      status: string;
+      signedBy?: string;
+      approvedBy?: string;
+    };
+    message?: string;
+  } {
+    const v = this.getVedomostByVerificationCode(code);
+    if (!v) {
+      return { isValid: false, message: 'Ushbu QR verification kodi bo\'yicha hujjat topilmadi yoki haqiqiy emas.' };
+    }
+
+    return {
+      isValid: true,
+      vedomost: {
+        number: v.vedomostNumber,
+        title: v.title,
+        academicYear: v.academicYear,
+        faculty: v.facultyName || 'Toshkent Tibbiyot Akademiyasi',
+        practice: v.practiceName || 'Klinik amaliyot',
+        commission: v.commissionName || 'Attestatsiya komissiyasi',
+        chairperson: v.commissionChairperson || 'Komissiya raisi',
+        issueDate: v.issueDate,
+        totalStudents: v.totalStudentsCount,
+        masteryPercentage: v.masteryPercentage,
+        qualityPercentage: v.qualityPercentage,
+        status: v.status,
+        signedBy: v.signedBy,
+        approvedBy: v.approvedBy
+      }
+    };
   }
 }
 

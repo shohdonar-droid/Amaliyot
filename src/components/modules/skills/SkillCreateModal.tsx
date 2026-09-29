@@ -47,7 +47,7 @@ export function SkillCreateModal({
       setDescription(editSkill.description || '');
       setRequiredCount(editSkill.requiredCount || 10);
       setRecommendedCount(editSkill.recommendedCount || (editSkill.requiredCount * 2));
-      setDifficulty(editSkill.difficulty || 'o\'rta');
+      setDifficulty((editSkill.difficulty as 'oddiy' | 'o\'rta' | 'murakkab') || 'o\'rta');
       setPracticeType(editSkill.practiceType || 'Klinik amaliyot');
       setCourse(String(editSkill.course || '4'));
       setSpecialty(editSkill.specialty || 'Davolash ishi');

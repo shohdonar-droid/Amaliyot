@@ -336,6 +336,35 @@
       },
       "required": ["id", "studentId", "skillId", "performedCount", "targetCount", "status"]
     },
+    "SkillRecord": {
+      "title": "SkillRecord",
+      "description": "Amaliy ko'nikmaning har bir bajarilish tarixi va dalili",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentSkillId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "practiceId": { "type": "string" },
+        "assignmentId": { "type": "string" },
+        "skillId": { "type": "string" },
+        "date": { "type": "string" },
+        "count": { "type": "number" },
+        "performanceType": { "type": "string", "enum": ["OBSERVED", "SUPERVISED", "INDEPENDENT"] },
+        "source": { "type": "string", "enum": ["MANUAL", "DAILY_JOURNAL"] },
+        "journalId": { "type": "string" },
+        "attendanceId": { "type": "string" },
+        "description": { "type": "string" },
+        "evidenceUrls": { "type": "array" },
+        "status": { "type": "string", "enum": ["PENDING_REVIEW", "APPROVED", "REVISION", "PENDING", "REJECTED"] },
+        "reviewerId": { "type": "string" },
+        "reviewerName": { "type": "string" },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "revisionReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "studentId", "practiceId", "skillId", "date", "count", "performanceType", "source", "status", "createdAt"]
+    },
     "Task": {
       "title": "Task",
       "description": "Amaliyot rahbari bergan klinik topshiriq",
@@ -352,25 +381,113 @@
     },
     "Assessment": {
       "title": "Assessment",
-      "description": "Oraliq va yakuniy attestatsiya bahosi",
+      "description": "Talabaning amaliyot yakuniy attestatsiyasi va 100 ballik baholash natijasi",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "practiceId": { "type": "string" },
         "studentId": { "type": "string" },
+        "assignmentId": { "type": "string" },
         "attendanceScore": { "type": "number" },
+        "attendanceMaxScore": { "type": "number" },
         "journalScore": { "type": "number" },
+        "journalMaxScore": { "type": "number" },
         "skillsScore": { "type": "number" },
+        "skillsMaxScore": { "type": "number" },
         "finalExamScore": { "type": "number" },
+        "finalExamMaxScore": { "type": "number" },
         "totalScore": { "type": "number" },
+        "percentage": { "type": "number" },
         "grade": { "type": "string", "enum": ["5", "4", "3", "2"] },
-        "assessorId": { "type": "string" },
-        "assessorName": { "type": "string" },
-        "assessmentDate": { "type": "string" },
-        "feedback": { "type": "string" },
-        "status": { "type": "string", "enum": ["GRADED", "PENDING"] }
+        "status": {
+          "type": "string",
+          "enum": [
+            "NOT_STARTED",
+            "IN_PROGRESS",
+            "WAITING_FOR_EXAM",
+            "EXAM_COMPLETED",
+            "PENDING_APPROVAL",
+            "APPROVED",
+            "FAILED",
+            "RETAKE_REQUIRED",
+            "COMPLETED"
+          ]
+        },
+        "commissionId": { "type": "string" },
+        "approvedBy": { "type": "string" },
+        "approvedAt": { "type": "string", "format": "date-time" },
+        "comments": { "type": "string" },
+        "retakeReason": { "type": "string" },
+        "retakeExamDate": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "practiceId", "studentId", "totalScore", "grade", "status"]
+    },
+    "FinalExam": {
+      "title": "FinalExam",
+      "description": "Amaliyot yakuniy imtihoni (5 ta mezon, max 30 ball)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "practiceId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "assignmentId": { "type": "string" },
+        "examDate": { "type": "string" },
+        "examinerIds": { "type": "array", "items": { "type": "string" } },
+        "commissionId": { "type": "string" },
+        "theoryScore": { "type": "number" },
+        "practicalScore": { "type": "number" },
+        "clinicalCaseScore": { "type": "number" },
+        "professionalismScore": { "type": "number" },
+        "safetyScore": { "type": "number" },
+        "totalScore": { "type": "number" },
+        "maxScore": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "ABSENT", "CANCELLED"]
+        },
+        "comments": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "practiceId", "studentId", "examDate", "totalScore", "status"]
+    },
+    "AttestationCommission": {
+      "title": "AttestationCommission",
+      "description": "Amaliyot yakuniy attestatsiya komissiyasi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "chairpersonId": { "type": "string" },
+        "chairpersonName": { "type": "string" },
+        "memberIds": { "type": "array", "items": { "type": "string" } },
+        "memberNames": { "type": "array", "items": { "type": "string" } },
+        "department": { "type": "string" },
+        "facultyId": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "chairpersonName", "isActive"]
+    },
+    "AssessmentSettings": {
+      "title": "AssessmentSettings",
+      "description": "Attestatsiya va baholash mezonlari sozlamalari",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "attendanceMaxScore": { "type": "number" },
+        "journalMaxScore": { "type": "number" },
+        "skillsMaxScore": { "type": "number" },
+        "finalExamMaxScore": { "type": "number" },
+        "grade5Min": { "type": "number" },
+        "grade4Min": { "type": "number" },
+        "grade3Min": { "type": "number" },
+        "grade2Min": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "attendanceMaxScore", "journalMaxScore", "skillsMaxScore", "finalExamMaxScore"]
     },
     "Document": {
       "title": "Document",
@@ -511,6 +628,10 @@
       "schema": { "$ref": "#/entities/StudentSkill" },
       "description": "Talabaning ko'nikmalar bajarganlik qaydlari"
     },
+    "/skillRecords/{recordId}": {
+      "schema": { "$ref": "#/entities/SkillRecord" },
+      "description": "Talabalarning amaliy ko'nikmalar bajarish tarixi va tekshiruv yozuvlari"
+    },
     "/tasks/{taskId}": {
       "schema": { "$ref": "#/entities/Task" },
       "description": "Amaliyot vazifalari"
@@ -518,6 +639,18 @@
     "/assessments/{assessmentId}": {
       "schema": { "$ref": "#/entities/Assessment" },
       "description": "Yakuniy attestatsiya va ballar"
+    },
+    "/finalExams/{examId}": {
+      "schema": { "$ref": "#/entities/FinalExam" },
+      "description": "Amaliyot yakuniy imtihonlari va baholari"
+    },
+    "/attestationCommissions/{commissionId}": {
+      "schema": { "$ref": "#/entities/AttestationCommission" },
+      "description": "Attestatsiya komissiyalari"
+    },
+    "/assessmentSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/AssessmentSettings" },
+      "description": "Baholash mezonlari va chegaralari sozlamalari"
     },
     "/documents/{documentId}": {
       "schema": { "$ref": "#/entities/Document" },

@@ -198,12 +198,36 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         isPracticeStaff() ||
         isSupervisor() ||
-        resource.data.studentId == getUserData().studentId
+        resource.data.studentId == getUserData().studentId ||
+        (getUserRole() == 'FACULTY_DEAN') ||
+        (getUserRole() == 'CLINIC_RESPONSIBLE')
       );
       allow create, update: if isSignedIn() && (
         isPracticeStaff() ||
         isSupervisor() ||
         (getUserRole() == 'STUDENT' && request.resource.data.studentId == getUserData().studentId)
+      );
+      allow delete: if isPracticeHead();
+    }
+
+    match /skillRecords/{recordId} {
+      allow read: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        resource.data.studentId == getUserData().studentId ||
+        getUserRole() == 'CLINIC_RESPONSIBLE' ||
+        getUserRole() == 'FACULTY_DEAN'
+      );
+      allow create: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        (getUserRole() == 'STUDENT' && request.resource.data.studentId == getUserData().studentId)
+      );
+      allow update: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        getUserRole() == 'CLINIC_RESPONSIBLE' ||
+        (getUserRole() == 'STUDENT' && resource.data.studentId == getUserData().studentId && resource.data.status in ['PENDING', 'PENDING_REVIEW', 'REVISION'])
       );
       allow delete: if isPracticeHead();
     }
@@ -214,14 +238,37 @@ service cloud.firestore {
       allow write: if isPracticeStaff() || isSupervisor();
     }
 
-    // --- ASSESSMENTS ---
+    // --- ASSESSMENTS & ATTESTATION ---
     match /assessments/{assessmentId} {
       allow read: if isSignedIn() && (
         isPracticeStaff() ||
         isSupervisor() ||
+        getUserRole() == 'FACULTY_DEAN' ||
         resource.data.studentId == getUserData().studentId
       );
-      allow write: if isPracticeStaff() || isSupervisor();
+      allow create, update: if isPracticeStaff() || isSupervisor();
+      allow delete: if isPracticeHead();
+    }
+
+    match /finalExams/{examId} {
+      allow read: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        getUserRole() == 'FACULTY_DEAN' ||
+        resource.data.studentId == getUserData().studentId
+      );
+      allow create, update: if isPracticeStaff() || isSupervisor();
+      allow delete: if isPracticeHead();
+    }
+
+    match /attestationCommissions/{commissionId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeStaff();
+    }
+
+    match /assessmentSettings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeHead();
     }
 
     // --- DOCUMENTS ---

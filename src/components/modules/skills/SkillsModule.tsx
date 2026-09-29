@@ -23,7 +23,8 @@ import {
   BookOpen,
   Calendar,
   XCircle,
-  FolderOpen
+  FolderOpen,
+  BarChart3
 } from 'lucide-react';
 import { Skill, StudentSkill, SkillLogEntry, Student, UserRole } from '../../../types';
 import { storageService } from '../../../services/storageService';
@@ -34,6 +35,7 @@ import { SkillLogModal } from './SkillLogModal';
 import { SkillCreateModal } from './SkillCreateModal';
 import { SkillReviewModal } from './SkillReviewModal';
 import { SkillPassportPrintModal } from './SkillPassportPrintModal';
+import { SkillsAnalytics } from './SkillsAnalytics';
 
 export function SkillsModule() {
   const { showToast } = useToast();
@@ -74,7 +76,7 @@ export function SkillsModule() {
   // For student: 'passport' | 'logbook'
   // For supervisor: 'review_queue' | 'passport' | 'logbook'
   // For admin: 'students_monitoring' | 'passport' | 'catalog' | 'logbook'
-  const defaultTab = isStudent ? 'passport' : (isSupervisor || isClinicResponsible) ? 'review_queue' : 'students_monitoring';
+  const defaultTab = isStudent ? 'passport' : (isSupervisor || isClinicResponsible) ? 'review_queue' : 'analytics';
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
 
   // Filters
@@ -274,6 +276,59 @@ export function SkillsModule() {
 
           <button
             onClick={() => {
+              const headers = [
+                '№',
+                'Ko‘nikma nomi',
+                'Kategoriya',
+                'Minimal me‘yor',
+                'Bajarilgan',
+                'Mustaqil',
+                'Rahbar nazoratida',
+                'Kuzatuv',
+                'Tasdiqlangan',
+                'Progress %',
+                'Holat'
+              ];
+              const rows = studentPassport.detailedSkills.map(s => [
+                s.number,
+                `"${s.skill.name.replace(/"/g, '""')}"`,
+                `"${s.skill.category}"`,
+                s.requiredCount,
+                s.performedCount,
+                s.independentCount,
+                s.supervisedCount,
+                s.observedCount,
+                s.approvedCount,
+                `${s.progressPct}%`,
+                s.isMastered ? 'Bajarildi' : s.performedCount > 0 ? 'Jarayonda' : 'Boshlanmagan'
+              ]);
+              const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' +
+                [
+                  `"TOSHKENT TIBBIYOT AKADEMIYASI - AMALIY KO'NIKMALAR PASPORTI"`,
+                  `"Talaba:","${studentPassport.student?.fullName || ''}","ID:","${studentPassport.student?.studentId || ''}"`,
+                  `"Guruh:","${studentPassport.student?.groupId || ''}","Klinik baza:","${studentPassport.practicePlace?.name || ''}"`,
+                  `"Umumiy me'yor bajarilishi:","${studentPassport.minimalQuotaMetPct}%"`,
+                  '',
+                  headers.join(','),
+                  ...rows.map(r => r.join(','))
+                ].join('\n');
+              const encodedUri = encodeURI(csvContent);
+              const link = document.createElement('a');
+              link.setAttribute('href', encodedUri);
+              link.setAttribute('download', `Konikmalar_Pasporti_${studentPassport.student?.studentId || 'talaba'}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              showToast('success', 'Eksport qilindi', 'Amaliy ko\'nikmalar pasporti CSV formatida yuklab olindi.');
+            }}
+            className="px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Excel (CSV)</span>
+          </button>
+
+          <button
+            onClick={() => {
               setPrintTargetStudentId(effectiveStudentId);
               setIsPrintModalOpen(true);
             }}
@@ -404,6 +459,20 @@ export function SkillsModule() {
       {/* 3. Navigation Tabs */}
       <div className="flex items-center justify-between border-b border-slate-200">
         <div className="flex items-center gap-1 overflow-x-auto">
+          {!isStudent && (
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${
+                activeTab === 'analytics'
+                  ? 'border-blue-600 text-blue-700 bg-blue-50/40'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 text-indigo-600" />
+              <span>Statistika va Tahlil</span>
+            </button>
+          )}
+
           {!isStudent && isHeadOrAdmin && (
             <button
               onClick={() => setActiveTab('students_monitoring')}
@@ -518,6 +587,19 @@ export function SkillsModule() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* 4.5. TAB CONTENT: Analytics & Dashboard (Section 17 & 18) */}
+      {activeTab === 'analytics' && !isStudent && (
+        <SkillsAnalytics
+          onSelectStudent={(id) => {
+            setSelectedStudentId(id);
+          }}
+          onViewPassport={(id) => {
+            setSelectedStudentId(id);
+            setActiveTab('passport');
+          }}
+        />
       )}
 
       {/* 5. TAB CONTENT: Passport Table (Section 4) */}

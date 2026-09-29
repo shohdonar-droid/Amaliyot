@@ -28,7 +28,7 @@ export function SkillReviewModal({
   const [rating, setRating] = useState<number>(5);
   const [feedback, setFeedback] = useState<string>('A\'lo darajada va to\'g\'ri bajarildi.');
   const [rejectReason, setRejectReason] = useState<string>('');
-  const [decision, setDecision] = useState<'APPROVE' | 'REJECT'>('APPROVE');
+  const [decision, setDecision] = useState<'APPROVE' | 'REVISION'>('APPROVE');
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
@@ -43,8 +43,8 @@ export function SkillReviewModal({
     e.preventDefault();
     setError('');
 
-    if (decision === 'REJECT' && !rejectReason.trim()) {
-      setError('Qaytarish sababini batafsil ko\'rsatish majburiy.');
+    if (decision === 'REVISION' && !rejectReason.trim()) {
+      setError('Qaytarish sababini (revisionReason) ko\'rsatish majburiy.');
       return;
     }
 
@@ -52,7 +52,7 @@ export function SkillReviewModal({
     try {
       const res = storageService.reviewSkillLog({
         logId: log.id,
-        status: decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        status: decision === 'APPROVE' ? 'APPROVED' : 'REVISION',
         feedback: decision === 'APPROVE' ? feedback.trim() : rejectReason.trim(),
         rating: decision === 'APPROVE' ? rating : undefined,
         reviewerName: currentUserFullName,
@@ -201,17 +201,17 @@ export function SkillReviewModal({
 
             <button
               type="button"
-              onClick={() => setDecision('REJECT')}
+              onClick={() => setDecision('REVISION')}
               className={`p-3 rounded-lg border text-left transition-all flex items-center gap-2.5 ${
-                decision === 'REJECT'
+                decision === 'REVISION'
                   ? 'border-rose-500 bg-rose-50/70 text-rose-900 ring-2 ring-rose-500/20'
                   : 'border-slate-200 hover:border-slate-300 text-slate-700'
               }`}
             >
               <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
               <div>
-                <span className="text-xs font-bold block">Qaytarish / Rad etish</span>
-                <span className="text-[10px] text-slate-500 block">Qayta ishlash uchun qaytarish</span>
+                <span className="text-xs font-bold block">Qaytarish (Revision)</span>
+                <span className="text-[10px] text-slate-500 block">Qayta ishlash uchun sabab bilan qaytarish</span>
               </div>
             </button>
           </div>

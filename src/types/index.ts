@@ -101,6 +101,10 @@ export interface Student {
   directionId: string;
   courseId: string;
   groupId: string;
+  group?: string;
+  course?: string | number;
+  faculty?: string;
+  direction?: string;
   phone: string;
   telegram: string;
   email: string;
@@ -152,6 +156,7 @@ export interface Supervisor {
   fullName: string;
   department: string;
   academicDegree: string;
+  position?: string;
   phone: string;
   email: string;
   type: 'university' | 'clinic';
@@ -211,6 +216,7 @@ export interface Practice {
   description?: string;
   totalHours: number;
   credits: number;
+  durationDays?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -419,10 +425,14 @@ export interface Skill {
   id: string;
   name: string;
   category: SkillCategory;
+  description: string;
   requiredCount: number; // minimal me'yor
   recommendedCount?: number; // maksimal tavsiya etiladigan son
-  description: string;
-  difficulty?: 'oddiy' | 'o\'rta' | 'murakkab';
+  facultyIds?: string[];
+  directionIds?: string[];
+  courseIds?: string[];
+  practiceTypeIds?: string[];
+  difficulty?: 'oddiy' | 'o\'rta' | 'murakkab' | string;
   practiceType?: string; // Amaliyot turi / fani
   course?: number | string; // Kurs (masalan: 3, 4, 5)
   specialty?: string; // Yo'nalish (Davolash ishi, Pediatriya, etc.)
@@ -432,49 +442,91 @@ export interface Skill {
   updatedAt?: string;
 }
 
-export interface SkillLogEntry {
+export type SkillRecordStatus = 'PENDING' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'REVISION';
+export type SkillPerformanceType = 'OBSERVED' | 'SUPERVISED' | 'INDEPENDENT' | 'Mustaqil' | 'Rahbar nazoratida' | 'Kuzatuvchi';
+
+export interface SkillRecord {
   id: string;
+  studentSkillId?: string;
   studentId: string;
   practiceId: string;
+  assignmentId?: string;
   skillId: string;
   date: string; // YYYY-MM-DD
-  participationType: SkillParticipationType;
   count: number;
-  notes?: string;
+  performanceType?: 'OBSERVED' | 'SUPERVISED' | 'INDEPENDENT';
+  participationType?: SkillParticipationType; // backwards-compatible alias
+  source?: 'MANUAL' | 'DAILY_JOURNAL';
+  journalId?: string;
+  dailyJournalId?: string; // backwards-compatible alias
+  attendanceId?: string;
+  description?: string;
+  notes?: string; // backwards-compatible alias
+  evidenceUrls?: string[];
+  attachmentUrl?: string;
+  attachmentName?: string;
   patientInfo?: {
     age?: number | string;
     gender?: 'Erkak' | 'Ayol' | 'male' | 'female';
     department?: string;
     clinicalCondition?: string;
   };
-  supervisorId?: string;
-  supervisorName?: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: SkillRecordStatus;
+  reviewerId?: string;
+  reviewerName?: string;
+  reviewedAt?: string;
+  revisionReason?: string;
   verifiedBy?: string;
   verifiedAt?: string;
   supervisorFeedback?: string;
   supervisorRating?: number; // 1-5 baho
-  dailyJournalId?: string; // Bog'langan elektron kundalik IDsi
-  attachmentUrl?: string;
-  attachmentName?: string;
+  supervisorId?: string;
+  supervisorName?: string;
   createdAt: string;
+  updatedAt?: string;
 }
+
+export type SkillLogEntry = SkillRecord;
+
+export type StudentSkillStatus = 
+  | 'NOT_STARTED' 
+  | 'IN_PROGRESS' 
+  | 'PENDING_REVIEW' 
+  | 'APPROVED' 
+  | 'REVISION' 
+  | 'COMPLETED' 
+  | 'not_started' 
+  | 'in_progress' 
+  | 'mastered' 
+  | 'MASTERED';
 
 export interface StudentSkill {
   id: string;
   studentId: string;
   practiceId: string;
+  assignmentId?: string;
   skillId: string;
-  performedCount: number;
-  independentCount?: number;
-  supervisedCount?: number;
+  practicePlaceId?: string;
+  departmentId?: string;
+  supervisorId?: string;
+  requiredCount?: number;
+  targetCount?: number; // backwards-compatible alias
   observedCount?: number;
-  verifiedCount?: number;
-  targetCount: number;
-  status: 'not_started' | 'in_progress' | 'mastered' | 'NOT_STARTED' | 'IN_PROGRESS' | 'MASTERED';
-  verifiedBySupervisor: boolean;
+  supervisedCount?: number;
+  independentCount?: number;
+  totalPerformedCount?: number;
+  performedCount?: number; // backwards-compatible alias
+  approvedCount?: number;
+  verifiedCount?: number; // backwards-compatible alias
+  status: StudentSkillStatus;
+  progressPercent?: number;
+  verifiedBySupervisor?: boolean;
   lastPerformedDate?: string;
+  lastPerformedAt?: string;
+  lastApprovedAt?: string;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Task {
@@ -486,21 +538,152 @@ export interface Task {
   status: 'OPEN' | 'CLOSED';
 }
 
-export interface Assessment {
+export type AssessmentStatus = 
+  | 'NOT_STARTED'
+  | 'IN_PROGRESS'
+  | 'WAITING_FOR_EXAM'
+  | 'EXAM_COMPLETED'
+  | 'WAITING_FOR_APPROVAL'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'FAILED'
+  | 'RETAKE_REQUIRED'
+  | 'COMPLETED'
+  | 'graded'
+  | 'pending'
+  | 'GRADED'
+  | 'PENDING';
+
+export type ExamStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'ABSENT' | 'CANCELLED';
+
+export interface FinalExam {
   id: string;
   practiceId: string;
   studentId: string;
+  assignmentId?: string;
+  examDate: string; // YYYY-MM-DD
+  examTime?: string; // HH:mm
+  placeName?: string;
+  departmentName?: string;
+  examinerIds: string[];
+  examinerNames?: string[];
+  commissionId?: string;
+  theoryScore: number; // Max 6
+  practicalScore: number; // Max 8
+  clinicalCaseScore: number; // Max 8
+  professionalismScore: number; // Max 4
+  safetyScore: number; // Max 4
+  totalScore: number; // Max 30
+  maxScore: number; // 30
+  percentage: number; // 0-100%
+  status: ExamStatus;
+  comments?: string;
+  attemptNumber?: number; // 1, 2
+  gradedBy?: string;
+  gradedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface AttestationCommission {
+  id: string;
+  name: string;
+  chairpersonId: string;
+  chairpersonName: string;
+  memberIds: string[];
+  memberNames: string[];
+  position?: string;
+  department?: string;
+  facultyId?: string;
+  facultyName?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface AssessmentSettings {
+  id: string;
+  attendanceMaxScore: number; // 20
+  journalMaxScore: number; // 20
+  skillsMaxScore: number; // 30
+  finalExamMaxScore: number; // 30
+  grade5Min: number; // 86
+  grade4Min: number; // 71
+  grade3Min: number; // 56
+  grade2Min: number; // 0
+  examCriteriaWeights: {
+    theoryMax: number; // 6
+    practicalMax: number; // 8
+    clinicalCaseMax: number; // 8
+    professionalismMax: number; // 4
+    safetyMax: number; // 4
+  };
+  attendanceFormula?: 'LINEAR' | 'STRICT';
+  updatedAt?: string;
+}
+
+export interface AssessmentHistoryItem {
+  attempt: number;
+  date: string;
   attendanceScore: number;
   journalScore: number;
   skillsScore: number;
   finalExamScore: number;
   totalScore: number;
+  grade: string;
+  status: AssessmentStatus;
+  reason?: string;
+  evaluator?: string;
+}
+
+export interface Assessment {
+  id: string;
+  practiceId: string;
+  studentId: string;
+  assignmentId?: string;
+
+  attendanceScore: number;
+  attendanceMaxScore?: number;
+
+  journalScore: number;
+  journalMaxScore?: number;
+
+  skillsScore: number;
+  skillsMaxScore?: number;
+
+  finalExamScore: number;
+  finalExamMaxScore?: number;
+
+  totalScore: number;
+  percentage?: number;
+
   grade: '5' | '4' | '3' | '2';
-  assessorId: string;
-  assessorName: string;
-  assessmentDate: string;
-  feedback: string;
-  status: 'graded' | 'pending' | 'GRADED' | 'PENDING';
+  status: AssessmentStatus;
+
+  commissionId?: string;
+  commissionName?: string;
+  assessorId?: string;
+  assessorName?: string;
+  assessmentDate?: string;
+  feedback?: string;
+  comments?: string;
+
+  approvedBy?: string;
+  approvedAt?: string;
+
+  retakeReason?: string;
+  retakeExamDate?: string;
+  retakeCount?: number;
+  history?: AssessmentHistoryItem[];
+
+  isAttendanceComplete?: boolean;
+  isJournalComplete?: boolean;
+  isSkillsComplete?: boolean;
+  isExamComplete?: boolean;
+  validationErrors?: string[];
+
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface DocumentRecord {
@@ -561,11 +744,41 @@ export type AuditAction =
   | 'skillCreated'
   | 'skillUpdated'
   | 'skillDeleted'
+  | 'skillRecordCreated'
+  | 'skillRecordUpdated'
+  | 'skillRecordSubmitted'
+  | 'skillRecordApproved'
+  | 'skillRecordRevisionRequested'
+  | 'studentSkillCompleted'
+  | 'skillProgressUpdated'
   | 'skillLogSubmitted'
   | 'skillLogApproved'
   | 'skillLogRejected'
   | 'skillLogBatchApproved'
   | 'skillCategoryCreated'
+  | 'assessmentCreated'
+  | 'assessmentCalculated'
+  | 'examCreated'
+  | 'examScoreEntered'
+  | 'assessmentApproved'
+  | 'assessmentRejected'
+  | 'retakeRequested'
+  | 'retakeScheduled'
+  | 'finalResultPublished'
+  | 'commissionCreated'
+  | 'commissionUpdated'
+  | 'assessmentSettingsUpdated'
+  | 'finalReportGenerated'
+  | 'reportExported'
+  | 'reportPrinted'
+  | 'vedomostCreated'
+  | 'vedomostUpdated'
+  | 'vedomostSigned'
+  | 'vedomostApproved'
+  | 'vedomostArchived'
+  | 'verificationGenerated'
+  | 'finalStatusCalculated'
+  | 'studentStatusSynced'
   | 'systemReset';
 
 export interface AuditLog {
@@ -578,3 +791,126 @@ export interface AuditLog {
   timestamp: string;
   metadata?: string;
 }
+
+// ==========================================
+// --- STAGE 8: YAKUNIY HISOBOTLAR VA NAZORAT MARKAZI ---
+// ==========================================
+
+export type StudentPracticeOverallStatus = 
+  | 'NOT_STARTED'
+  | 'IN_PROGRESS'
+  | 'PRACTICE_COMPLETED'
+  | 'WAITING_FOR_EXAM'
+  | 'EXAM_COMPLETED'
+  | 'WAITING_FOR_APPROVAL'
+  | 'APPROVED'
+  | 'FAILED'
+  | 'RETAKE_REQUIRED'
+  | 'COMPLETED';
+
+export type VedomostStatus = 'DRAFT' | 'GENERATED' | 'SIGNED' | 'APPROVED' | 'ARCHIVED';
+
+export interface VedomostStudentRow {
+  studentId: string;
+  fullName: string;
+  studentCode: string;
+  group: string;
+  attendanceScore: number;
+  journalScore: number;
+  skillsScore: number;
+  finalExamScore: number;
+  totalScore: number;
+  grade: '5' | '4' | '3' | '2';
+  gradeWord: string;
+  status: string;
+  signature?: string;
+}
+
+export interface OfficialVedomost {
+  id: string;
+  vedomostNumber: string; // e.g. "VED-2026-09-001"
+  title: string;
+  academicYear: string;
+  facultyId: string;
+  facultyName?: string;
+  directionId?: string;
+  directionName?: string;
+  courseLevel?: number;
+  groupId: string;
+  groupName?: string;
+  practiceId: string;
+  practiceName?: string;
+  practiceCode?: string;
+  practiceStartDate?: string;
+  practiceEndDate?: string;
+  practicePlaceId?: string;
+  practicePlaceName?: string;
+  commissionId?: string;
+  commissionName?: string;
+  commissionChairperson?: string;
+  commissionMembers?: string[];
+  departmentChair?: string;
+  deanName?: string;
+  issueDate: string;
+  status: VedomostStatus;
+  students: VedomostStudentRow[];
+  totalStudentsCount: number;
+  grade5Count: number;
+  grade4Count: number;
+  grade3Count: number;
+  grade2Count: number;
+  masteryPercentage: number; // >= 55 ball
+  qualityPercentage: number; // >= 71 ball
+  retakeCount: number;
+  verificationCode: string; // e.g. "TMA-VRF-98214"
+  qrPayload?: string;
+  signedAt?: string;
+  signedBy?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProblemType = 
+  | 'ATTENDANCE_INSUFFICIENT'
+  | 'QR_ATTENDANCE_ISSUE'
+  | 'JOURNAL_MISSING'
+  | 'JOURNAL_REVISION'
+  | 'SKILLS_QUOTA_UNMET'
+  | 'SUPERVISOR_APPROVAL_MISSING'
+  | 'EXAM_UNSCHEDULED'
+  | 'EXAM_ABSENT'
+  | 'ATTESTATION_UNAPPROVED'
+  | 'RETAKE_REQUIRED'
+  | 'DOCUMENT_MISSING';
+
+export interface ProblemStudent {
+  id: string;
+  studentId: string;
+  studentName: string;
+  group: string;
+  faculty: string;
+  practiceId: string;
+  practiceName: string;
+  practicePlaceName?: string;
+  supervisorName?: string;
+  problemType: ProblemType;
+  problemLabel: string;
+  detectedDate: string;
+  responsiblePerson: string;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  status: 'OPEN' | 'RESOLVED' | 'IN_REVIEW';
+  comment: string;
+  details?: string;
+}
+
+export interface StudentTimelineStep {
+  stepNumber: number;
+  title: string;
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'PENDING' | 'PROBLEM';
+  date?: string;
+  description: string;
+  details?: string;
+}
+

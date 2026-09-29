@@ -339,7 +339,9 @@ export function StudentDetailModal({
             ) : (
               studentSkills.map(ssk => {
                 const skill = allSkills.find(s => s.id === ssk.skillId);
-                const progressPct = Math.round((ssk.performedCount / ssk.targetCount) * 100);
+                const perf = ssk.performedCount ?? ssk.totalPerformedCount ?? 0;
+                const target = ssk.requiredCount ?? ssk.targetCount ?? (skill?.requiredCount || 10);
+                const progressPct = Math.min(100, Math.round((perf / (target || 1)) * 100));
                 return (
                   <div key={ssk.id} className="p-3 rounded-lg border border-slate-200 bg-white">
                     <div className="flex items-start justify-between gap-2">
@@ -357,7 +359,7 @@ export function StudentDetailModal({
 
                     <div className="mt-2 flex items-center justify-between text-xs">
                       <span className="text-slate-600 font-mono tabular-nums">
-                        Bajarildi: {ssk.performedCount} / {ssk.targetCount} marta
+                        Bajarildi: {perf} / {target} marta
                       </span>
                       <span className="font-bold font-mono text-blue-600 tabular-nums">
                         {progressPct}%

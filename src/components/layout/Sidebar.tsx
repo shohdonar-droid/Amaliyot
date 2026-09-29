@@ -124,9 +124,9 @@ export function Sidebar({
     },
     {
       id: 'assessments',
-      label: 'Baholash',
+      label: 'Baholash va attestatsiya',
       icon: Award,
-      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'STUDENT', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'student']
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'STUDENT', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible', 'student']
     },
     {
       id: 'documents',
@@ -135,9 +135,9 @@ export function Sidebar({
     },
     {
       id: 'reports',
-      label: 'Hisobotlar',
+      label: 'Yakuniy hisobotlar',
       icon: BarChart3,
-      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'super_admin', 'dept_head', 'dept_staff', 'dean']
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'STUDENT', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible', 'student']
     },
     {
       id: 'notifications',
