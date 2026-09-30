@@ -7,78 +7,71 @@ import {
   EyeOff,
   ShieldCheck,
   AlertCircle,
-  HelpCircle,
   CheckCircle2,
   Stethoscope,
   Building2,
-  Users
+  Users,
+  ShieldAlert
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../common/Modal';
 
 export function LoginPage() {
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
   const { showToast } = useToast();
 
-  const [username, setUsername] = useState('amaliyot_boshliq');
+  const [username, setUsername] = useState('T00001');
   const [password, setPassword] = useState('password123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Password recovery modal state
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const [recoveryIdentifier, setRecoveryIdentifier] = useState('');
   const [recoverySuccess, setRecoverySuccess] = useState(false);
 
-  const handleGoogleLogin = async () => {
-    setErrorMessage('');
-    setIsGoogleLoading(true);
-    const res = await loginWithGoogle();
-    setIsGoogleLoading(false);
-    if (res.success) {
-      showToast('success', 'Google orqali kirdingiz', 'Tizimga muvaffaqiyatli ulandingiz.');
-    } else if (res.error) {
-      setErrorMessage(res.error);
-      showToast('error', 'Google orqali kirishda xatolik', res.error);
-    }
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const success = login(username, password);
+    try {
+      const res = await login(username, password);
       setIsLoading(false);
-      if (success) {
+      if (res.success) {
         showToast('success', 'Xush kelibsiz!', 'Tizimga muvaffaqiyatli kirdingiz.');
       } else {
-        setErrorMessage('Login yoki parol noto\'g\'ri kiritildi. Iltimos qaytadan urinib ko\'ring.');
+        setErrorMessage(res.error || 'Login yoki parol noto\'g\'ri kiritildi. Iltimos qaytadan urinib ko\'ring.');
         showToast('error', 'Kirishda xatolik', 'Foydalanuvchi ma\'lumotlari tasdiqlanmadi.');
       }
-    }, 400);
+    } catch {
+      setIsLoading(false);
+      setErrorMessage('Tizimga ulanishda xatolik yuz berdi.');
+    }
   };
 
-  const handleQuickDemoLogin = (demoUser: string) => {
+  const handleQuickDemoLogin = async (demoUser: string) => {
     setUsername(demoUser);
     setPassword('password123');
-    login(demoUser, 'password123');
-    showToast('success', 'Demo foydalanuvchi tanlandi', `${demoUser} sifatida tizimga kirdingiz.`);
+    setIsLoading(true);
+    const res = await login(demoUser, 'password123');
+    setIsLoading(false);
+    if (res.success) {
+      showToast('success', 'Tezkor kirish', `${demoUser} sifatida tizimga kirdingiz.`);
+    }
   };
 
   const handlePasswordRecovery = (e: React.FormEvent) => {
     e.preventDefault();
     if (!recoveryIdentifier.trim()) {
-      showToast('warning', 'Maydonni to\'ldiring', 'Login yoki telefon raqamingizni kiriting.');
+      showToast('warning', 'Maydonni to\'ldiring', 'Login yoki HEMIS ID raqamingizni kiriting.');
       return;
     }
     setRecoverySuccess(true);
-    showToast('info', 'Parol yuborildi', 'Yangi vaqtinchalik parol telefon raqamingizga SMS orqali jo\'natildi.');
+    showToast('info', 'Parol so\'rovi qabul qilindi', 'Dekanat orqali parolni tiklash so\'rovi jo\'natildi.');
     setTimeout(() => {
       setIsForgotModalOpen(false);
       setRecoverySuccess(false);
@@ -109,45 +102,11 @@ export function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10">
         <div className="bg-white py-8 px-6 shadow-2xl rounded-2xl sm:px-10 border border-slate-200">
-          {/* Google Sign-In Button */}
-          <div className="mb-6">
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={isGoogleLoading || isLoading}
-              className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white border border-slate-300 rounded-lg shadow-2xs hover:bg-slate-50 hover:border-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium text-sm text-slate-700 disabled:opacity-60 cursor-pointer"
-            >
-              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
-              <span>{isGoogleLoading ? 'Google orqali ulanmoqda...' : 'Google orqali kirish'}</span>
-            </button>
-
-            <div className="relative mt-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-3 text-slate-400 font-medium tracking-wider">
-                  yoki login bilan kiring
-                </span>
-              </div>
-            </div>
+          <div className="mb-6 text-center">
+            <h3 className="text-lg font-bold text-slate-900">Tizimga kirish</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Shaxsiy Login va Parolingizni kiriting
+            </p>
           </div>
 
           <form className="space-y-5" onSubmit={handleLogin}>
@@ -160,7 +119,7 @@ export function LoginPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Login / Foydalanuvchi nomi
+                Login / Foydalanuvchi identifikatori
               </label>
               <div className="relative rounded-lg shadow-2xs">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -171,10 +130,13 @@ export function LoginPage() {
                   required
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  placeholder="Masalan: amaliyot_boshliq"
-                  className="block w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 focus:bg-white transition-colors"
+                  placeholder="Masalan: T00001 yoki Ergashev_Odil"
+                  className="block w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 focus:bg-white transition-colors font-mono"
                 />
               </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Talabalar uchun: <span className="font-semibold text-slate-600">T00001</span> formati
+              </p>
             </div>
 
             <div>
@@ -196,7 +158,7 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -217,7 +179,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => setIsForgotModalOpen(true)}
-                className="font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                className="font-medium text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
               >
                 Parolni unutdingizmi?
               </button>
@@ -227,62 +189,71 @@ export function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors"
+                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors cursor-pointer"
               >
-                {isLoading ? 'Kirish tekshirilmoqda...' : 'Tizimga kirish'}
+                {isLoading ? 'Kirish tekshirilmoqda...' : 'Kirish'}
               </button>
             </div>
           </form>
 
-          {/* Quick Demo Logins Helper */}
+          {/* Quick Test / Demo Logins Helper */}
           <div className="mt-8 pt-6 border-t border-slate-100">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 text-center mb-3">
-              Tezkor kirish (Sinov rollari)
+              Sinov rollari (Login + Parol)
             </p>
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <button
                 type="button"
-                onClick={() => handleQuickDemoLogin('amaliyot_boshliq')}
-                className="p-2 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100/70 text-blue-800 font-medium text-left transition-colors flex items-center gap-1.5"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span className="truncate">Amaliyot boshlig'i</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('dekan_davolash')}
-                className="p-2 rounded-lg border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100/70 text-indigo-800 font-medium text-left transition-colors flex items-center gap-1.5"
-              >
-                <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span className="truncate">Fakultet / Dekan</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('rahbar_sobirov')}
-                className="p-2 rounded-lg border border-teal-200 bg-teal-50/60 hover:bg-teal-100/70 text-teal-800 font-medium text-left transition-colors flex items-center gap-1.5"
-              >
-                <Stethoscope className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span className="truncate">Amaliyot rahbari</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('klinik_karimov')}
-                className="p-2 rounded-lg border border-amber-200 bg-amber-50/60 hover:bg-amber-100/70 text-amber-800 font-medium text-left transition-colors flex items-center gap-1.5"
-              >
-                <Users className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span className="truncate">Klinik mas'ul</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('student_olimov')}
-                className="p-2 col-span-2 rounded-lg border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100/70 text-emerald-800 font-medium text-center transition-colors flex items-center justify-center gap-1.5"
+                onClick={() => handleQuickDemoLogin('T00001')}
+                className="p-2 col-span-2 rounded-lg border border-emerald-300 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-800 font-semibold text-center transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <GraduationCap className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Talaba kabinetiga kirish (Olimov S.)</span>
+                <span>Talaba login: <strong>T00001</strong> (Olimov S.)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('Ergashev_Odil')}
+                className="p-2 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100/70 text-blue-800 font-medium text-left transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="truncate">Amaliyot boshlig'i (Ergashev_Odil)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('Karimov_Bahodir')}
+                className="p-2 rounded-lg border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100/70 text-indigo-800 font-medium text-left transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="truncate">Dekan (Karimov_Bahodir)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('Aliyev_Anvar')}
+                className="p-2 rounded-lg border border-teal-200 bg-teal-50/60 hover:bg-teal-100/70 text-teal-800 font-medium text-left transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Stethoscope className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                <span className="truncate">Rahbar (Aliyev_Anvar)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('Rasulova_Madina')}
+                className="p-2 rounded-lg border border-amber-200 bg-amber-50/60 hover:bg-amber-100/70 text-amber-800 font-medium text-left transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Users className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span className="truncate">Klinik mas'ul (Rasulova_Madina)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('admin')}
+                className="p-2 col-span-2 rounded-lg border border-purple-200 bg-purple-50/60 hover:bg-purple-100/70 text-purple-800 font-medium text-center transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                <span>Super Admin (admin)</span>
               </button>
             </div>
           </div>
@@ -305,28 +276,28 @@ export function LoginPage() {
           <div className="p-6 text-center">
             <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
             <h4 className="text-base font-semibold text-slate-900">
-              Yangi parol jo'natildi!
+              So'rov yuborildi!
             </h4>
             <p className="text-xs text-slate-600 mt-2">
-              Universitet ma'lumotlar bazasida ro'yxatdan o'tgan telefon raqamingizga bir martalik kirish paroli yuborildi.
+              Universitet ma'lumotlar bazasida ro'yxatdan o'tgan raqamingizga bir martalik kirish paroli yuborildi.
             </p>
           </div>
         ) : (
           <form onSubmit={handlePasswordRecovery} className="space-y-4">
             <p className="text-xs text-slate-600 leading-relaxed">
-              Tizimda ro'yxatdan o'tgan Login, JSHSHIR yoki telefon raqamingizni kiriting. Universitet dekanati orqali tasdiqlangan telefoningizga yangi parol yuboriladi.
+              Tizimda ro'yxatdan o'tgan Login (masalan: T00001 yoki Ergashev_Odil) yoki HEMIS ID raqamingizni kiriting.
             </p>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                Login, JSHSHIR yoki Telefon
+                Login yoki HEMIS ID
               </label>
               <input
                 type="text"
                 required
                 value={recoveryIdentifier}
                 onChange={e => setRecoveryIdentifier(e.target.value)}
-                placeholder="amaliyot_boshliq yoki +998901234567"
+                placeholder="T00001 yoki 12345678"
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
               />
             </div>
@@ -335,13 +306,13 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => setIsForgotModalOpen(false)}
-                className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg"
+                className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
               >
                 Bekor qilish
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
+                className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs cursor-pointer"
               >
                 Parolni tiklash
               </button>

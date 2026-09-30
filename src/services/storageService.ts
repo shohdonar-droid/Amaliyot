@@ -39,7 +39,8 @@ import {
   ProblemStudent,
   StudentTimelineStep
 } from '../types';
-import { getFirebaseConfigStatus } from './firebase';
+import { getFirebaseConfigStatus, db } from './firebase';
+import { recordUsedStudentSequence } from './loginGeneratorService';
 
 const STORAGE_KEY_V2 = 'tma_amaliyot_cloud_db_v2';
 const APP_MODE_KEY = 'tma_amaliyot_environment_mode';
@@ -98,12 +99,12 @@ const DEFAULT_USERS_V2: User[] = [
   {
     id: 'user-head',
     uid: 'uid-head-002',
-    login: 'amaliyot_boshliq',
+    login: 'Ergashev_Odil',
     username: 'amaliyot_boshliq',
     password: 'password123',
-    fullName: 'Dr. Erkinov Farrux Mirzayevich',
+    fullName: 'Ergashev Odil Mirzayevich',
     role: 'PRACTICE_HEAD',
-    email: 'practice_dept@tma.uz',
+    email: 'Ergashev_Odil@practice.uz',
     phone: '+998 (90) 900-11-22',
     status: 'ACTIVE',
     photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
@@ -113,12 +114,12 @@ const DEFAULT_USERS_V2: User[] = [
   {
     id: 'user-staff',
     uid: 'uid-staff-003',
-    login: 'xodim',
+    login: 'Ortiqov_Elyorbek',
     username: 'xodim',
     password: 'password123',
-    fullName: 'Shamsiyeva Gulnoza Anvarovna',
+    fullName: 'Ortiqov Elyorbek Anvarovich',
     role: 'PRACTICE_STAFF',
-    email: 'staff.practice@tma.uz',
+    email: 'Ortiqov_Elyorbek@practice.uz',
     phone: '+998 (91) 321-45-67',
     status: 'ACTIVE',
     createdAt: '2026-08-01T08:00:00Z',
@@ -127,12 +128,12 @@ const DEFAULT_USERS_V2: User[] = [
   {
     id: 'user-dean',
     uid: 'uid-dean-004',
-    login: 'dekan_davolash',
+    login: 'Karimov_Bahodir',
     username: 'dekan_davolash',
     password: 'password123',
-    fullName: 'Prof. Xusanov Ravshan Karimboyevich',
+    fullName: 'Karimov Bahodir Karimboyevich',
     role: 'FACULTY_DEAN',
-    email: 'davolash1@tma.uz',
+    email: 'Karimov_Bahodir@dean.uz',
     phone: '+998 (71) 214-89-01',
     status: 'ACTIVE',
     facultyId: 'fac-1',
@@ -142,12 +143,12 @@ const DEFAULT_USERS_V2: User[] = [
   {
     id: 'user-sup',
     uid: 'uid-sup-005',
-    login: 'rahbar_sobirov',
+    login: 'Aliyev_Anvar',
     username: 'rahbar_sobirov',
     password: 'password123',
-    fullName: 'Prof. Sobirov Alisher Tolipovich',
+    fullName: 'Aliyev Anvar Tolipovich',
     role: 'PRACTICE_SUPERVISOR',
-    email: 'sobirov.a@tma.uz',
+    email: 'Aliyev_Anvar@supervisor.uz',
     phone: '+998 (90) 811-22-33',
     status: 'ACTIVE',
     supervisorId: 'sup-1',
@@ -157,12 +158,12 @@ const DEFAULT_USERS_V2: User[] = [
   {
     id: 'user-clinic',
     uid: 'uid-clinic-006',
-    login: 'klinik_karimov',
+    login: 'Rasulova_Madina',
     username: 'klinik_karimov',
     password: 'password123',
-    fullName: 'Dr. Karimov Rustam Baxtiyorovich',
+    fullName: 'Rasulova Madina Baxtiyorovna',
     role: 'CLINIC_RESPONSIBLE',
-    email: 'karimov.rksh1@minzdrav.uz',
+    email: 'Rasulova_Madina@clinic.uz',
     phone: '+998 (90) 123-45-67',
     status: 'ACTIVE',
     practicePlaceId: 'place-1',
@@ -173,12 +174,14 @@ const DEFAULT_USERS_V2: User[] = [
   {
     id: 'user-std',
     uid: 'uid-std-007',
-    login: 'student_olimov',
+    login: 'T00001',
     username: 'student_olimov',
+    studentCode: 'T00001',
+    hemisStudentId: '12345678',
     password: 'password123',
     fullName: 'Olimov Sardor Botir o\'g\'li',
     role: 'STUDENT',
-    email: 'sardor.olimov@student.tma.uz',
+    email: 'T00001@student.uz',
     phone: '+998 (90) 111-22-33',
     status: 'ACTIVE',
     studentId: 'std-1',
@@ -527,6 +530,9 @@ const DEFAULT_STUDENTS_V2: Student[] = [
     id: 'std-1',
     userId: 'uid-std-007',
     studentId: 'MED-2022-1084',
+    studentCode: 'T00001',
+    login: 'T00001',
+    hemisStudentId: '12345678',
     pinfl: '31405991230045',
     fullName: 'Olimov Sardor Botir o\'g\'li',
     facultyId: 'fac-1',
@@ -535,7 +541,7 @@ const DEFAULT_STUDENTS_V2: Student[] = [
     groupId: 'grp-401',
     phone: '+998 (90) 111-22-33',
     telegram: '@sardor_olimov_med',
-    email: 'sardor.olimov@student.tma.uz',
+    email: 'T00001@student.uz',
     status: 'in_practice',
     currentPracticeId: 'prac-1',
     currentPracticePlaceId: 'place-1',
@@ -2179,6 +2185,8 @@ class StorageServiceV2 {
     const q = usernameOrEmail.toLowerCase().trim();
     const user = users.find(u => 
       (u.login && u.login.toLowerCase() === q) || 
+      (u.studentCode && u.studentCode.toLowerCase() === q) ||
+      (u.hemisStudentId && u.hemisStudentId.toLowerCase() === q) ||
       (u.username && u.username.toLowerCase() === q) || 
       (u.email && u.email.toLowerCase() === q)
     );
@@ -2296,27 +2304,195 @@ class StorageServiceV2 {
       state.students[idx] = payload;
     }
 
+    // Ensure matching user account exists in users collection for authentication
+    const studentLogin = payload.login || payload.studentCode || 'T00001';
+    const userIdx = state.users.findIndex(u => 
+      u.id === payload.userId || 
+      (u.studentCode && u.studentCode === studentLogin) || 
+      (u.login && u.login === studentLogin) ||
+      (payload.hemisStudentId && u.hemisStudentId === payload.hemisStudentId)
+    );
+    if (userIdx >= 0) {
+      state.users[userIdx] = {
+        ...state.users[userIdx],
+        fullName: payload.fullName,
+        studentCode: studentLogin,
+        login: studentLogin,
+        hemisStudentId: payload.hemisStudentId,
+        phone: payload.phone || state.users[userIdx].phone,
+        email: `${studentLogin}@student.uz`,
+        updatedAt: new Date().toISOString()
+      };
+    } else {
+      const newUser: User = {
+        id: payload.userId || `user-${payload.id}`,
+        uid: payload.userId || `uid-${payload.id}`,
+        login: studentLogin,
+        studentCode: studentLogin,
+        hemisStudentId: payload.hemisStudentId,
+        studentId: payload.id,
+        password: 'password123',
+        fullName: payload.fullName,
+        role: 'STUDENT',
+        email: `${studentLogin}@student.uz`,
+        phone: payload.phone || '',
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString()
+      };
+      state.users.unshift(newUser);
+    }
+
     this.recordAuditLog({
       userId: actorUserId,
       userRole: actorRole,
       action: isNew ? 'studentCreated' : 'studentUpdated',
       entity: 'students',
       entityId: student.id,
-      metadata: JSON.stringify({ fullName: student.fullName, studentId: student.studentId })
+      metadata: JSON.stringify({ fullName: student.fullName, studentId: student.studentId, login: studentLogin })
     });
 
     this.saveState(state);
   }
 
+  public syncHemisStudent(hemisData: {
+    hemisStudentId: string;
+    fullName: string;
+    pinfl?: string;
+    facultyId?: string;
+    directionId?: string;
+    courseId?: string;
+    groupId?: string;
+    phone?: string;
+  }, actorUserId = 'system', actorRole = 'PRACTICE_STAFF'): { student: Student; isNew: boolean } {
+    const state = this.getState();
+    const existingIdx = state.students.findIndex(s => 
+      (s.hemisStudentId && s.hemisStudentId === hemisData.hemisStudentId) ||
+      (s.studentId && s.studentId === hemisData.hemisStudentId)
+    );
+
+    if (existingIdx >= 0) {
+      // Update existing student, DO NOT create duplicate
+      const existing = state.students[existingIdx];
+      const updated: Student = {
+        ...existing,
+        fullName: hemisData.fullName || existing.fullName,
+        pinfl: hemisData.pinfl || existing.pinfl,
+        facultyId: hemisData.facultyId || existing.facultyId,
+        directionId: hemisData.directionId || existing.directionId,
+        courseId: hemisData.courseId || existing.courseId,
+        groupId: hemisData.groupId || existing.groupId,
+        phone: hemisData.phone || existing.phone,
+        updatedAt: new Date().toISOString()
+      };
+      state.students[existingIdx] = updated;
+
+      // Also update user profile
+      const userIdx = state.users.findIndex(u => 
+        u.hemisStudentId === hemisData.hemisStudentId || 
+        u.login === existing.login || 
+        u.id === existing.userId
+      );
+      if (userIdx >= 0) {
+        state.users[userIdx] = {
+          ...state.users[userIdx],
+          fullName: updated.fullName,
+          phone: updated.phone || state.users[userIdx].phone,
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      this.saveState(state);
+      this.recordAuditLog({
+        userId: actorUserId,
+        userRole: actorRole,
+        action: 'studentUpdated',
+        entity: 'students',
+        entityId: updated.id,
+        metadata: JSON.stringify({ hemisStudentId: hemisData.hemisStudentId, fullName: updated.fullName, syncType: 'HEMIS' })
+      });
+      return { student: updated, isNew: false };
+    } else {
+      // Create new student with sequential T-login
+      let highest = 0;
+      for (const s of state.students) {
+        const code = s.studentCode || s.login || '';
+        const match = code.match(/^T(\d{5})$/i);
+        if (match && match[1]) {
+          const val = parseInt(match[1], 10);
+          if (val > highest) highest = val;
+        }
+      }
+      const savedSeq = parseInt(localStorage.getItem('aide_highest_student_sequence_v1') || '0', 10);
+      if (savedSeq > highest) highest = savedSeq;
+      const nextSeq = highest + 1;
+      localStorage.setItem('aide_highest_student_sequence_v1', String(nextSeq));
+      const nextLogin = `T${String(nextSeq).padStart(5, '0')}`;
+
+      const newId = `std-hemis-${Date.now()}`;
+      const newStudent: Student = {
+        id: newId,
+        userId: `uid-${newId}`,
+        login: nextLogin,
+        studentCode: nextLogin,
+        hemisStudentId: hemisData.hemisStudentId,
+        studentId: hemisData.hemisStudentId,
+        fullName: hemisData.fullName,
+        pinfl: hemisData.pinfl || '30000000000000',
+        facultyId: hemisData.facultyId || state.faculties[0]?.id || 'fac-1',
+        directionId: hemisData.directionId || state.directions[0]?.id || 'dir-1',
+        courseId: hemisData.courseId || state.courses[0]?.id || 'course-4',
+        groupId: hemisData.groupId || state.groups[0]?.id || 'grp-401',
+        phone: hemisData.phone || '+998 (90) 000-00-00',
+        telegram: '@student',
+        email: `${nextLogin}@student.uz`,
+        status: 'active',
+        createdAt: new Date().toISOString()
+      };
+      state.students.unshift(newStudent);
+
+      const newUser: User = {
+        id: `user-${newId}`,
+        uid: `uid-${newId}`,
+        login: nextLogin,
+        studentCode: nextLogin,
+        hemisStudentId: hemisData.hemisStudentId,
+        studentId: newId,
+        password: 'password123',
+        fullName: hemisData.fullName,
+        role: 'STUDENT',
+        email: `${nextLogin}@student.uz`,
+        phone: hemisData.phone || '',
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString()
+      };
+      state.users.unshift(newUser);
+
+      this.saveState(state);
+      this.recordAuditLog({
+        userId: actorUserId,
+        userRole: actorRole,
+        action: 'studentCreated',
+        entity: 'students',
+        entityId: newId,
+        metadata: JSON.stringify({ hemisStudentId: hemisData.hemisStudentId, login: nextLogin, fullName: hemisData.fullName, syncType: 'HEMIS' })
+      });
+      return { student: newStudent, isNew: true };
+    }
+  }
+
   public deleteStudent(id: string, actorUserId = 'system', actorRole = 'PRACTICE_HEAD'): void {
     const state = this.getState();
     const student = state.students.find(s => s.id === id);
+    if (student) {
+      // Ensure student's login number is permanently registered as used so it is never reused
+      const codeOrLogin = student.studentCode || student.login || '';
+      const match = codeOrLogin.match(/^T(\d{5})$/i);
+      if (match && match[1]) {
+        const seq = parseInt(match[1], 10);
+        recordUsedStudentSequence(seq, db).catch(() => {});
+      }
+    }
     state.students = state.students.filter(s => s.id !== id);
-    state.practiceAssignments = state.practiceAssignments.filter(a => a.studentId !== id);
-    state.attendance = state.attendance.filter(a => a.studentId !== id);
-    state.dailyJournals = state.dailyJournals.filter(dj => dj.studentId !== id);
-    state.studentSkills = state.studentSkills.filter(sk => sk.studentId !== id);
-    state.assessments = state.assessments.filter(ass => ass.studentId !== id);
 
     this.recordAuditLog({
       userId: actorUserId,
@@ -2324,7 +2500,7 @@ class StorageServiceV2 {
       action: 'studentDeleted',
       entity: 'students',
       entityId: id,
-      metadata: student ? JSON.stringify({ fullName: student.fullName }) : undefined
+      metadata: student ? JSON.stringify({ fullName: student.fullName, login: student.login, hemisStudentId: student.hemisStudentId }) : undefined
     });
 
     this.saveState(state);

@@ -42,6 +42,8 @@ export interface User {
   facultyId?: string;
   practicePlaceId?: string;
   studentId?: string;
+  hemisStudentId?: string;
+  studentCode?: string;
   supervisorId?: string;
   clinicResponsibleId?: string;
   createdAt: string;
@@ -95,6 +97,9 @@ export interface Student {
   id: string;
   userId?: string;
   studentId: string;
+  hemisStudentId?: string;
+  login?: string;
+  studentCode?: string;
   pinfl: string;
   fullName: string;
   facultyId: string;

@@ -2,38 +2,43 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default Deny All
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
     // Helper functions
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    function hasUserData() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserRole() {
+      return hasUserData() ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : '';
     }
 
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function getUserRole() {
-      return isSignedIn() ? getUserData().role : '';
-    }
-
     function isSuperAdmin() {
       return isSignedIn() && (
-        getUserRole() == 'SUPER_ADMIN' ||
         request.auth.token.email == 'admin@tma.uz' ||
-        request.auth.token.email == 'shohdonar@gmail.com'
+        request.auth.token.email == 'shohdonar@gmail.com' ||
+        (hasUserData() && getUserRole() == 'SUPER_ADMIN')
       );
     }
 
     function isPracticeHead() {
-      return isSignedIn() && (isSuperAdmin() || getUserRole() == 'PRACTICE_HEAD');
+      return isSignedIn() && (
+        isSuperAdmin() ||
+        (hasUserData() && getUserRole() == 'PRACTICE_HEAD')
+      );
     }
 
     function isPracticeStaff() {
-      return isSignedIn() && (isPracticeHead() || getUserRole() == 'PRACTICE_STAFF');
+      return isSignedIn() && (
+        isPracticeHead() ||
+        (hasUserData() && getUserRole() == 'PRACTICE_STAFF')
+      );
     }
 
     function isFacultyDean(facultyId) {
@@ -60,11 +65,9 @@ service cloud.firestore {
       );
       // Practice Head and Super Admin can provision staff, supervisors, deans, clinic responsibles.
       // Self-registration is strictly restricted to STUDENT role and matching UID.
-      allow create: if isPracticeHead() || (
-        isSignedIn() &&
-        request.auth.uid == userId &&
-        request.resource.data.uid == request.auth.uid &&
-        request.resource.data.role == 'STUDENT'
+      allow create: if isSignedIn() && (
+        (request.auth.uid == userId && request.resource.data.role == 'STUDENT') ||
+        isPracticeHead()
       );
       allow update: if isSuperAdmin() || (
         isSignedIn() && request.auth.uid == userId &&
@@ -84,6 +87,24 @@ service cloud.firestore {
       );
       allow create, update: if isPracticeStaff();
       allow delete: if isPracticeHead();
+    }
+
+    // --- SYSTEM COUNTERS (CONCURRENCY-SAFE STUDENT LOGIN COUNTER) ---
+    match /systemCounters/{counterId} {
+      // Any authenticated user can read counter
+      allow read: if isSignedIn();
+      // Only Practice Staff, Practice Head, or Super Admin can create the counter
+      allow create: if isPracticeStaff() &&
+        request.resource.data.type == 'STUDENT_LOGIN_COUNTER' &&
+        request.resource.data.lastIssuedNumber is int &&
+        request.resource.data.lastIssuedNumber >= 0;
+      // Counter must strictly increment (new > old). It cannot be decreased, reset, or altered arbitrarily!
+      allow update: if isPracticeStaff() &&
+        request.resource.data.lastIssuedNumber is int &&
+        request.resource.data.lastIssuedNumber > resource.data.lastIssuedNumber &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['type']);
+      // Counter cannot be deleted under any circumstances!
+      allow delete: if false;
     }
 
     // --- ACADEMIC STRUCTURE (Faculties, Directions, Courses, Groups) ---

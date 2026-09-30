@@ -81,7 +81,7 @@ export function StudentDetailModal({
       isOpen={isOpen}
       onClose={onClose}
       title={`${student.fullName} — Amaliyot Pasporti`}
-      subtitle={`Talaba ID: ${student.studentId} · JSHSHIR: ${student.pinfl}`}
+      subtitle={`AIDE Login: ${student.login || student.studentCode || 'T00001'} · HEMIS ID: ${student.hemisStudentId || student.studentId} · JSHSHIR: ${student.pinfl}`}
       maxWidth="3xl"
     >
       {/* Header Info Banner */}

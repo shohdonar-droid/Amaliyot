@@ -276,7 +276,7 @@ export function StudentsModule() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                   <th className="py-3 px-4">Talaba (F.I.Sh.)</th>
-                  <th className="py-3 px-4">Talaba ID / JSHSHIR</th>
+                  <th className="py-3 px-4">AIDE Login / HEMIS ID</th>
                   <th className="py-3 px-4">Fakultet & Yo'nalish</th>
                   <th className="py-3 px-4">Kurs / Guruh</th>
                   <th className="py-3 px-4">Aloqa (Tel / TG)</th>
@@ -324,13 +324,15 @@ export function StudentsModule() {
                         </div>
                       </td>
 
-                      {/* ID & PINFL */}
+                      {/* AIDE Login & HEMIS ID */}
                       <td className="py-3 px-4 font-mono tabular-nums">
-                        <div className="text-slate-900 font-semibold">
-                          {student.studentId}
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                            {student.login || student.studentCode || 'T00001'}
+                          </span>
                         </div>
-                        <div className="text-[11px] text-slate-500">
-                          {student.pinfl}
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          HEMIS: {student.hemisStudentId || student.studentId}
                         </div>
                       </td>
 

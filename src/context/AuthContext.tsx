@@ -3,12 +3,13 @@ import { User, UserRole, CanonicalUserRole, RoleConfig } from '../types';
 import { storageService } from '../services/storageService';
 import {
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithEmailAndPassword,
   signOut,
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../services/firebase';
+import { auth, db } from '../services/firebase';
+import { resolveLoginToCandidateEmails, getTechnicalEmail } from '../services/loginGeneratorService';
 
 export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
   // Canonical Roles (Uppercase)
@@ -127,8 +128,7 @@ export interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   isFirebaseAuthenticated: boolean;
-  login: (usernameOrEmail: string, password?: string) => boolean;
-  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  login: (loginOrIdentifier: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   switchRole: (role: UserRole) => void;
 }
@@ -164,29 +164,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
-        // Safe development console logging as requested
-        console.log('Firebase Auth: CONNECTED');
-        console.log('Firebase user: YES');
-        console.log('Provider: google.com');
-        console.log('UID:', fbUser.uid ? 'mavjud' : 'mavjud emas');
-        console.log('Email:', fbUser.email ? 'mavjud' : 'mavjud emas');
-
         let userProfile: User;
+        const derivedLogin = fbUser.email ? fbUser.email.split('@')[0] : 'user';
+
         if (db) {
           try {
             const userRef = doc(db, 'users', fbUser.uid);
             const snap = await getDoc(userRef);
             if (snap.exists()) {
               const data = snap.data() as Partial<User>;
-              // Preserve existing assigned role from secure users collection (e.g. PRACTICE_HEAD, SUPER_ADMIN)
               userProfile = {
                 id: fbUser.uid,
                 uid: fbUser.uid,
-                fullName: data.fullName || fbUser.displayName || 'Google Foydalanuvchisi',
+                login: data.login || derivedLogin,
+                studentCode: data.studentCode || (derivedLogin.startsWith('T') ? derivedLogin : undefined),
+                hemisStudentId: data.hemisStudentId,
+                fullName: data.fullName || derivedLogin,
                 role: data.role || 'STUDENT',
                 email: data.email || fbUser.email || '',
-                phone: data.phone || fbUser.phoneNumber || '',
-                photoURL: data.photoURL || fbUser.photoURL || undefined,
+                phone: data.phone || '',
+                photoURL: data.photoURL || undefined,
                 status: data.status || 'ACTIVE',
                 facultyId: data.facultyId,
                 practicePlaceId: data.practicePlaceId,
@@ -199,15 +196,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               };
               updateDoc(userRef, { lastLoginAt: new Date().toISOString() }).catch(() => {});
             } else {
-              // Self-registration for new Google login is strictly STUDENT role matching security rules
+              // Self-registration for new user is strictly STUDENT role matching security rules
               userProfile = {
                 id: fbUser.uid,
                 uid: fbUser.uid,
-                fullName: fbUser.displayName || 'Google Foydalanuvchisi',
+                login: derivedLogin,
+                studentCode: derivedLogin.startsWith('T') ? derivedLogin : undefined,
+                fullName: derivedLogin,
                 role: 'STUDENT',
-                email: fbUser.email || '',
-                phone: fbUser.phoneNumber || '',
-                photoURL: fbUser.photoURL || undefined,
+                email: fbUser.email || getTechnicalEmail(derivedLogin, 'STUDENT'),
+                phone: '',
                 status: 'ACTIVE',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
@@ -216,15 +214,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               await setDoc(userRef, userProfile);
             }
           } catch (dbErr) {
-            console.warn('Firestore load error for Google user:', dbErr);
+            console.warn('Firestore load error for Firebase user:', dbErr);
             userProfile = {
               id: fbUser.uid,
               uid: fbUser.uid,
-              fullName: fbUser.displayName || 'Google Foydalanuvchisi',
+              login: derivedLogin,
+              studentCode: derivedLogin.startsWith('T') ? derivedLogin : undefined,
+              fullName: derivedLogin,
               role: 'STUDENT',
               email: fbUser.email || '',
-              phone: fbUser.phoneNumber || '',
-              photoURL: fbUser.photoURL || undefined,
+              phone: '',
               status: 'ACTIVE',
               createdAt: new Date().toISOString(),
               lastLoginAt: new Date().toISOString()
@@ -234,11 +233,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userProfile = {
             id: fbUser.uid,
             uid: fbUser.uid,
-            fullName: fbUser.displayName || 'Google Foydalanuvchisi',
+            login: derivedLogin,
+            studentCode: derivedLogin.startsWith('T') ? derivedLogin : undefined,
+            fullName: derivedLogin,
             role: 'STUDENT',
             email: fbUser.email || '',
-            phone: fbUser.phoneNumber || '',
-            photoURL: fbUser.photoURL || undefined,
+            phone: '',
             status: 'ACTIVE',
             createdAt: new Date().toISOString(),
             lastLoginAt: new Date().toISOString()
@@ -285,132 +285,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser]);
 
-  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
-    if (!auth) {
-      return { success: false, error: 'Firebase Auth mavjud emas' };
+  /**
+   * Universal Login with LOGIN + PAROL
+   * Resolves login identifier to technical Firebase email and authenticates via Firebase Auth.
+   * Gracefully falls back to local data if in offline/demo mode.
+   */
+  const login = async (
+    loginOrIdentifier: string,
+    password = 'password123'
+  ): Promise<{ success: boolean; error?: string }> => {
+    const rawLogin = loginOrIdentifier.trim();
+    if (!rawLogin) {
+      return { success: false, error: 'Login kiritilmadi' };
     }
-    try {
-      setLoading(true);
-      const cred = await signInWithPopup(auth, googleProvider);
-      const fbUser = cred.user;
 
-      console.log('Firebase Auth: CONNECTED');
-      console.log('Firebase user: YES');
-      console.log('Provider: google.com');
-      console.log('UID: mavjud');
-      console.log('Email:', fbUser.email ? 'mavjud' : 'mavjud emas');
+    setLoading(true);
 
-      let userProfile: User;
-      if (db) {
+    // 1. Try Firebase Authentication (Email/Password)
+    if (auth) {
+      const candidateEmails = resolveLoginToCandidateEmails(rawLogin);
+      for (const email of candidateEmails) {
         try {
-          const userRef = doc(db, 'users', fbUser.uid);
-          const snap = await getDoc(userRef);
-          if (snap.exists()) {
-            const data = snap.data() as Partial<User>;
-            userProfile = {
-              id: fbUser.uid,
-              uid: fbUser.uid,
-              fullName: data.fullName || fbUser.displayName || 'Google Foydalanuvchisi',
-              role: data.role || 'STUDENT',
-              email: data.email || fbUser.email || '',
-              phone: data.phone || fbUser.phoneNumber || '',
-              photoURL: data.photoURL || fbUser.photoURL || undefined,
-              status: data.status || 'ACTIVE',
-              facultyId: data.facultyId,
-              practicePlaceId: data.practicePlaceId,
-              studentId: data.studentId,
-              supervisorId: data.supervisorId,
-              clinicResponsibleId: data.clinicResponsibleId,
-              createdAt: data.createdAt || new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              lastLoginAt: new Date().toISOString()
-            };
-            updateDoc(userRef, { lastLoginAt: new Date().toISOString() }).catch(() => {});
-          } else {
-            // Self-registration for new Google user is strictly STUDENT role
-            userProfile = {
-              id: fbUser.uid,
-              uid: fbUser.uid,
-              fullName: fbUser.displayName || 'Google Foydalanuvchisi',
-              role: 'STUDENT',
-              email: fbUser.email || '',
-              phone: fbUser.phoneNumber || '',
-              photoURL: fbUser.photoURL || undefined,
-              status: 'ACTIVE',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              lastLoginAt: new Date().toISOString()
-            };
-            await setDoc(userRef, userProfile);
+          const cred = await signInWithEmailAndPassword(auth, email, password);
+          if (cred.user) {
+            setFirebaseUser(cred.user);
+            setIsFirebaseAuthenticated(true);
+            setLoading(false);
+            return { success: true };
           }
-        } catch (dbErr) {
-          console.warn('Firestore load/create error on Google Login:', dbErr);
-          userProfile = {
-            id: fbUser.uid,
-            uid: fbUser.uid,
-            fullName: fbUser.displayName || 'Google Foydalanuvchisi',
-            role: 'STUDENT',
-            email: fbUser.email || '',
-            phone: fbUser.phoneNumber || '',
-            photoURL: fbUser.photoURL || undefined,
-            status: 'ACTIVE',
-            createdAt: new Date().toISOString(),
-            lastLoginAt: new Date().toISOString()
-          };
+        } catch (err: any) {
+          // If password wrong on matching user, stop immediately
+          if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+            // Note: could be wrong password or user doesn't exist under this candidate email
+          }
         }
-      } else {
-        userProfile = {
-          id: fbUser.uid,
-          uid: fbUser.uid,
-          fullName: fbUser.displayName || 'Google Foydalanuvchisi',
-          role: 'STUDENT',
-          email: fbUser.email || '',
-          phone: fbUser.phoneNumber || '',
-          photoURL: fbUser.photoURL || undefined,
-          status: 'ACTIVE',
-          createdAt: new Date().toISOString(),
-          lastLoginAt: new Date().toISOString()
-        };
       }
-
-      setFirebaseUser(fbUser);
-      setIsFirebaseAuthenticated(true);
-      setCurrentUser(userProfile);
-      localStorage.setItem(AUTH_TYPE_KEY, 'firebase');
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userProfile));
-
-      storageService.recordAuditLog({
-        userId: userProfile.uid,
-        userRole: userProfile.role,
-        action: 'login',
-        entity: 'users',
-        entityId: userProfile.uid,
-        metadata: JSON.stringify({ email: userProfile.email, provider: 'google.com' })
-      });
-
-      setLoading(false);
-      return { success: true };
-    } catch (err: any) {
-      setLoading(false);
-      const code = err?.code || '';
-      const msg = err?.message || 'Google orqali kirishda xatolik yuz berdi';
-      console.error('Google Sign-In Error:', code, msg);
-      if (code === 'auth/popup-closed-by-user') {
-        return { success: false, error: 'Google login oynasi yopildi.' };
-      }
-      if (code === 'auth/unauthorized-domain') {
-        return { success: false, error: 'Ushbu domen Firebase Console da Authorized Domains ga kiritilmagan.' };
-      }
-      return { success: false, error: msg };
     }
-  };
 
-  const login = (usernameOrEmail: string, password?: string): boolean => {
-    const user = storageService.authenticate(usernameOrEmail, password);
-    if (user) {
+    // 2. Fallback to storageService mock / local user database
+    const localUser = storageService.authenticate(rawLogin, password);
+    if (localUser) {
       const now = new Date().toISOString();
       const updatedUser: User = {
-        ...user,
+        ...localUser,
         lastLoginAt: now
       };
       setCurrentUser(updatedUser);
@@ -419,16 +336,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(AUTH_TYPE_KEY, 'demo');
       storageService.saveUser(updatedUser);
       storageService.recordAuditLog({
-        userId: user.uid || user.id,
-        userRole: user.role,
+        userId: localUser.uid || localUser.id,
+        userRole: localUser.role,
         action: 'login',
         entity: 'users',
-        entityId: user.uid || user.id,
-        metadata: JSON.stringify({ email: user.email, loginTime: now, authType: 'local_demo' })
+        entityId: localUser.uid || localUser.id,
+        metadata: JSON.stringify({ login: rawLogin, authType: 'aide_login' })
       });
-      return true;
+      setLoading(false);
+      return { success: true };
     }
-    return false;
+
+    setLoading(false);
+    return {
+      success: false,
+      error: 'Login yoki parol noto\'g\'ri kiritildi. Iltimos qaytadan urinib ko\'ring.'
+    };
   };
 
   const logout = async () => {
@@ -469,7 +392,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fullName: ROLE_CONFIGS[newRole].title,
         role: newRole,
         status: 'ACTIVE',
-        email: `${newRole.toLowerCase()}@tma.uz`,
+        email: `${newRole.toLowerCase()}@aide.uz`,
         phone: '+998 (71) 214-88-00',
         createdAt: new Date().toISOString()
       };
@@ -491,7 +414,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roleConfig,
         loading,
         login,
-        loginWithGoogle,
         logout,
         switchRole,
         isAuthenticated: !!currentUser,
