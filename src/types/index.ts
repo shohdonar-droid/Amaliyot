@@ -779,6 +779,7 @@ export type AuditAction =
   | 'verificationGenerated'
   | 'finalStatusCalculated'
   | 'studentStatusSynced'
+  | 'problemResolved'
   | 'systemReset';
 
 export interface AuditLog {

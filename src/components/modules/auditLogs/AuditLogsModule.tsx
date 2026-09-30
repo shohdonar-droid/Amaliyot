@@ -89,6 +89,7 @@ export function AuditLogsModule() {
     verificationGenerated: { label: 'QR tekshiruv kodi berildi', variant: 'info' },
     finalStatusCalculated: { label: 'Talaba holati aniqlandi', variant: 'info' },
     studentStatusSynced: { label: 'Barcha holatlar sinxronlandi', variant: 'success' },
+    problemResolved: { label: 'Muammo hal qilindi', variant: 'success' },
     systemReset: { label: 'Tizim bazasi qayta tiklandi', variant: 'danger' }
   };
 

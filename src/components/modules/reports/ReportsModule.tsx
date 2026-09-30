@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BarChart3,
   Download,
@@ -11,78 +11,172 @@ import {
   Filter,
   Stethoscope,
   Award,
-  AlertTriangle
+  AlertTriangle,
+  RotateCcw,
+  Sparkles,
+  QrCode,
+  ShieldCheck,
+  Search,
+  Cpu,
+  GraduationCap,
+  Clock,
+  Archive,
+  RefreshCw,
+  FileText
 } from 'lucide-react';
 import { storageService } from '../../../services/storageService';
 import { useToast } from '../../../context/ToastContext';
+import { useAuth } from '../../../context/AuthContext';
+import { Student } from '../../../types';
+
+// Subviews
+import { OverallMonitoringView } from './OverallMonitoringView';
+import { ProblemStudentsView } from './ProblemStudentsView';
+import { GroupReportsView } from './GroupReportsView';
+import { FacultyDirectionReportsView } from './FacultyDirectionReportsView';
+import { ClinicReportsView } from './ClinicReportsView';
+import { SupervisorMonitoringView } from './SupervisorMonitoringView';
+import { VedomostCenterView } from './VedomostCenterView';
+
+// Modals
+import { QRVerificationModal } from './QRVerificationModal';
+import { StudentPracticeTimelineModal } from './StudentPracticeTimelineModal';
+import { Stage8QATestsModal } from './Stage8QATestsModal';
+import { StudentAssessmentModal } from '../assessments/StudentAssessmentModal';
 
 export function ReportsModule() {
   const { showToast } = useToast();
+  const { currentUser, role } = useAuth();
 
-  const students = storageService.getStudents();
-  const faculties = storageService.getFaculties();
-  const places = storageService.getPracticePlaces();
+  // Active sub-section
+  const [activeTab, setActiveTab] = useState<
+    | 'monitoring'
+    | 'problems'
+    | 'groups'
+    | 'faculties'
+    | 'clinics'
+    | 'supervisors'
+    | 'vedomosts'
+    | 'skills'
+    | 'attendance'
+  >('monitoring');
+
+  // Filter states
   const practices = storageService.getPractices();
-  const attendance = storageService.getAttendance();
-  const assessments = storageService.getAssessments();
-  const allSkills = storageService.getSkills();
-  const allLogs = storageService.getSkillLogs();
-  const allGroups = storageService.getGroups();
+  const faculties = storageService.getFaculties();
+  const groups = storageService.getGroups();
 
-  const [reportType, setReportType] = useState<
-    'attendance' | 'places' | 'grades' | 'skills_general' | 'skills_groups'
-  >('attendance');
+  const [selectedPracticeId, setSelectedPracticeId] = useState<string>(practices[0]?.id || 'prac-1');
+  const [selectedFacultyId, setSelectedFacultyId] = useState<string>('ALL');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [selectedGrade, setSelectedGrade] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Modals state
+  const [timelineStudent, setTimelineStudent] = useState<Student | null>(null);
+  const [assessmentStudentId, setAssessmentStudentId] = useState<string | null>(null);
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const [isQATestsModalOpen, setIsQATestsModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Live KPIs from storageService
+  const kpis = storageService.getFinalReportsKPIs(selectedPracticeId);
+
+  // Live rows for Overall Monitoring Table
+  const monitoringRows = useMemo(() => {
+    return storageService.getOverallMonitoringRows({
+      practiceId: selectedPracticeId,
+      facultyId: selectedFacultyId !== 'ALL' ? selectedFacultyId : undefined,
+      groupId: selectedGroupId !== 'ALL' ? selectedGroupId : undefined,
+      status: selectedStatus,
+      grade: selectedGrade,
+      searchQuery
+    });
+  }, [selectedPracticeId, selectedFacultyId, selectedGroupId, selectedStatus, selectedGrade, searchQuery, refreshKey]);
+
+  // Live Problem Students
+  const problemStudents = useMemo(() => {
+    return storageService.getProblemStudents({
+      practiceId: selectedPracticeId,
+      facultyId: selectedFacultyId !== 'ALL' ? selectedFacultyId : undefined
+    });
+  }, [selectedPracticeId, selectedFacultyId, refreshKey]);
+
+  // Handle Safe Sync All (Section 19)
+  const handleSyncAll = () => {
+    const res = storageService.syncAllStudentStatuses(currentUser?.id || 'admin', role);
+    if (res.success) {
+      showToast('success', 'Barcha statuslar sinxronlandi', `${res.syncedCount} nafar talaba bo'yicha baho va amaliyot holatlari xavfsiz yangilandi.`);
+      setRefreshKey(prev => prev + 1);
+    }
+  };
+
+  // KPI card click actions
+  const handleKPIClick = (filterType: string) => {
+    switch (filterType) {
+      case 'all':
+        setActiveTab('monitoring');
+        setSelectedStatus('ALL');
+        break;
+      case 'started':
+        setActiveTab('monitoring');
+        setSelectedStatus('IN_PROGRESS');
+        break;
+      case 'finished':
+        setActiveTab('monitoring');
+        setSelectedStatus('COMPLETED');
+        break;
+      case 'approved':
+        setActiveTab('monitoring');
+        setSelectedStatus('APPROVED');
+        break;
+      case 'retake':
+        setActiveTab('monitoring');
+        setSelectedStatus('RETAKE_REQUIRED');
+        break;
+      case 'waiting_exam':
+        setActiveTab('monitoring');
+        setSelectedStatus('WAITING_FOR_EXAM');
+        break;
+      case 'problems':
+        setActiveTab('problems');
+        break;
+      default:
+        setActiveTab('monitoring');
+        break;
+    }
+  };
+
+  // CSV Export for Overall Table or Subviews
   const handleExportCSV = () => {
-    let filename = `Amaliyot_Hisoboti_${reportType}`;
+    let filename = `Amaliyot_Yakuniy_Hisoboti_${activeTab}`;
     let csvHeader = '';
     let csvRows: string[] = [];
 
-    if (reportType === 'skills_general') {
-      filename = 'Konikmalar_Umumiy_Hisoboti';
-      csvHeader = '№,Ko‘nikma nomi,Kategoriya,Minimal me‘yor,Jami bajarilgan,Tasdiqlangan,Progress %';
-      csvRows = allSkills.map((sk, idx) => {
-        const matchingLogs = allLogs.filter(l => l.skillId === sk.id);
-        const performed = matchingLogs.reduce((s, l) => s + (l.count || 0), 0);
-        const approved = matchingLogs.filter(l => l.status === 'APPROVED').reduce((s, l) => s + (l.count || 0), 0);
-        const pct = Math.min(100, Math.round((approved / (sk.requiredCount || 1)) * 100));
-        return `${idx + 1},"${sk.name.replace(/"/g, '""')}","${sk.category}",${sk.requiredCount},${performed},${approved},${pct}%`;
-      });
-    } else if (reportType === 'skills_groups') {
-      filename = 'Guruhlar_Konikma_Hisoboti';
-      csvHeader = '№,Guruh,Talabalar soni,O‘rtacha progress %,Me‘yorni bajarganlar,Ortda qolayotganlar';
-      const grpData: { [key: string]: { students: number; sumProg: number; met: number; lag: number } } = {};
-      students.forEach(std => {
-        const g = std.groupId || '401-guruh';
-        if (!grpData[g]) grpData[g] = { students: 0, sumProg: 0, met: 0, lag: 0 };
-        const summary = storageService.getStudentPassportSummary(std.id);
-        grpData[g].students += 1;
-        grpData[g].sumProg += summary.minimalQuotaMetPct;
-        if (summary.minimalQuotaMetPct >= 100) grpData[g].met += 1;
-        if (summary.minimalQuotaMetPct < 60) grpData[g].lag += 1;
-      });
-      csvRows = Object.entries(grpData).map(([g, d], idx) => {
-        const avg = Math.round(d.sumProg / (d.students || 1));
-        return `${idx + 1},"${g}",${d.students},${avg}%,${d.met},${d.lag}`;
-      });
-    } else if (reportType === 'grades') {
-      filename = 'Attestatsiya_Baholash_Hisoboti';
-      csvHeader = '№,Talaba F.I.Sh.,Talaba ID,Guruh,Davomat (20),Kundalik (20),Ko‘nikmalar (30),Imtihon (30),Jami ball (100),Baho,Holat';
-      csvRows = students.map((std, idx) => {
-        const ass = assessments.find(a => a.studentId === std.id) || storageService.getAssessmentByStudent(std.id);
-        return `${idx + 1},"${std.fullName}",${std.studentId},${std.group},${ass?.attendanceScore || 0},${ass?.journalScore || 0},${ass?.skillsScore || 0},${ass?.finalExamScore || 0},${ass?.totalScore || 0},${ass?.grade || 2},${ass?.status || 'IN_PROGRESS'}`;
-      });
-    } else if (reportType === 'attendance') {
-      csvHeader = 'Fakultet,Jami talabalar,Amaliyotda,Qatnashganlar,Qoldirganlar,Davomat ko‘rsatkichi';
-      csvRows = faculties.map((f, i) => {
-        const facStudents = students.filter(s => s.facultyId === f.id);
-        const inPrac = facStudents.filter(s => s.status === 'in_practice').length || 24;
-        const rate = [96, 92, 98, 94][i % 4];
-        return `"${f.name}",${facStudents.length || 24},${inPrac},${Math.round(inPrac * 0.95)},${Math.max(inPrac - Math.round(inPrac * 0.95), 0)},${rate}%`;
-      });
+    if (activeTab === 'monitoring') {
+      filename = 'Talaba_Amaliyot_Holati_Monitoring';
+      csvHeader = '№,Talaba F.I.Sh.,Talaba ID,Fakultet,Yo‘nalish,Guruh,Kurs,Amaliyot,Klinik Baza,Rahbar,Davomat %,Kundalik %,Ko‘nikmalar %,Imtihon,Jami Ball,Baho,Status,Muammo,Oxirgi Yangilanish';
+      csvRows = monitoringRows.map((r, i) =>
+        `${i + 1},"${r.student.fullName}",${r.student.studentId},"${r.facultyName}","${r.directionName}","${r.groupName}",${r.courseLevel},"${r.practice?.name || ''}","${r.practicePlace?.name || ''}","${r.supervisor?.fullName || ''}",${r.attendancePercentage},${r.journalCompletionPct},${r.skillsProgressPct},${r.examScore},${r.totalScore},${r.grade},"${r.status}","${r.problem || ''}","${r.lastUpdated}"`
+      );
+    } else if (activeTab === 'problems') {
+      filename = 'Muammoli_Talabalar_Nazorati';
+      csvHeader = '№,Talaba F.I.Sh.,Guruh,Fakultet,Amaliyot,Muammo Turi,Tavsif,Daraja,Mas‘ul,Status,Sana';
+      csvRows = problemStudents.map((p, i) =>
+        `${i + 1},"${p.studentName}","${p.group}","${p.faculty}","${p.practiceName}","${p.problemType}","${p.problemLabel}","${p.severity}","${p.responsiblePerson}","${p.status}","${p.detectedDate}"`
+      );
+    } else if (activeTab === 'groups') {
+      filename = 'Guruhlar_Kesimida_Hisobot';
+      csvHeader = '№,Guruh,Fakultet,Jami Talabalar,Amaliyotda,Yakunlagan,Davomat %,Kundalik %,Ko‘nikma %,O‘rtacha Ball,A‘lo (5),Yaxshi (4),Qoniqarli (3),Qoniqarsiz (2),O‘zlashtirish %,Sifat %';
+      const gData = storageService.getGroupSummaryReports(selectedPracticeId);
+      csvRows = gData.map((g, i) =>
+        `${i + 1},"${g.groupName}","${g.facultyName}",${g.totalStudents},${g.inPractice},${g.completed},${g.avgAttendance},${g.avgJournal},${g.avgSkills},${g.avgScore},${g.grade5Count},${g.grade4Count},${g.grade3Count},${g.grade2Count},${g.masteryPercentage},${g.qualityPercentage}`
+      );
     } else {
-      csvHeader = 'Parametr,Qiymat';
-      csvRows = ['Umumiy talabalar soni,' + students.length, 'Hisobot turi,' + reportType];
+      filename = 'Umumiy_Hisobot';
+      csvHeader = '№,Talaba F.I.Sh.,ID,Guruh,Jami Ball,Baho,Status';
+      csvRows = monitoringRows.map((r, i) => `${i + 1},"${r.student.fullName}",${r.student.studentId},"${r.groupName}",${r.totalScore},${r.grade},"${r.status}"`);
     }
 
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [csvHeader, ...csvRows].join('\n');
@@ -99,418 +193,505 @@ export function ReportsModule() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Top Header & Global Actions */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">
-            Tahliliy hisobotlar va eksport
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Vazirlik va universitet rahbariyati uchun yig'ma statistik hisobotlar
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+              8-Bosqich
+            </span>
+            <h2 className="text-xl font-bold tracking-tight text-slate-900">
+              Amaliyot Yakuniy Hisobotlari va Nazorat Markazi
+            </h2>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Barcha amaliyot jarayonlarini yagona markazdan yakuniy nazorat qilish va vedomostlar aylanishi
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Safe Sync Button */}
+          <button
+            type="button"
+            onClick={handleSyncAll}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-2xs transition-colors"
+            title="Barcha talabalar baholari va holatlarini xavfsiz qayta hisoblash"
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
+            <span>Sinxronlash</span>
+          </button>
+
+          {/* QR Verification */}
+          <button
+            type="button"
+            onClick={() => setIsQRModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-2xs transition-colors"
+            title="QR kod orqali rasmiy vedomost haqiqiyligini tekshirish"
+          >
+            <QrCode className="w-3.5 h-3.5 text-purple-600" />
+            <span>QR Tekshirish</span>
+          </button>
+
+          {/* QA Tests Runner */}
+          <button
+            type="button"
+            onClick={() => setIsQATestsModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg shadow-2xs transition-colors"
+            title="8-bosqich avtomatlashtirilgan QA testlari (25 ta test)"
+          >
+            <Cpu className="w-3.5 h-3.5 text-indigo-600" />
+            <span>QA Testlar (25)</span>
+          </button>
+
+          {/* Export CSV */}
           <button
             type="button"
             onClick={handleExportCSV}
-            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-2xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-2xs transition-colors"
           >
-            <Download className="w-4 h-4 text-emerald-600" />
-            <span>Excel / CSV yuklash</span>
+            <Download className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Excel / CSV</span>
           </button>
+
+          {/* Print */}
           <button
             type="button"
             onClick={() => window.print()}
-            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors"
           >
-            <Printer className="w-4 h-4" />
+            <Printer className="w-3.5 h-3.5" />
             <span>Chop etish</span>
           </button>
         </div>
       </div>
 
-      {/* Report Types Tabs (Section 19: Added Skills Reports) */}
-      <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl w-fit flex-wrap">
+      {/* 12 KPI CARDS (SECTION 2: UMUMIY MONITORING DASHBOARD) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        {/* 1. Jami talabalar */}
+        <div
+          onClick={() => handleKPIClick('all')}
+          className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold">Jami talabalar</span>
+            <Users className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-slate-900">{kpis.totalStudents}</div>
+          <span className="text-[10px] text-slate-400">Amaliyot kontingenti</span>
+        </div>
+
+        {/* 2. Amaliyotga biriktirilgan */}
+        <div
+          onClick={() => handleKPIClick('all')}
+          className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold">Biriktirilgan</span>
+            <Building2 className="w-4 h-4 text-sky-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-slate-900">{kpis.assignedCount}</div>
+          <span className="text-[10px] text-sky-600 font-medium">Baza & Rahbar</span>
+        </div>
+
+        {/* 3. Boshlagan */}
+        <div
+          onClick={() => handleKPIClick('started')}
+          className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold">Boshlagan</span>
+            <Clock className="w-4 h-4 text-indigo-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-indigo-700">{kpis.startedCount}</div>
+          <span className="text-[10px] text-slate-400">Jarayonda</span>
+        </div>
+
+        {/* 4. Yakunlagan */}
+        <div
+          onClick={() => handleKPIClick('finished')}
+          className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:border-emerald-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold">Yakunlagan</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-emerald-700">{kpis.finishedCount}</div>
+          <span className="text-[10px] text-emerald-600 font-medium">Tugallangan</span>
+        </div>
+
+        {/* 5. Davomati to'liq */}
+        <div
+          onClick={() => handleKPIClick('all')}
+          className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold">Davomat to'liq</span>
+            <Calendar className="w-4 h-4 text-teal-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-teal-700">{kpis.fullAttendanceCount}</div>
+          <span className="text-[10px] text-teal-600 font-medium">≥ 95% davomat</span>
+        </div>
+
+        {/* 6. Kundaligi to'liq */}
+        <div
+          onClick={() => handleKPIClick('all')}
+          className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold">Kundalik to'liq</span>
+            <FileText className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-blue-700">{kpis.fullJournalCount}</div>
+          <span className="text-[10px] text-blue-600 font-medium">Tasdiqlangan</span>
+        </div>
+
+        {/* 7. Ko'nikmalari to'liq */}
+        <div
+          onClick={() => handleKPIClick('all')}
+          className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:border-blue-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold">Ko'nikma to'liq</span>
+            <Stethoscope className="w-4 h-4 text-cyan-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-cyan-700">{kpis.fullSkillsCount}</div>
+          <span className="text-[10px] text-cyan-600 font-medium">100% norma</span>
+        </div>
+
+        {/* 8. Imtihon topshirgan */}
+        <div
+          onClick={() => handleKPIClick('all')}
+          className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:border-purple-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold">Imtihon topshirgan</span>
+            <GraduationCap className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-purple-700">{kpis.examTakenCount}</div>
+          <span className="text-[10px] text-purple-600 font-medium">Baho qo'yilgan</span>
+        </div>
+
+        {/* 9. Attestatsiyasi tasdiqlangan */}
+        <div
+          onClick={() => handleKPIClick('approved')}
+          className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:border-emerald-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold">Tasdiqlangan</span>
+            <Award className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-emerald-700">{kpis.approvedCount}</div>
+          <span className="text-[10px] text-emerald-600 font-medium">Komissiya tasdig'i</span>
+        </div>
+
+        {/* 10. Qayta topshiruvchi */}
+        <div
+          onClick={() => handleKPIClick('retake')}
+          className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:border-rose-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold">Qayta topshirish</span>
+            <RotateCcw className="w-4 h-4 text-rose-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-rose-700">{kpis.retakeCount}</div>
+          <span className="text-[10px] text-rose-600 font-medium">&lt; 55 ball / Retake</span>
+        </div>
+
+        {/* 11. Tugallanmagan */}
+        <div
+          onClick={() => handleKPIClick('all')}
+          className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:border-amber-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold">Tugallanmagan</span>
+            <Clock className="w-4 h-4 text-amber-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-amber-700">{kpis.incompleteCount}</div>
+          <span className="text-[10px] text-amber-600 font-medium">Kutilmoqda</span>
+        </div>
+
+        {/* 12. Muammoli talabalar */}
+        <div
+          onClick={() => handleKPIClick('problems')}
+          className="bg-white p-3.5 rounded-xl border border-rose-200 bg-rose-50/20 shadow-2xs hover:border-rose-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-semibold text-rose-700">Muammoli talabalar</span>
+            <AlertTriangle className="w-4 h-4 text-rose-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="text-xl font-bold font-mono text-rose-700">{kpis.problemStudentsCount}</div>
+          <span className="text-[10px] text-rose-600 font-medium">Nazorat talab</span>
+        </div>
+      </div>
+
+      {/* Navigation Sub-Tabs (Section 1) */}
+      <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-fit flex-wrap">
         <button
-          onClick={() => setReportType('attendance')}
-          className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors ${
-            reportType === 'attendance'
-              ? 'bg-white text-slate-900 font-semibold shadow-2xs'
+          type="button"
+          onClick={() => setActiveTab('monitoring')}
+          className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+            activeTab === 'monitoring'
+              ? 'bg-white text-blue-900 shadow-2xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Davomat hisoboti
+          <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
+          <span>Umumiy monitoring</span>
         </button>
+
         <button
-          onClick={() => setReportType('skills_general')}
-          className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 ${
-            reportType === 'skills_general'
-              ? 'bg-white text-blue-900 font-bold shadow-2xs'
+          type="button"
+          onClick={() => setActiveTab('problems')}
+          className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+            activeTab === 'problems'
+              ? 'bg-white text-rose-900 shadow-2xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <Stethoscope className="w-3.5 h-3.5 text-blue-600" />
-          <span>Ko'nikmalar umumiy hisoboti</span>
+          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+          <span>Muammoli talabalar ({problemStudents.length})</span>
         </button>
+
         <button
-          onClick={() => setReportType('skills_groups')}
-          className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 ${
-            reportType === 'skills_groups'
-              ? 'bg-white text-indigo-900 font-bold shadow-2xs'
+          type="button"
+          onClick={() => setActiveTab('groups')}
+          className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+            activeTab === 'groups'
+              ? 'bg-white text-indigo-900 shadow-2xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <Users className="w-3.5 h-3.5 text-indigo-600" />
-          <span>Guruhlar ko'nikma hisoboti</span>
+          <span>Guruhlar kesimida</span>
         </button>
+
         <button
-          onClick={() => setReportType('places')}
-          className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors ${
-            reportType === 'places'
-              ? 'bg-white text-slate-900 font-semibold shadow-2xs'
+          type="button"
+          onClick={() => setActiveTab('faculties')}
+          className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+            activeTab === 'faculties'
+              ? 'bg-white text-blue-900 shadow-2xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Klinik bazalar taqsimoti
+          <Building2 className="w-3.5 h-3.5 text-blue-600" />
+          <span>Fakultet va yo'nalishlar</span>
         </button>
+
         <button
-          onClick={() => setReportType('grades')}
-          className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors ${
-            reportType === 'grades'
-              ? 'bg-white text-slate-900 font-semibold shadow-2xs'
+          type="button"
+          onClick={() => setActiveTab('clinics')}
+          className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+            activeTab === 'clinics'
+              ? 'bg-white text-emerald-900 shadow-2xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Baholash va o'zlashtirish
+          <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Klinik bazalar</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('supervisors')}
+          className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+            activeTab === 'supervisors'
+              ? 'bg-white text-cyan-900 shadow-2xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Stethoscope className="w-3.5 h-3.5 text-cyan-600" />
+          <span>Rahbarlar monitoringi</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('vedomosts')}
+          className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+            activeTab === 'vedomosts'
+              ? 'bg-white text-purple-900 shadow-2xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5 text-purple-600" />
+          <span>Vedomostlar markazi</span>
         </button>
       </div>
 
-      {/* Report: Attendance */}
-      {reportType === 'attendance' && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
-          <div className="p-4 border-b border-slate-200">
-            <h3 className="text-sm font-bold text-slate-900">
-              Fakultetlar bo'yicha amaliyot davomati yig'ma jadvali
-            </h3>
-            <p className="text-xs text-slate-500">2025-2026 o'quv yili, Kuzgi semestr</p>
+      {/* Global Filter Bar (Section 20) */}
+      <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 flex-wrap flex-1">
+          {/* Practice Select */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-slate-500">Amaliyot:</span>
+            <select
+              value={selectedPracticeId}
+              onChange={e => setSelectedPracticeId(e.target.value)}
+              className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+            >
+              {practices.map(p => (
+                <option key={p.id} value={p.id}>{p.name} ({p.academicYear})</option>
+              ))}
+            </select>
           </div>
 
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b text-slate-600 font-semibold uppercase text-[11px]">
-              <tr>
-                <th className="py-3 px-4">Fakultet</th>
-                <th className="py-3 px-4">Jami talabalar</th>
-                <th className="py-3 px-4">Amaliyotda</th>
-                <th className="py-3 px-4">Qatnashganlar</th>
-                <th className="py-3 px-4">Qoldirganlar</th>
-                <th className="py-3 px-4">Davomat ko'rsatkichi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {faculties.map((f, i) => {
-                const facStudents = students.filter(s => s.facultyId === f.id);
-                const inPrac = facStudents.filter(s => s.status === 'in_practice').length || 24;
-                const rate = [96, 92, 98, 94][i % 4];
+          {/* Faculty Select */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-slate-500">Fakultet:</span>
+            <select
+              value={selectedFacultyId}
+              onChange={e => setSelectedFacultyId(e.target.value)}
+              className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+            >
+              <option value="ALL">Barcha fakultetlar</option>
+              {faculties.map(f => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          </div>
 
-                return (
-                  <tr key={f.id} className="hover:bg-slate-50">
-                    <td className="py-3 px-4 font-bold text-slate-900">{f.name}</td>
-                    <td className="py-3 px-4 font-mono">{facStudents.length || 24}</td>
-                    <td className="py-3 px-4 font-mono font-semibold text-blue-700">{inPrac}</td>
-                    <td className="py-3 px-4 font-mono text-emerald-600">{Math.round((inPrac || 1) * 0.95)}</td>
-                    <td className="py-3 px-4 font-mono text-red-600">{Math.max(inPrac - Math.round((inPrac || 1) * 0.95), 0)}</td>
-                    <td className="py-3 px-4">
-                      <span className="font-mono font-bold text-emerald-700">{rate}%</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {/* Group Select */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-slate-500">Guruh:</span>
+            <select
+              value={selectedGroupId}
+              onChange={e => setSelectedGroupId(e.target.value)}
+              className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+            >
+              <option value="ALL">Barcha guruhlar</option>
+              {groups.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status Select */}
+          {activeTab === 'monitoring' && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-slate-500">Holat:</span>
+              <select
+                value={selectedStatus}
+                onChange={e => setSelectedStatus(e.target.value)}
+                className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              >
+                <option value="ALL">Barcha holatlar</option>
+                <option value="IN_PROGRESS">Jarayonda</option>
+                <option value="WAITING_FOR_EXAM">Imtihon kutilmoqda</option>
+                <option value="WAITING_FOR_APPROVAL">Tasdiq kutilmoqda</option>
+                <option value="APPROVED">Tasdiqlangan</option>
+                <option value="COMPLETED">Yakunlangan</option>
+                <option value="RETAKE_REQUIRED">Qayta topshirish</option>
+              </select>
+            </div>
+          )}
+
+          {/* Grade Select */}
+          {activeTab === 'monitoring' && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-slate-500">Baho:</span>
+              <select
+                value={selectedGrade}
+                onChange={e => setSelectedGrade(e.target.value)}
+                className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              >
+                <option value="ALL">Barcha baholar</option>
+                <option value="5">5 (A'lo)</option>
+                <option value="4">4 (Yaxshi)</option>
+                <option value="3">3 (Qoniqarli)</option>
+                <option value="2">2 (Qoniqarsiz)</option>
+              </select>
+            </div>
+          )}
         </div>
+
+        {/* Search */}
+        <div className="relative w-full sm:w-64">
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Talaba, guruh yoki ID..."
+            className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      {/* Main Tab Views */}
+      {activeTab === 'monitoring' && (
+        <OverallMonitoringView
+          rows={monitoringRows}
+          onOpenTimeline={(std) => setTimelineStudent(std)}
+          onOpenAssessment={(stdId) => setAssessmentStudentId(stdId)}
+        />
       )}
 
-      {/* Report: Ko'nikmalar umumiy hisoboti (Section 19) */}
-      {reportType === 'skills_general' && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
-          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                Amaliy ko'nikmalar umumiy hisoboti (Skills Logbook)
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-800">
-                  {allSkills.length} ta ko'nikma
-                </span>
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Barcha klinik manipulyatsiyalarning talabalar tomonidan bajarilishi va tasdiqlanish monitoringi
-              </p>
-            </div>
-          </div>
-
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b text-slate-600 font-semibold uppercase text-[11px]">
-              <tr>
-                <th className="py-3 px-3 text-center w-10">№</th>
-                <th className="py-3 px-4 min-w-[200px]">Ko'nikma nomi</th>
-                <th className="py-3 px-3">Kategoriya</th>
-                <th className="py-3 px-3 text-center">Minimal me'yor</th>
-                <th className="py-3 px-3 text-center">Jami bajarildi</th>
-                <th className="py-3 px-3 text-center text-emerald-700 font-bold">Tasdiqlangan</th>
-                <th className="py-3 px-4 min-w-[130px]">O'rtacha bajarilish</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {allSkills.map((sk, idx) => {
-                const logs = allLogs.filter(l => l.skillId === sk.id);
-                const performed = logs.reduce((s, l) => s + (l.count || 0), 0);
-                const approved = logs.filter(l => l.status === 'APPROVED').reduce((s, l) => s + (l.count || 0), 0);
-                const targetTotal = (sk.requiredCount || 10) * Math.max(1, students.length);
-                const pct = Math.min(100, Math.round((approved / targetTotal) * 100));
-
-                return (
-                  <tr key={sk.id} className="hover:bg-slate-50">
-                    <td className="py-3 px-3 text-center font-mono text-slate-400">{idx + 1}</td>
-                    <td className="py-3 px-4 font-bold text-slate-900">{sk.name}</td>
-                    <td className="py-3 px-3 text-slate-600 font-medium">{sk.category}</td>
-                    <td className="py-3 px-3 text-center font-mono">{sk.requiredCount}</td>
-                    <td className="py-3 px-3 text-center font-mono font-bold text-slate-800">{performed}</td>
-                    <td className="py-3 px-3 text-center font-mono font-bold text-emerald-700">{approved}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className={`h-1.5 rounded-full ${pct >= 70 ? 'bg-emerald-600' : 'bg-blue-600'}`}
-                            style={{ width: `${Math.max(pct, 10)}%` }}
-                          />
-                        </div>
-                        <span className="font-mono font-bold text-slate-700 text-[11px] tabular-nums">
-                          {Math.max(pct, 15)}%
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {activeTab === 'problems' && (
+        <ProblemStudentsView
+          problems={problemStudents}
+          onOpenTimeline={(std) => setTimelineStudent(std)}
+          onRefresh={() => setRefreshKey(prev => prev + 1)}
+        />
       )}
 
-      {/* Report: Guruhlar bo'yicha ko'nikma hisoboti (Section 19) */}
-      {reportType === 'skills_groups' && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
-          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Guruhlar kesimida amaliy ko'nikmalar pasporti ko'rsatkichlari
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Akademik guruhlarning klinik amaliy ko'nikmalarni o'zlashtirish darajasi
-              </p>
-            </div>
-          </div>
-
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b text-slate-600 font-semibold uppercase text-[11px]">
-              <tr>
-                <th className="py-3 px-4">Guruh</th>
-                <th className="py-3 px-3 text-center">Talabalar soni</th>
-                <th className="py-3 px-4 min-w-[140px]">O'rtacha progress</th>
-                <th className="py-3 px-3 text-center text-emerald-700 font-bold">Me'yorni to'liq bajargan</th>
-                <th className="py-3 px-3 text-center text-rose-700 font-bold">Ortda qolayotganlar</th>
-                <th className="py-3 px-3 text-center">Holat</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {['401-guruh', '402-guruh', '301-guruh'].map(gName => {
-                const grpStudents = students.filter(s => s.groupId === gName);
-                const count = grpStudents.length || 8;
-                const summaries = grpStudents.map(s => storageService.getStudentPassportSummary(s.id));
-                const avg = summaries.length > 0
-                  ? Math.round(summaries.reduce((sum, s) => sum + s.minimalQuotaMetPct, 0) / summaries.length)
-                  : 78;
-                const completed = summaries.filter(s => s.minimalQuotaMetPct >= 100).length;
-                const lagging = summaries.filter(s => s.minimalQuotaMetPct < 60).length;
-
-                return (
-                  <tr key={gName} className="hover:bg-slate-50">
-                    <td className="py-3 px-4 font-bold text-slate-900">{gName}</td>
-                    <td className="py-3 px-3 text-center font-mono font-semibold">{count} nafar</td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className={`h-1.5 rounded-full ${avg >= 80 ? 'bg-emerald-600' : 'bg-indigo-600'}`}
-                            style={{ width: `${avg}%` }}
-                          />
-                        </div>
-                        <span className="font-mono font-bold text-slate-800 text-[11px] tabular-nums">
-                          {avg}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 text-center font-mono font-bold text-emerald-700">
-                      {completed} ta talaba
-                    </td>
-                    <td className="py-3 px-3 text-center font-mono font-bold text-rose-700">
-                      {lagging} ta talaba
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                        avg >= 80 ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'
-                      }`}>
-                        {avg >= 80 ? 'Yuqori' : 'Qoniqarli'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {activeTab === 'groups' && (
+        <GroupReportsView
+          practiceId={selectedPracticeId}
+          onOpenTimeline={(std) => setTimelineStudent(std)}
+        />
       )}
 
-      {/* Report: Places */}
-      {reportType === 'places' && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
-          <div className="p-4 border-b border-slate-200">
-            <h3 className="text-sm font-bold text-slate-900">
-              Klinik shifoxonalar va bazalar sig'imining bandlik hisoboti
-            </h3>
-          </div>
-
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b text-slate-600 font-semibold uppercase text-[11px]">
-              <tr>
-                <th className="py-3 px-4">Muassasa nomi</th>
-                <th className="py-3 px-4">Turi</th>
-                <th className="py-3 px-4">Shartnoma</th>
-                <th className="py-3 px-4">Kvota sig'imi</th>
-                <th className="py-3 px-4">Biriktirilgan talaba</th>
-                <th className="py-3 px-4">Bandlik foizi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {places.map(p => {
-                const pct = Math.min(Math.round((p.activeStudentsCount / p.capacity) * 100), 100);
-                return (
-                  <tr key={p.id} className="hover:bg-slate-50">
-                    <td className="py-3 px-4 font-bold text-slate-900">{p.name}</td>
-                    <td className="py-3 px-4 text-slate-600">{p.type}</td>
-                    <td className="py-3 px-4 font-mono text-slate-500">{p.contractNumber}</td>
-                    <td className="py-3 px-4 font-mono">{p.capacity}</td>
-                    <td className="py-3 px-4 font-mono font-bold text-blue-700">{p.activeStudentsCount}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                          <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="font-mono font-bold text-slate-700">{pct}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {activeTab === 'faculties' && (
+        <FacultyDirectionReportsView practiceId={selectedPracticeId} />
       )}
 
-      {/* Report: Grades */}
-      {reportType === 'grades' && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs space-y-4">
-          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Amaliyot attestatsiyasi va o'zlashtirish sifat ko'rsatkichlari (100 ballik tizim)
-              </h3>
-              <p className="text-xs text-slate-500">Davomat, elektron kundalik, amaliy ko'nikmalar va yakuniy imtihon</p>
-            </div>
-            <div className="text-right">
-              <span className="text-xs text-slate-500">O'rtacha ball: </span>
-              <strong className="text-sm font-mono text-indigo-700 font-bold">{storageService.getAttestationKPIs().averageScore} / 100</strong>
-            </div>
-          </div>
+      {activeTab === 'clinics' && (
+        <ClinicReportsView practiceId={selectedPracticeId} />
+      )}
 
-          {(() => {
-            const kpis = storageService.getAttestationKPIs();
-            const total = kpis.totalAssessments || 1;
-            const p5 = Math.round((kpis.gradeDistribution.grade5 / total) * 100);
-            const p4 = Math.round((kpis.gradeDistribution.grade4 / total) * 100);
-            const p3 = Math.round((kpis.gradeDistribution.grade3 / total) * 100);
-            const p2 = Math.round((kpis.gradeDistribution.grade2 / total) * 100);
+      {activeTab === 'supervisors' && (
+        <SupervisorMonitoringView practiceId={selectedPracticeId} />
+      )}
 
-            return (
-              <div className="px-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
-                  <p className="text-xs text-emerald-800 font-semibold uppercase">A'lo (5 baho)</p>
-                  <p className="text-2xl font-bold font-mono text-emerald-700 mt-1">{p5}%</p>
-                  <p className="text-[11px] text-emerald-600 mt-0.5">{kpis.gradeDistribution.grade5} nafar talaba</p>
-                </div>
-                <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
-                  <p className="text-xs text-blue-800 font-semibold uppercase">Yaxshi (4 baho)</p>
-                  <p className="text-2xl font-bold font-mono text-blue-700 mt-1">{p4}%</p>
-                  <p className="text-[11px] text-blue-600 mt-0.5">{kpis.gradeDistribution.grade4} nafar talaba</p>
-                </div>
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
-                  <p className="text-xs text-amber-800 font-semibold uppercase">Qoniqarli (3 baho)</p>
-                  <p className="text-2xl font-bold font-mono text-amber-700 mt-1">{p3}%</p>
-                  <p className="text-[11px] text-amber-600 mt-0.5">{kpis.gradeDistribution.grade3} nafar talaba</p>
-                </div>
-                <div className="p-4 rounded-xl bg-red-50 border border-red-200">
-                  <p className="text-xs text-red-800 font-semibold uppercase">Qarzdor (2 baho)</p>
-                  <p className="text-2xl font-bold font-mono text-red-700 mt-1">{p2}%</p>
-                  <p className="text-[11px] text-red-600 mt-0.5">{kpis.gradeDistribution.grade2} nafar talaba</p>
-                </div>
-              </div>
-            );
-          })()}
+      {activeTab === 'vedomosts' && (
+        <VedomostCenterView practiceId={selectedPracticeId} />
+      )}
 
-          <div className="px-4 pb-4 overflow-x-auto">
-            <table className="w-full text-left text-xs border border-slate-200 rounded-lg">
-              <thead className="bg-slate-50 text-slate-700 font-semibold uppercase text-[10px]">
-                <tr>
-                  <th className="py-2.5 px-3">№</th>
-                  <th className="py-2.5 px-3">Talaba F.I.Sh.</th>
-                  <th className="py-2.5 px-3 text-center">Guruh</th>
-                  <th className="py-2.5 px-3 text-center">Davomat (20)</th>
-                  <th className="py-2.5 px-3 text-center">Kundalik (20)</th>
-                  <th className="py-2.5 px-3 text-center">Ko'nikma (30)</th>
-                  <th className="py-2.5 px-3 text-center">Imtihon (30)</th>
-                  <th className="py-2.5 px-3 text-center font-bold">Jami (100)</th>
-                  <th className="py-2.5 px-3 text-center">Baho</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {students.slice(0, 15).map((std, idx) => {
-                  const ass = assessments.find(a => a.studentId === std.id) || storageService.getAssessmentByStudent(std.id);
-                  return (
-                    <tr key={std.id} className="hover:bg-slate-50">
-                      <td className="py-2 px-3 text-slate-500 font-mono">{idx + 1}</td>
-                      <td className="py-2 px-3 font-medium text-slate-900">{std.fullName}</td>
-                      <td className="py-2 px-3 text-center font-mono text-slate-600">{std.group}</td>
-                      <td className="py-2 px-3 text-center font-mono">{ass?.attendanceScore || 0}</td>
-                      <td className="py-2 px-3 text-center font-mono">{ass?.journalScore || 0}</td>
-                      <td className="py-2 px-3 text-center font-mono">{ass?.skillsScore || 0}</td>
-                      <td className="py-2 px-3 text-center font-mono">{ass?.finalExamScore || 0}</td>
-                      <td className="py-2 px-3 text-center font-mono font-bold text-indigo-900">{ass?.totalScore || 0}</td>
-                      <td className="py-2 px-3 text-center font-bold">
-                        <span className={`px-2 py-0.5 rounded text-[11px] ${
-                          ass?.grade === '5' ? 'bg-emerald-100 text-emerald-800' :
-                          ass?.grade === '4' ? 'bg-blue-100 text-blue-800' :
-                          ass?.grade === '3' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {ass?.grade || 2}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {/* Timeline Modal (Section 16) */}
+      {timelineStudent && (
+        <StudentPracticeTimelineModal
+          isOpen={Boolean(timelineStudent)}
+          onClose={() => setTimelineStudent(null)}
+          student={timelineStudent}
+          practiceId={selectedPracticeId}
+        />
+      )}
+
+      {/* Assessment Modal (Reused from Stage 7) */}
+      {assessmentStudentId && (
+        <StudentAssessmentModal
+          isOpen={Boolean(assessmentStudentId)}
+          onClose={() => setAssessmentStudentId(null)}
+          student={storageService.getStudents().find(s => s.id === assessmentStudentId) || null}
+          practiceId={selectedPracticeId}
+          onAssessmentUpdated={() => setRefreshKey(k => k + 1)}
+        />
+      )}
+
+      {/* QR Verification Modal (Section 14 & 15) */}
+      {isQRModalOpen && (
+        <QRVerificationModal
+          isOpen={isQRModalOpen}
+          onClose={() => setIsQRModalOpen(false)}
+        />
+      )}
+
+      {/* QA Tests Modal (Section 23) */}
+      {isQATestsModalOpen && (
+        <Stage8QATestsModal
+          isOpen={isQATestsModalOpen}
+          onClose={() => setIsQATestsModalOpen(false)}
+        />
       )}
     </div>
   );
