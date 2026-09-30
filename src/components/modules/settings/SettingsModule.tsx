@@ -11,7 +11,11 @@ import {
   Layers,
   FileCheck,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Activity,
+  Cpu,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { storageService, AppEnvironmentMode } from '../../../services/storageService';
 import { useToast } from '../../../context/ToastContext';
@@ -29,7 +33,10 @@ export function SettingsModule() {
   const [journalDeadline, setJournalDeadline] = useState('23:59');
 
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
-  const [isClearDemoConfirmOpen, setIsClearDemoConfirmOpen] = useState(false);
+
+  // System Health & Data Quality data
+  const systemHealth = storageService.getSystemHealthStatus();
+  const dataQualityIssues = storageService.getDataQualityIssues();
 
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,58 +53,124 @@ export function SettingsModule() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
       <div>
         <h2 className="text-xl font-bold tracking-tight text-slate-900">
-          Tizim sozlamalari va ma'lumotlar bazasi
+          Tizim sozlamalari, salomatlik va ma'lumotlar sifati
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Universitet amaliyot reglamentlari, Firebase arxitekturasi va ma'lumotlar boshqaruvi
+          Universitet amaliyot reglamentlari, Firebase arxitekturasi, System Health va Data Quality markazi
         </p>
       </div>
 
-      {/* Cloud & Architecture Status Banner */}
+      {/* SECTION 25: ADMIN SYSTEM HEALTH DASHBOARD */}
       <div className="p-5 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white rounded-2xl shadow-lg border border-blue-900/50 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-blue-600/30 border border-blue-400/30 text-blue-300">
-              <Cloud className="w-5 h-5" />
+            <div className="p-2 rounded-lg bg-emerald-600/30 border border-emerald-400/30 text-emerald-300">
+              <Activity className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Firebase & Cloud Database Arxitekturasi</h3>
-              <p className="text-xs text-slate-300">Firestore, Firebase Auth va Storage uchun to'liq 2-bosqich infratuzilmasi</p>
+              <h3 className="text-sm font-bold text-white">Tizim Salomatligi (System Health Dashboard)</h3>
+              <p className="text-xs text-slate-300">Firebase, Auth, Firestore, Storage va asosiy xizmatlar holati</p>
             </div>
           </div>
-          <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30">
-            21 ta Collection
+          <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-md border flex items-center gap-1.5 ${
+            systemHealth.every(s => s.status === 'ONLINE')
+              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'
+              : 'bg-amber-500/20 text-amber-300 border-amber-400/30'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${systemHealth.every(s => s.status === 'ONLINE') ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+            {systemHealth.filter(s => s.status === 'ONLINE').length}/{systemHealth.length} Xizmatlar Faol
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-            <p className="text-slate-400 uppercase text-[10px] font-bold">1. Firestore Schemas</p>
-            <p className="text-white font-semibold mt-1">firebase-blueprint.json</p>
-            <p className="text-[11px] text-emerald-400 mt-0.5 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Tayyor va qat'iy tekshirilgan
-            </p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-2">
+          {systemHealth.map((item, i) => (
+            <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-white">{item.service}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{item.details}</p>
+              </div>
+              <div className="text-right">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                  item.status === 'ONLINE'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : item.status === 'WARNING'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                }`}>
+                  {item.status}
+                </span>
+                <span className="text-[9px] font-mono text-slate-400 block mt-0.5">{item.latencyMs} ms</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-          <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-            <p className="text-slate-400 uppercase text-[10px] font-bold">2. Security Rules</p>
-            <p className="text-white font-semibold mt-1">firestore.rules</p>
-            <p className="text-[11px] text-emerald-400 mt-0.5 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> 7 ta rol uchun ABAC / Zero-Trust
-            </p>
+      {/* SECTION 26: ADMIN DATA QUALITY CENTER */}
+      <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-blue-100 text-blue-700">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Ma'lumotlar Sifati Markazi (Data Quality Center)</h3>
+              <p className="text-xs text-slate-500">Talabalar, amaliyotlar va baholar o'rtasidagi yaxlitlik tekshiruvi</p>
+            </div>
           </div>
+          <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-700">
+            {dataQualityIssues.length} ta yozuv
+          </span>
+        </div>
 
-          <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-            <p className="text-slate-400 uppercase text-[10px] font-bold">3. Audit Logging</p>
-            <p className="text-white font-semibold mt-1">Immutable /auditLogs</p>
-            <p className="text-[11px] text-emerald-400 mt-0.5 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Avtomatik tranzaksiya qaydlari
-            </p>
-          </div>
+        <div className="space-y-2">
+          {dataQualityIssues.map((dq) => (
+            <div
+              key={dq.id}
+              className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+                dq.severity === 'Critical'
+                  ? 'bg-rose-50/50 border-rose-200 text-rose-900'
+                  : dq.severity === 'Warning'
+                  ? 'bg-amber-50/50 border-amber-200 text-amber-900'
+                  : 'bg-emerald-50/40 border-emerald-200 text-emerald-900'
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                {dq.severity === 'Critical' ? (
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                ) : dq.severity === 'Warning' ? (
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold">{dq.category}</span>
+                    <span
+                      className={`px-2 py-0.2 text-[10px] font-bold rounded ${
+                        dq.severity === 'Critical'
+                          ? 'bg-rose-100 text-rose-800'
+                          : dq.severity === 'Warning'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-emerald-100 text-emerald-800'
+                      }`}
+                    >
+                      {dq.severity}
+                    </span>
+                  </div>
+                  <p className="text-xs mt-1 opacity-90">{dq.description}</p>
+                </div>
+              </div>
+
+              <div className="text-right font-mono font-bold text-sm shrink-0">
+                {dq.count > 0 ? `${dq.count} ta` : 'OK'}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

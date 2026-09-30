@@ -1,0 +1,80 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Default Deny All
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isPracticeStaff() {
+      return isSignedIn() && (
+        request.auth.token.role == 'SUPER_ADMIN' ||
+        request.auth.token.role == 'PRACTICE_HEAD' ||
+        request.auth.token.role == 'PRACTICE_STAFF'
+      );
+    }
+
+    function isSupervisor() {
+      return isSignedIn() && (
+        isPracticeStaff() ||
+        request.auth.token.role == 'PRACTICE_SUPERVISOR'
+      );
+    }
+
+    function isStudentOwner(studentId) {
+      return isSignedIn() && (
+        request.auth.uid == studentId ||
+        request.auth.token.studentId == studentId
+      );
+    }
+
+    // File type and size validations
+    function isValidFileType() {
+      return request.resource.contentType.matches('application/pdf')
+          || request.resource.contentType.matches('image/jpeg')
+          || request.resource.contentType.matches('image/png')
+          || request.resource.contentType.matches('application/msword')
+          || request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    }
+
+    function isValidFileSize() {
+      return request.resource.size <= 15 * 1024 * 1024; // 15MB max
+    }
+
+    // --- STUDENT FILES (DIARIES, LOGBOOKS, ATTACHMENTS) ---
+    match /students/{studentId}/{fileName} {
+      allow read: if isSignedIn() && (
+        isStudentOwner(studentId) ||
+        isSupervisor() ||
+        isPracticeStaff()
+      );
+      allow create, update: if isSignedIn() && (
+        isStudentOwner(studentId) || isPracticeStaff()
+      ) && isValidFileType() && isValidFileSize();
+      allow delete: if isPracticeStaff();
+    }
+
+    // --- OFFICIAL PRACTICE DOCUMENTS (SYLLABUS, ORDERS, TEMPLATES) ---
+    match /documents/{docId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeStaff() && isValidFileType() && isValidFileSize();
+      allow delete: if isPracticeStaff();
+    }
+
+    // --- OFFICIAL VEDOMOSTS & TRANSCRIPTS ---
+    match /vedomosts/{vedomostId}/{fileName} {
+      allow read: if isSignedIn() && (
+        isSupervisor() ||
+        isPracticeStaff() ||
+        request.auth.token.role == 'FACULTY_DEAN'
+      );
+      allow write: if isPracticeStaff() && isValidFileType() && isValidFileSize();
+      allow delete: if false; // Immutable official archive
+    }
+  }
+}

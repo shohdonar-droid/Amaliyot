@@ -1,6 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole, CanonicalUserRole, RoleConfig } from '../types';
 import { storageService } from '../services/storageService';
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { auth, db, googleProvider } from '../services/firebase';
 
 export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
   // Canonical Roles (Uppercase)
@@ -110,22 +118,30 @@ export function toCanonicalRole(role: UserRole): CanonicalUserRole {
   return ROLE_CONFIGS[role]?.canonicalRole || 'PRACTICE_HEAD';
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   currentUser: User | null;
+  firebaseUser: FirebaseUser | null;
   role: UserRole;
   canonicalRole: CanonicalUserRole;
   roleConfig: RoleConfig;
-  login: (usernameOrEmail: string, password?: string) => boolean;
-  logout: () => void;
-  switchRole: (role: UserRole) => void;
+  loading: boolean;
   isAuthenticated: boolean;
+  isFirebaseAuthenticated: boolean;
+  login: (usernameOrEmail: string, password?: string) => boolean;
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  switchRole: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const CURRENT_USER_KEY = 'tibbiyot_amaliyot_auth_user_v2';
+const AUTH_TYPE_KEY = 'tma_auth_type';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [loading, setLoading] = useState<boolean>(true);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isFirebaseAuthenticated, setIsFirebaseAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem(CURRENT_USER_KEY);
     if (saved) {
@@ -139,6 +155,128 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return defaultHead;
   });
 
+  // Listen for Firebase Auth state changes
+  useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        // Safe development console logging as requested
+        console.log('Firebase Auth: CONNECTED');
+        console.log('Firebase user: YES');
+        console.log('Provider: google.com');
+        console.log('UID:', fbUser.uid ? 'mavjud' : 'mavjud emas');
+        console.log('Email:', fbUser.email ? 'mavjud' : 'mavjud emas');
+
+        let userProfile: User;
+        if (db) {
+          try {
+            const userRef = doc(db, 'users', fbUser.uid);
+            const snap = await getDoc(userRef);
+            if (snap.exists()) {
+              const data = snap.data() as Partial<User>;
+              // Preserve existing assigned role from secure users collection (e.g. PRACTICE_HEAD, SUPER_ADMIN)
+              userProfile = {
+                id: fbUser.uid,
+                uid: fbUser.uid,
+                fullName: data.fullName || fbUser.displayName || 'Google Foydalanuvchisi',
+                role: data.role || 'STUDENT',
+                email: data.email || fbUser.email || '',
+                phone: data.phone || fbUser.phoneNumber || '',
+                photoURL: data.photoURL || fbUser.photoURL || undefined,
+                status: data.status || 'ACTIVE',
+                facultyId: data.facultyId,
+                practicePlaceId: data.practicePlaceId,
+                studentId: data.studentId,
+                supervisorId: data.supervisorId,
+                clinicResponsibleId: data.clinicResponsibleId,
+                createdAt: data.createdAt || new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                lastLoginAt: new Date().toISOString()
+              };
+              updateDoc(userRef, { lastLoginAt: new Date().toISOString() }).catch(() => {});
+            } else {
+              // Self-registration for new Google login is strictly STUDENT role matching security rules
+              userProfile = {
+                id: fbUser.uid,
+                uid: fbUser.uid,
+                fullName: fbUser.displayName || 'Google Foydalanuvchisi',
+                role: 'STUDENT',
+                email: fbUser.email || '',
+                phone: fbUser.phoneNumber || '',
+                photoURL: fbUser.photoURL || undefined,
+                status: 'ACTIVE',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                lastLoginAt: new Date().toISOString()
+              };
+              await setDoc(userRef, userProfile);
+            }
+          } catch (dbErr) {
+            console.warn('Firestore load error for Google user:', dbErr);
+            userProfile = {
+              id: fbUser.uid,
+              uid: fbUser.uid,
+              fullName: fbUser.displayName || 'Google Foydalanuvchisi',
+              role: 'STUDENT',
+              email: fbUser.email || '',
+              phone: fbUser.phoneNumber || '',
+              photoURL: fbUser.photoURL || undefined,
+              status: 'ACTIVE',
+              createdAt: new Date().toISOString(),
+              lastLoginAt: new Date().toISOString()
+            };
+          }
+        } else {
+          userProfile = {
+            id: fbUser.uid,
+            uid: fbUser.uid,
+            fullName: fbUser.displayName || 'Google Foydalanuvchisi',
+            role: 'STUDENT',
+            email: fbUser.email || '',
+            phone: fbUser.phoneNumber || '',
+            photoURL: fbUser.photoURL || undefined,
+            status: 'ACTIVE',
+            createdAt: new Date().toISOString(),
+            lastLoginAt: new Date().toISOString()
+          };
+        }
+
+        setFirebaseUser(fbUser);
+        setIsFirebaseAuthenticated(true);
+        setCurrentUser(userProfile);
+        localStorage.setItem(AUTH_TYPE_KEY, 'firebase');
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userProfile));
+      } else {
+        setFirebaseUser(null);
+        const authType = localStorage.getItem(AUTH_TYPE_KEY);
+        if (authType === 'firebase') {
+          setIsFirebaseAuthenticated(false);
+          setCurrentUser(null);
+          localStorage.removeItem(CURRENT_USER_KEY);
+          localStorage.removeItem(AUTH_TYPE_KEY);
+        } else {
+          setIsFirebaseAuthenticated(false);
+          // Keep demo/local login intact if demo was used
+          const saved = localStorage.getItem(CURRENT_USER_KEY);
+          if (saved) {
+            try {
+              setCurrentUser(JSON.parse(saved));
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
@@ -146,6 +284,126 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(CURRENT_USER_KEY);
     }
   }, [currentUser]);
+
+  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
+    if (!auth) {
+      return { success: false, error: 'Firebase Auth mavjud emas' };
+    }
+    try {
+      setLoading(true);
+      const cred = await signInWithPopup(auth, googleProvider);
+      const fbUser = cred.user;
+
+      console.log('Firebase Auth: CONNECTED');
+      console.log('Firebase user: YES');
+      console.log('Provider: google.com');
+      console.log('UID: mavjud');
+      console.log('Email:', fbUser.email ? 'mavjud' : 'mavjud emas');
+
+      let userProfile: User;
+      if (db) {
+        try {
+          const userRef = doc(db, 'users', fbUser.uid);
+          const snap = await getDoc(userRef);
+          if (snap.exists()) {
+            const data = snap.data() as Partial<User>;
+            userProfile = {
+              id: fbUser.uid,
+              uid: fbUser.uid,
+              fullName: data.fullName || fbUser.displayName || 'Google Foydalanuvchisi',
+              role: data.role || 'STUDENT',
+              email: data.email || fbUser.email || '',
+              phone: data.phone || fbUser.phoneNumber || '',
+              photoURL: data.photoURL || fbUser.photoURL || undefined,
+              status: data.status || 'ACTIVE',
+              facultyId: data.facultyId,
+              practicePlaceId: data.practicePlaceId,
+              studentId: data.studentId,
+              supervisorId: data.supervisorId,
+              clinicResponsibleId: data.clinicResponsibleId,
+              createdAt: data.createdAt || new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              lastLoginAt: new Date().toISOString()
+            };
+            updateDoc(userRef, { lastLoginAt: new Date().toISOString() }).catch(() => {});
+          } else {
+            // Self-registration for new Google user is strictly STUDENT role
+            userProfile = {
+              id: fbUser.uid,
+              uid: fbUser.uid,
+              fullName: fbUser.displayName || 'Google Foydalanuvchisi',
+              role: 'STUDENT',
+              email: fbUser.email || '',
+              phone: fbUser.phoneNumber || '',
+              photoURL: fbUser.photoURL || undefined,
+              status: 'ACTIVE',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              lastLoginAt: new Date().toISOString()
+            };
+            await setDoc(userRef, userProfile);
+          }
+        } catch (dbErr) {
+          console.warn('Firestore load/create error on Google Login:', dbErr);
+          userProfile = {
+            id: fbUser.uid,
+            uid: fbUser.uid,
+            fullName: fbUser.displayName || 'Google Foydalanuvchisi',
+            role: 'STUDENT',
+            email: fbUser.email || '',
+            phone: fbUser.phoneNumber || '',
+            photoURL: fbUser.photoURL || undefined,
+            status: 'ACTIVE',
+            createdAt: new Date().toISOString(),
+            lastLoginAt: new Date().toISOString()
+          };
+        }
+      } else {
+        userProfile = {
+          id: fbUser.uid,
+          uid: fbUser.uid,
+          fullName: fbUser.displayName || 'Google Foydalanuvchisi',
+          role: 'STUDENT',
+          email: fbUser.email || '',
+          phone: fbUser.phoneNumber || '',
+          photoURL: fbUser.photoURL || undefined,
+          status: 'ACTIVE',
+          createdAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString()
+        };
+      }
+
+      setFirebaseUser(fbUser);
+      setIsFirebaseAuthenticated(true);
+      setCurrentUser(userProfile);
+      localStorage.setItem(AUTH_TYPE_KEY, 'firebase');
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userProfile));
+
+      storageService.recordAuditLog({
+        userId: userProfile.uid,
+        userRole: userProfile.role,
+        action: 'login',
+        entity: 'users',
+        entityId: userProfile.uid,
+        metadata: JSON.stringify({ email: userProfile.email, provider: 'google.com' })
+      });
+
+      setLoading(false);
+      return { success: true };
+    } catch (err: any) {
+      setLoading(false);
+      const code = err?.code || '';
+      const msg = err?.message || 'Google orqali kirishda xatolik yuz berdi';
+      console.error('Google Sign-In Error:', code, msg);
+      if (code === 'auth/popup-closed-by-user') {
+        return { success: false, error: 'Google login oynasi yopildi.' };
+      }
+      if (code === 'auth/unauthorized-domain') {
+        return { success: false, error: 'Ushbu domen Firebase Console da Authorized Domains ga kiritilmagan.' };
+      }
+      return { success: false, error: msg };
+    }
+  };
 
   const login = (usernameOrEmail: string, password?: string): boolean => {
     const user = storageService.authenticate(usernameOrEmail, password);
@@ -156,6 +414,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastLoginAt: now
       };
       setCurrentUser(updatedUser);
+      setIsFirebaseAuthenticated(false);
+      setFirebaseUser(null);
+      localStorage.setItem(AUTH_TYPE_KEY, 'demo');
       storageService.saveUser(updatedUser);
       storageService.recordAuditLog({
         userId: user.uid || user.id,
@@ -163,14 +424,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         action: 'login',
         entity: 'users',
         entityId: user.uid || user.id,
-        metadata: JSON.stringify({ email: user.email, loginTime: now })
+        metadata: JSON.stringify({ email: user.email, loginTime: now, authType: 'local_demo' })
       });
       return true;
     }
     return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (auth && isFirebaseAuthenticated) {
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.warn('SignOut error:', err);
+      }
+    }
     if (currentUser) {
       storageService.recordAuditLog({
         userId: currentUser.uid || currentUser.id,
@@ -181,6 +449,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
     setCurrentUser(null);
+    setFirebaseUser(null);
+    setIsFirebaseAuthenticated(false);
+    localStorage.removeItem(CURRENT_USER_KEY);
+    localStorage.removeItem(AUTH_TYPE_KEY);
   };
 
   const switchRole = (newRole: UserRole) => {
@@ -213,13 +485,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         currentUser,
+        firebaseUser,
         role: activeRole,
         canonicalRole,
         roleConfig,
+        loading,
         login,
+        loginWithGoogle,
         logout,
         switchRole,
-        isAuthenticated: !!currentUser
+        isAuthenticated: !!currentUser,
+        isFirebaseAuthenticated
       }}
     >
       {children}

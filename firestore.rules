@@ -58,7 +58,14 @@ service cloud.firestore {
         request.auth.uid == userId ||
         isPracticeStaff()
       );
-      allow create: if isPracticeHead() || (isSignedIn() && request.auth.uid == userId);
+      // Practice Head and Super Admin can provision staff, supervisors, deans, clinic responsibles.
+      // Self-registration is strictly restricted to STUDENT role and matching UID.
+      allow create: if isPracticeHead() || (
+        isSignedIn() &&
+        request.auth.uid == userId &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.role == 'STUDENT'
+      );
       allow update: if isSuperAdmin() || (
         isSignedIn() && request.auth.uid == userId &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid'])
@@ -148,11 +155,24 @@ service cloud.firestore {
         resource.data.studentId == getUserData().studentId ||
         (getUserRole() == 'CLINIC_RESPONSIBLE' && getUserData().practicePlaceId == resource.data.practicePlaceId)
       );
-      allow create, update: if isSignedIn() && (
+      // Student can create their own attendance record (e.g. check-in via QR)
+      allow create: if isSignedIn() && (
         isPracticeStaff() ||
         isSupervisor() ||
         getUserRole() == 'CLINIC_RESPONSIBLE' ||
         (getUserRole() == 'STUDENT' && request.resource.data.studentId == getUserData().studentId)
+      );
+      // Practice staff, supervisors, clinic responsibles can update attendance.
+      // Student can ONLY update their own existing record and CANNOT alter the studentId.
+      allow update: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        getUserRole() == 'CLINIC_RESPONSIBLE' ||
+        (
+          getUserRole() == 'STUDENT' &&
+          resource.data.studentId == getUserData().studentId &&
+          request.resource.data.studentId == resource.data.studentId
+        )
       );
       allow delete: if isPracticeHead();
     }
@@ -183,7 +203,12 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         isPracticeStaff() ||
         isSupervisor() ||
-        (getUserRole() == 'STUDENT' && resource.data.studentId == getUserData().studentId && resource.data.status == 'PENDING')
+        (
+          getUserRole() == 'STUDENT' &&
+          resource.data.studentId == getUserData().studentId &&
+          request.resource.data.studentId == resource.data.studentId &&
+          resource.data.status == 'PENDING'
+        )
       );
       allow delete: if isPracticeHead();
     }
@@ -202,10 +227,20 @@ service cloud.firestore {
         (getUserRole() == 'FACULTY_DEAN') ||
         (getUserRole() == 'CLINIC_RESPONSIBLE')
       );
-      allow create, update: if isSignedIn() && (
+      allow create: if isSignedIn() && (
         isPracticeStaff() ||
         isSupervisor() ||
         (getUserRole() == 'STUDENT' && request.resource.data.studentId == getUserData().studentId)
+      );
+      // Student can ONLY update their own skill record and CANNOT alter the studentId.
+      allow update: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        (
+          getUserRole() == 'STUDENT' &&
+          resource.data.studentId == getUserData().studentId &&
+          request.resource.data.studentId == resource.data.studentId
+        )
       );
       allow delete: if isPracticeHead();
     }
@@ -227,7 +262,12 @@ service cloud.firestore {
         isPracticeStaff() ||
         isSupervisor() ||
         getUserRole() == 'CLINIC_RESPONSIBLE' ||
-        (getUserRole() == 'STUDENT' && resource.data.studentId == getUserData().studentId && resource.data.status in ['PENDING', 'PENDING_REVIEW', 'REVISION'])
+        (
+          getUserRole() == 'STUDENT' &&
+          resource.data.studentId == getUserData().studentId &&
+          request.resource.data.studentId == resource.data.studentId &&
+          resource.data.status in ['PENDING', 'PENDING_REVIEW', 'REVISION']
+        )
       );
       allow delete: if isPracticeHead();
     }
@@ -269,6 +309,19 @@ service cloud.firestore {
     match /assessmentSettings/{settingId} {
       allow read: if isSignedIn();
       allow write: if isPracticeHead();
+    }
+
+    // --- VEDOMOSTS ---
+    match /vedomosts/{vedomostId} {
+      allow read: if isSignedIn() && (
+        isPracticeStaff() ||
+        isSupervisor() ||
+        getUserRole() == 'FACULTY_DEAN' ||
+        resource.data.students.hasAny([getUserData().studentId])
+      );
+      allow create: if isPracticeHead();
+      allow update: if isPracticeStaff() || isSupervisor() || getUserRole() == 'FACULTY_DEAN';
+      allow delete: if isSuperAdmin();
     }
 
     // --- DOCUMENTS ---

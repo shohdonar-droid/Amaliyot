@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { getAuth, Auth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, Firestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
@@ -28,6 +28,8 @@ let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 try {
   if (!getApps().length) {
@@ -36,13 +38,15 @@ try {
     app = getApp();
   }
   auth = getAuth(app);
-  db = getFirestore(app);
+  db = envConfig.firestoreDatabaseId && envConfig.firestoreDatabaseId !== '(default)'
+    ? getFirestore(app, envConfig.firestoreDatabaseId)
+    : getFirestore(app);
   storage = getStorage(app);
 } catch (err) {
   console.warn('Firebase initialized in fallback mode:', err);
 }
 
-export { app, auth, db, storage };
+export { app, auth, db, storage, googleProvider };
 
 export enum OperationType {
   CREATE = 'create',
@@ -93,3 +97,37 @@ export async function testFirestoreConnection(): Promise<boolean> {
     return false;
   }
 }
+
+export function isFirebaseCloudConfigured(): boolean {
+  const apiKey = (import.meta as any).env?.VITE_FIREBASE_API_KEY;
+  const projectId = (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID;
+  return Boolean(apiKey && projectId && !apiKey.includes('DemoDummy'));
+}
+
+export function getFirebaseConfigStatus(): {
+  isConfigured: boolean;
+  missingVariables: string[];
+  projectIdMasked: string;
+  authDomainMasked: string;
+  mode: 'LIVE_CLOUD' | 'FALLBACK_EMULATOR_MOCK';
+} {
+  const missing: string[] = [];
+  const metaEnv = (import.meta as any).env || {};
+  if (!metaEnv.VITE_FIREBASE_API_KEY || metaEnv.VITE_FIREBASE_API_KEY.includes('DemoDummy')) missing.push('VITE_FIREBASE_API_KEY');
+  if (!metaEnv.VITE_FIREBASE_AUTH_DOMAIN) missing.push('VITE_FIREBASE_AUTH_DOMAIN');
+  if (!metaEnv.VITE_FIREBASE_PROJECT_ID) missing.push('VITE_FIREBASE_PROJECT_ID');
+  if (!metaEnv.VITE_FIREBASE_STORAGE_BUCKET) missing.push('VITE_FIREBASE_STORAGE_BUCKET');
+  if (!metaEnv.VITE_FIREBASE_APP_ID) missing.push('VITE_FIREBASE_APP_ID');
+
+  const projectId = metaEnv.VITE_FIREBASE_PROJECT_ID || envConfig.projectId;
+  const authDomain = metaEnv.VITE_FIREBASE_AUTH_DOMAIN || envConfig.authDomain;
+
+  return {
+    isConfigured: missing.length === 0,
+    missingVariables: missing,
+    projectIdMasked: projectId ? `${projectId.substring(0, 3)}***${projectId.slice(-3)}` : 'NOT_SET',
+    authDomainMasked: authDomain ? `${authDomain.substring(0, 3)}***${authDomain.slice(-5)}` : 'NOT_SET',
+    mode: missing.length === 0 ? 'LIVE_CLOUD' : 'FALLBACK_EMULATOR_MOCK'
+  };
+}
+

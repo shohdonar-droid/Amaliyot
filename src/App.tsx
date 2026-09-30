@@ -24,8 +24,19 @@ import { AuditLogsModule } from './components/modules/auditLogs/AuditLogsModule'
 import { SettingsModule } from './components/modules/settings/SettingsModule';
 
 function AppContent() {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
+        <div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          Tizim yuklanmoqda...
+        </p>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <LoginPage />;
