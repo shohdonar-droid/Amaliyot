@@ -16,12 +16,12 @@ export interface FirebaseConfigOptions {
 // In AI Studio or development, env vars or local config can be provided
 const envConfig: FirebaseConfigOptions = {
   apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || 'AIzaSyDemoDummyKeyForPracticePlatform',
-  authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN || 'tma-amaliyot-portal.firebaseapp.com',
-  projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID || 'tma-amaliyot-portal',
-  storageBucket: (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET || 'tma-amaliyot-portal.appspot.com',
-  messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID || '123456789012',
-  appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID || '1:123456789012:web:abcdef1234567890',
-  firestoreDatabaseId: (import.meta as any).env?.VITE_FIREBASE_DATABASE_ID || '(default)'
+  authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN || 'probable-wall-007pf.firebaseapp.com',
+  projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID || 'probable-wall-007pf',
+  storageBucket: (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET || 'probable-wall-007pf.firebasestorage.app',
+  messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID || '615086558119',
+  appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID || '1:615086558119:web:531fa6b354cfcabdae8482',
+  firestoreDatabaseId: (import.meta as any).env?.VITE_FIREBASE_DATABASE_ID || 'ai-studio-28f73ea3-9fe0-4130-90c7-40ef0040d868'
 };
 
 let app: FirebaseApp | null = null;

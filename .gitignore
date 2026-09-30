@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+.aistudio/
+*service-account*.json
+*credentials*.json
