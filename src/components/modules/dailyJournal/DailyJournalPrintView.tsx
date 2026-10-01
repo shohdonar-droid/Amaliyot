@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Printer, X, Download } from 'lucide-react';
-import { DailyJournal, Student, Practice, PracticePlace, Supervisor, Faculty, Group } from '../../../types';
+import { DailyJournal, Student, Practice, PracticePlace, Supervisor, Faculty, Group, JournalTemplate } from '../../../types';
+import { journalTemplateService } from '../../../services/journalTemplateService';
 
 interface DailyJournalPrintViewProps {
   journal: DailyJournal;
@@ -23,6 +24,14 @@ export function DailyJournalPrintView({
   group,
   onClose
 }: DailyJournalPrintViewProps) {
+  const [template, setTemplate] = useState<JournalTemplate | null>(null);
+
+  useEffect(() => {
+      if (journal.templateId) {
+          journalTemplateService.getTemplateById(journal.templateId).then(setTemplate);
+      }
+  }, [journal.templateId]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -98,74 +107,93 @@ export function DailyJournalPrintView({
           </div>
         </div>
 
-        {/* 1. Bajarilgan ishlar */}
-        <div className="space-y-2 mb-5">
-          <h4 className="font-sans font-bold text-xs uppercase tracking-wider text-slate-900 border-b border-slate-200 pb-1">
-            1. Bugun bajarilgan ishlar tavsifi
-          </h4>
-          <p className="text-xs text-justify leading-relaxed whitespace-pre-wrap pl-2">
-            {journal.workSummary || 'Ishlar tavsifi ko\'rsatilmagan.'}
-          </p>
-        </div>
-
-        {/* 2. Ko'rilgan bemorlar va Muolajalar Jadvali */}
-        <div className="space-y-2 mb-5 font-sans">
-          <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-900">
-              2. Bajarilgan muolajalar va ko'rilgan bemorlar
-            </h4>
-            <span className="text-xs font-semibold text-slate-700">
-              Bemorlar soni: {journal.patientsExaminedCount} nafar
-            </span>
-          </div>
-
-          <table className="w-full text-xs border border-slate-300 text-left">
-            <thead className="bg-slate-100 font-bold text-slate-800 border-b border-slate-300">
-              <tr>
-                <th className="p-2 border-r border-slate-300 w-12 text-center">№</th>
-                <th className="p-2 border-r border-slate-300">Muolaja / Manipulyatsiya nomi</th>
-                <th className="p-2 border-r border-slate-300 w-20 text-center">Soni</th>
-                <th className="p-2 w-36 text-center">Ishtirok darajasi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {journal.procedures && journal.procedures.length > 0 ? (
-                journal.procedures.map((p, idx) => (
-                  <tr key={idx} className="border-b border-slate-200">
-                    <td className="p-2 border-r border-slate-300 text-center font-mono">{idx + 1}</td>
-                    <td className="p-2 border-r border-slate-300 font-medium">{p.name}</td>
-                    <td className="p-2 border-r border-slate-300 text-center font-bold">{p.count}</td>
-                    <td className="p-2 text-center text-slate-600">{p.participationType}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="p-3 text-center text-slate-400 italic">
-                    Bajarilgan muolajalar qayd etilmagan.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 3. Klinik holatlar tahlili */}
-        {journal.clinicalCases && journal.clinicalCases.length > 0 && (
-          <div className="space-y-2 mb-5">
+        {/* Content Section */}
+        {template && template.id === 'PSYCHOLOGY_DAILY' ? (
+          <div className="space-y-4 mb-6">
             <h4 className="font-sans font-bold text-xs uppercase tracking-wider text-slate-900 border-b border-slate-200 pb-1">
-              3. Klinik holatlar tahlili (Keys kuratsiyasi)
+              3. Amaliyot kundaligi (Psixologiya)
             </h4>
-            {journal.clinicalCases.map((c, i) => (
-              <div key={i} className="text-xs pl-2 space-y-1">
-                <p>
-                  <strong>Klinik tashxis:</strong> {c.caseTitle} {c.patientAgeGender ? `(${c.patientAgeGender})` : ''}
-                </p>
-                {c.complaints && <p><strong>Shikoyat va anamnez:</strong> {c.complaints} {c.anamnesis}</p>}
-                {c.treatmentTactics && <p><strong>Davo taktikasi:</strong> {c.treatmentTactics}</p>}
-                {c.learnedAspect && <p className="italic text-slate-700"><strong>Talabaning xulosasi:</strong> {c.learnedAspect}</p>}
-              </div>
+            {template.fields.sort((a, b) => a.order - b.order).map(field => (
+                <div key={field.key} className="border-b border-slate-100 pb-2">
+                    <p className="font-bold text-slate-700 text-[11px] uppercase tracking-wider">{field.label}:</p>
+                    <p className="text-xs text-slate-800 font-serif leading-relaxed mt-1">
+                        {String(journal.activityData?.[field.key] || '---')}
+                    </p>
+                </div>
             ))}
           </div>
+        ) : (
+          <>
+            {/* 1. Bajarilgan ishlar */}
+            <div className="space-y-2 mb-5">
+              <h4 className="font-sans font-bold text-xs uppercase tracking-wider text-slate-900 border-b border-slate-200 pb-1">
+                1. Bugun bajarilgan ishlar tavsifi
+              </h4>
+              <p className="text-xs text-justify leading-relaxed whitespace-pre-wrap pl-2">
+                {journal.workSummary || 'Ishlar tavsifi ko\'rsatilmagan.'}
+              </p>
+            </div>
+
+            {/* 2. Ko'rilgan bemorlar va Muolajalar Jadvali */}
+            <div className="space-y-2 mb-5 font-sans">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                  2. Bajarilgan muolajalar va ko'rilgan bemorlar
+                </h4>
+                <span className="text-xs font-semibold text-slate-700">
+                  Bemorlar soni: {journal.patientsExaminedCount} nafar
+                </span>
+              </div>
+
+              <table className="w-full text-xs border border-slate-300 text-left">
+                <thead className="bg-slate-100 font-bold text-slate-800 border-b border-slate-300">
+                  <tr>
+                    <th className="p-2 border-r border-slate-300 w-12 text-center">№</th>
+                    <th className="p-2 border-r border-slate-300">Muolaja / Manipulyatsiya nomi</th>
+                    <th className="p-2 border-r border-slate-300 w-20 text-center">Soni</th>
+                    <th className="p-2 w-36 text-center">Ishtirok darajasi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {journal.procedures && journal.procedures.length > 0 ? (
+                    journal.procedures.map((p, idx) => (
+                      <tr key={idx} className="border-b border-slate-200">
+                        <td className="p-2 border-r border-slate-300 text-center font-mono">{idx + 1}</td>
+                        <td className="p-2 border-r border-slate-300 font-medium">{p.name}</td>
+                        <td className="p-2 border-r border-slate-300 text-center font-bold">{p.count}</td>
+                        <td className="p-2 text-center text-slate-600">{p.participationType}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="p-3 text-center text-slate-400 italic">
+                        Bajarilgan muolajalar qayd etilmagan.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 3. Klinik holatlar tahlili */}
+            {journal.clinicalCases && journal.clinicalCases.length > 0 && (
+              <div className="space-y-2 mb-5">
+                <h4 className="font-sans font-bold text-xs uppercase tracking-wider text-slate-900 border-b border-slate-200 pb-1">
+                  3. Klinik holatlar tahlili (Keys kuratsiyasi)
+                </h4>
+                {journal.clinicalCases.map((c, i) => (
+                  <div key={i} className="text-xs pl-2 space-y-1">
+                    <p>
+                      <strong>Klinik tashxis:</strong> {c.caseTitle} {c.patientAgeGender ? `(${c.patientAgeGender})` : ''}
+                    </p>
+                    {c.complaints && <p><strong>Shikoyat va anamnez:</strong> {c.complaints} {c.anamnesis}</p>}
+                    {c.treatmentTactics && <p><strong>Davo taktikasi:</strong> {c.treatmentTactics}</p>}
+                    {c.learnedAspect && <p className="italic text-slate-700"><strong>Talabaning xulosasi:</strong> {c.learnedAspect}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {/* 4. O'z-o'zini tahlil va nazariya */}

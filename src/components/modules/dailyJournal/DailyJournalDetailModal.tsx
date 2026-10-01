@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar,
   Building2,
@@ -17,7 +17,8 @@ import {
   Image as ImageIcon,
   Edit3
 } from 'lucide-react';
-import { DailyJournal, Student, Practice, PracticePlace, Supervisor } from '../../../types';
+import { DailyJournal, Student, Practice, PracticePlace, Supervisor, JournalTemplate } from '../../../types';
+import { journalTemplateService } from '../../../services/journalTemplateService';
 import { Modal } from '../../common/Modal';
 import { StatusBadge } from '../../common/Badge';
 
@@ -50,6 +51,16 @@ export function DailyJournalDetailModal({
   canReview,
   canEdit
 }: DailyJournalDetailModalProps) {
+  const [template, setTemplate] = useState<JournalTemplate | null>(null);
+
+  useEffect(() => {
+    if (journal?.templateId) {
+        journalTemplateService.getTemplateById(journal.templateId).then(setTemplate);
+    } else {
+        setTemplate(null);
+    }
+  }, [journal?.templateId]);
+
   if (!journal) return null;
 
   const statusUpper = journal.status.toUpperCase();
@@ -162,102 +173,122 @@ export function DailyJournalDetailModal({
           </div>
         </div>
 
-        {/* Section B: Bajarilgan ishlar */}
-        <div className="space-y-1.5">
-          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <FileText className="w-4 h-4 text-blue-600" />
-            <span>Bugun bajarilgan ishlar tavsifi</span>
-          </h4>
-          <div className="p-3.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
-            {journal.workSummary || 'Bajarilgan ishlar matni kiritilmagan.'}
-          </div>
-        </div>
-
-        {/* Section C & D: Bemorlar va Bajarilgan Muolajalar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <HeartPulse className="w-4 h-4 text-indigo-600" />
-              <span>Ko'rilgan bemorlar</span>
-            </h4>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white rounded-xl border border-slate-200 flex flex-col items-center justify-center font-black text-indigo-600 text-lg shadow-2xs">
-                {journal.patientsExaminedCount}
-                <span className="text-[9px] font-normal text-slate-400 -mt-1">nafar</span>
-              </div>
-              <div className="text-xs text-slate-600">
-                <p className="font-medium text-slate-700">Tashxislar va holatlar:</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  {journal.patientDiagnosesSummary || 'Klinik bo\'lim bemorlari umumiy kuratsiyasi.'}
-                </p>
+        {/* Section B, C, D, E: Bajarilgan ishlar va keyslar */}
+        {template && template.id === 'PSYCHOLOGY_DAILY' ? (
+            <div className="space-y-4">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  <span>Amaliyot kundaligi (Psixologiya)</span>
+                </h4>
+                {template.fields.sort((a, b) => a.order - b.order).map(field => (
+                    <div key={field.key} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                        <p className="text-[11px] font-bold text-slate-700 uppercase">{field.label}:</p>
+                        <p className="text-xs text-slate-800 font-serif leading-relaxed">
+                            {String(journal.activityData?.[field.key] || '---')}
+                        </p>
+                    </div>
+                ))}
+            </div>
+        ) : (
+          <>
+            {/* Section B: Bajarilgan ishlar */}
+            <div className="space-y-1.5">
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-600" />
+                <span>Bugun bajarilgan ishlar tavsifi</span>
+              </h4>
+              <div className="p-3.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+                {journal.workSummary || 'Bajarilgan ishlar matni kiritilmagan.'}
               </div>
             </div>
-          </div>
 
-          {/* Section D: Muolajalar */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <Stethoscope className="w-4 h-4 text-emerald-600" />
-              <span>Bajarilgan muolajalar ({journal.procedures?.length || journal.proceduresDone?.length || 0})</span>
-            </h4>
-            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-              {journal.procedures && journal.procedures.length > 0 ? (
-                journal.procedures.map((p, idx) => (
-                  <div key={p.id || idx} className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-200 text-xs">
-                    <span className="font-medium text-slate-800 truncate mr-2">{p.name}</span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="px-1.5 py-0.5 font-bold text-[10px] bg-blue-100 text-blue-800 rounded">
-                        {p.count} ta
-                      </span>
-                      <span className="px-1.5 py-0.5 text-[9px] font-medium bg-slate-100 text-slate-600 rounded">
-                        {p.participationType}
-                      </span>
-                    </div>
+            {/* Section C & D: Bemorlar va Bajarilgan Muolajalar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <HeartPulse className="w-4 h-4 text-indigo-600" />
+                  <span>Ko'rilgan bemorlar</span>
+                </h4>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white rounded-xl border border-slate-200 flex flex-col items-center justify-center font-black text-indigo-600 text-lg shadow-2xs">
+                    {journal.patientsExaminedCount}
+                    <span className="text-[9px] font-normal text-slate-400 -mt-1">nafar</span>
                   </div>
-                ))
-              ) : (
-                journal.proceduresDone?.map((p, idx) => (
-                  <div key={idx} className="bg-white p-2 rounded-lg border border-slate-200 text-xs text-slate-700">
-                    {p}
+                  <div className="text-xs text-slate-600">
+                    <p className="font-medium text-slate-700">Tashxislar va holatlar:</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {journal.patientDiagnosesSummary || 'Klinik bo\'lim bemorlari umumiy kuratsiyasi.'}
+                    </p>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+                </div>
+              </div>
 
-        {/* Section E: Klinik holatlar */}
-        {journal.clinicalCases && journal.clinicalCases.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>Klinik keyslar tahlili</span>
-            </h4>
-            <div className="space-y-3">
-              {journal.clinicalCases.map((c, i) => (
-                <div key={c.id || i} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
-                  <div className="flex justify-between items-center font-bold text-slate-900 border-b border-slate-200 pb-1.5">
-                    <span>{c.caseTitle}</span>
-                    <span className="text-slate-500 font-normal">{c.patientAgeGender}</span>
-                  </div>
-                  {c.complaints && (
-                    <p className="text-slate-700"><strong className="text-slate-900">Shikoyat va anamnez:</strong> {c.complaints} {c.anamnesis}</p>
-                  )}
-                  {c.presumptiveDiagnosis && (
-                    <p className="text-slate-700"><strong className="text-slate-900">Tashxis:</strong> {c.presumptiveDiagnosis}</p>
-                  )}
-                  {c.treatmentTactics && (
-                    <p className="text-slate-700"><strong className="text-slate-900">Davo taktikasi:</strong> {c.treatmentTactics}</p>
-                  )}
-                  {c.learnedAspect && (
-                    <div className="p-2 bg-blue-50 text-blue-900 rounded-lg text-[11px] font-medium mt-1">
-                      💡 <strong>Talabaning o'rgangan jihati:</strong> {c.learnedAspect}
-                    </div>
+              {/* Section D: Muolajalar */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Stethoscope className="w-4 h-4 text-emerald-600" />
+                  <span>Bajarilgan muolajalar ({journal.procedures?.length || journal.proceduresDone?.length || 0})</span>
+                </h4>
+                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                  {journal.procedures && journal.procedures.length > 0 ? (
+                    journal.procedures.map((p, idx) => (
+                      <div key={p.id || idx} className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-200 text-xs">
+                        <span className="font-medium text-slate-800 truncate mr-2">{p.name}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="px-1.5 py-0.5 font-bold text-[10px] bg-blue-100 text-blue-800 rounded">
+                            {p.count} ta
+                          </span>
+                          <span className="px-1.5 py-0.5 text-[9px] font-medium bg-slate-100 text-slate-600 rounded">
+                            {p.participationType}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    journal.proceduresDone?.map((p, idx) => (
+                      <div key={idx} className="bg-white p-2 rounded-lg border border-slate-200 text-xs text-slate-700">
+                        {p}
+                      </div>
+                    ))
                   )}
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
+
+            {/* Section E: Klinik holatlar */}
+            {journal.clinicalCases && journal.clinicalCases.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span>Klinik keyslar tahlili</span>
+                </h4>
+                <div className="space-y-3">
+                  {journal.clinicalCases.map((c, i) => (
+                    <div key={c.id || i} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+                      <div className="flex justify-between items-center font-bold text-slate-900 border-b border-slate-200 pb-1.5">
+                        <span>{c.caseTitle}</span>
+                        <span className="text-slate-500 font-normal">{c.patientAgeGender}</span>
+                      </div>
+                      {c.complaints && (
+                        <p className="text-slate-700"><strong className="text-slate-900">Shikoyat va anamnez:</strong> {c.complaints} {c.anamnesis}</p>
+                      )}
+                      {c.presumptiveDiagnosis && (
+                        <p className="text-slate-700"><strong className="text-slate-900">Tashxis:</strong> {c.presumptiveDiagnosis}</p>
+                      )}
+                      {c.treatmentTactics && (
+                        <p className="text-slate-700"><strong className="text-slate-900">Davo taktikasi:</strong> {c.treatmentTactics}</p>
+                      )}
+                      {c.learnedAspect && (
+                        <div className="p-2 bg-blue-50 text-blue-900 rounded-lg text-[11px] font-medium mt-1">
+                          💡 <strong>Talabaning o'rgangan jihati:</strong> {c.learnedAspect}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Section F & G: Nazariya va Refleksiya */}

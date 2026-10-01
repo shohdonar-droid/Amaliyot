@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginPage } from './components/auth/LoginPage';
 import { Layout } from './components/layout/Layout';
 import { ActiveModule } from './components/layout/Sidebar';
+import { journalTemplateService } from './services/journalTemplateService';
 
 // Modules
 import { DashboardModule } from './components/modules/dashboard/DashboardModule';
@@ -26,6 +27,10 @@ import { SettingsModule } from './components/modules/settings/SettingsModule';
 function AppContent() {
   const { isAuthenticated, loading } = useAuth();
   const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
+
+  useEffect(() => {
+    journalTemplateService.seedPsixologiyaTemplate().catch(console.error);
+  }, []);
 
   if (loading) {
     return (

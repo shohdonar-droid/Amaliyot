@@ -430,6 +430,33 @@ export interface DailyJournal {
   supervisorReviewDeadline?: string; // Timestamp ISO
   createdAt: string; // Timestamp ISO
   updatedAt: string; // Timestamp ISO
+  // Universal fields
+  templateId?: string;
+  practiceTypeId?: string;
+  activityData?: Record<string, unknown>;
+}
+
+export type JournalFieldType = "text" | "textarea" | "number" | "select" | "checkbox";
+
+export interface JournalTemplateField {
+  key: string;
+  label: string;
+  type: JournalFieldType;
+  required: boolean;
+  placeholder?: string;
+  order: number;
+}
+
+export interface JournalTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  directionId?: string;
+  practiceTypeId?: string;
+  fields: JournalTemplateField[];
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type StandardSkillCategory = 

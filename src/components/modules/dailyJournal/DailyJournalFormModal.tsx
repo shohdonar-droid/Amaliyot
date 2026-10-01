@@ -19,8 +19,10 @@ import {
   HeartPulse,
   BookOpen
 } from 'lucide-react';
-import { DailyJournal, JournalProcedure, ClinicalCaseItem, JournalAttachment, ProcedureParticipationType, Attendance, PracticeAssignment } from '../../../types';
+import { DailyJournal, JournalProcedure, ClinicalCaseItem, JournalAttachment, ProcedureParticipationType, Attendance, PracticeAssignment, JournalTemplate } from '../../../types';
 import { storageService } from '../../../services/storageService';
+import { journalTemplateService } from '../../../services/journalTemplateService';
+import { PsychologyJournalForm } from './PsychologyJournalForm';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
 import { Modal } from '../../common/Modal';
@@ -81,6 +83,23 @@ export function DailyJournalFormModal({
     initialJournal?.date || targetDate || todayStr
   );
 
+  useEffect(() => {
+    async function loadTemplate() {
+      if (initialJournal?.templateId) {
+        const t = await journalTemplateService.getTemplateById(initialJournal.templateId);
+        setTemplate(t);
+        setActivityData(initialJournal.activityData || {});
+      } else if (studentAssignment) {
+        const templateId = await journalTemplateService.getJournalTemplateForAssignment(studentAssignment);
+        if (templateId) {
+            const t = await journalTemplateService.getTemplateById(templateId);
+            setTemplate(t);
+        }
+      }
+    }
+    loadTemplate();
+  }, [initialJournal, studentAssignment]);
+
   // Validation state
   const [eligibility, setEligibility] = useState<{
     eligible: boolean;
@@ -127,6 +146,10 @@ export function DailyJournalFormModal({
   // Attachments
   const [attachments, setAttachments] = useState<JournalAttachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Template/Dynamic fields
+  const [template, setTemplate] = useState<JournalTemplate | null>(null);
+  const [activityData, setActivityData] = useState<Record<string, unknown>>({});
 
   // Load existing journal when editing or revision
   useEffect(() => {
@@ -350,7 +373,9 @@ export function DailyJournalFormModal({
       photoURLs: attachments.filter(a => a.type === 'image').map(a => a.url),
       status: 'PENDING',
       submittedAt: new Date().toISOString(),
-      version: (initialJournal?.version || 0) + 1
+      version: (initialJournal?.version || 0) + 1,
+      templateId: template?.id,
+      activityData: template?.id === 'PSYCHOLOGY_DAILY' ? activityData : undefined
     };
 
     const res = storageService.submitDailyJournal(
@@ -503,34 +528,43 @@ export function DailyJournalFormModal({
         </div>
 
         {/* Section B: BUGUN BAJARILGAN ISHLAR */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-600" />
-              <span>B. Bugun bajarilgan ishlar (Batafsil matn)</span>
-              <span className="text-rose-500">*</span>
-            </label>
-            <span className={`text-[11px] font-mono ${
-              workSummary.trim().length >= 25 ? 'text-emerald-600 font-semibold' : 'text-slate-400'
-            }`}>
-              {workSummary.trim().length} / min 25 belgi
-            </span>
+        {(!template || template.id !== 'PSYCHOLOGY_DAILY') ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-600" />
+                <span>B. Bugun bajarilgan ishlar (Batafsil matn)</span>
+                <span className="text-rose-500">*</span>
+              </label>
+              <span className={`text-[11px] font-mono ${
+                workSummary.trim().length >= 25 ? 'text-emerald-600 font-semibold' : 'text-slate-400'
+              }`}>
+                {workSummary.trim().length} / min 25 belgi
+              </span>
+            </div>
+            <textarea
+              rows={4}
+              value={workSummary}
+              onChange={e => setWorkSummary(e.target.value)}
+              disabled={!eligibility.eligible}
+              placeholder="Bugun bajargan ishlaringizni batafsil yozing... Masalan: Terapiya bo'limida ertalabki vrachlar konferensiyasida qatnashdim. Palatada bemorlarning shikoyatlarini o'rgandim, qon bosimini o'lchadim, anamnez yig'ishda va EKG tahlilida ishtirok etdim..."
+              className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 leading-relaxed disabled:bg-slate-100"
+            />
+            {workSummary.trim().length > 0 && workSummary.trim().length < 25 && (
+              <p className="text-[11px] text-amber-600 flex items-center gap-1">
+                <Info className="w-3.5 h-3.5" />
+                Iltimos, amaliyotda bajargan ishlaringizni to'liqroq yozing ("Amaliyot o'tadim" kabi qisqa soxta yozuv qabul qilinmaydi).
+              </p>
+            )}
           </div>
-          <textarea
-            rows={4}
-            value={workSummary}
-            onChange={e => setWorkSummary(e.target.value)}
-            disabled={!eligibility.eligible}
-            placeholder="Bugun bajargan ishlaringizni batafsil yozing... Masalan: Terapiya bo'limida ertalabki vrachlar konferensiyasida qatnashdim. Palatada bemorlarning shikoyatlarini o'rgandim, qon bosimini o'lchadim, anamnez yig'ishda va EKG tahlilida ishtirok etdim..."
-            className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 leading-relaxed disabled:bg-slate-100"
-          />
-          {workSummary.trim().length > 0 && workSummary.trim().length < 25 && (
-            <p className="text-[11px] text-amber-600 flex items-center gap-1">
-              <Info className="w-3.5 h-3.5" />
-              Iltimos, amaliyotda bajargan ishlaringizni to'liqroq yozing ("Amaliyot o'tadim" kabi qisqa soxta yozuv qabul qilinmaydi).
-            </p>
-          )}
-        </div>
+        ) : (
+           <PsychologyJournalForm
+              template={template}
+              data={activityData}
+              disabled={!eligibility.eligible}
+              onChange={(key, value) => setActivityData(prev => ({ ...prev, [key]: value }))}
+           />
+        )}
 
         {/* Section C: KO'RILGAN BEMORLAR */}
         <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
