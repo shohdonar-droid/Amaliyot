@@ -17,6 +17,11 @@ export interface FirebaseConfigOptions {
 const isProduction = (import.meta as any).env?.PROD || (import.meta as any).env?.MODE === 'production';
 
 const getEnvConfig = (): FirebaseConfigOptions | null => {
+  console.log('DEBUG: Env vars check:', {
+    apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY,
+    projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID,
+    authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN
+  });
   const apiKey = (import.meta as any).env?.VITE_FIREBASE_API_KEY;
   if (apiKey && !apiKey.includes('DemoDummy')) {
     return {
@@ -64,6 +69,9 @@ try {
     storage = getStorage(app);
   } else {
     console.warn('Firebase: Cloud config missing in production. Firestore and Auth will be disabled.');
+  }
+  if (envConfig) {
+    console.log('Firebase: Initializing with project:', envConfig.projectId, 'AuthDomain:', envConfig.authDomain);
   }
 } catch (err) {
   console.warn('Firebase initialized in fallback mode:', err);

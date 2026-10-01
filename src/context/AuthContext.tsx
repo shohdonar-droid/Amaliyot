@@ -322,29 +322,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // 2. Fallback to storageService mock / local user database
-    const localUser = storageService.authenticate(rawLogin, password);
-    if (localUser) {
-      const now = new Date().toISOString();
-      const updatedUser: User = {
-        ...localUser,
-        lastLoginAt: now
-      };
-      setCurrentUser(updatedUser);
-      setIsFirebaseAuthenticated(false);
-      setFirebaseUser(null);
-      localStorage.setItem(AUTH_TYPE_KEY, 'demo');
-      storageService.saveUser(updatedUser);
-      storageService.recordAuditLog({
-        userId: localUser.uid || localUser.id,
-        userRole: localUser.role,
-        action: 'login',
-        entity: 'users',
-        entityId: localUser.uid || localUser.id,
-        metadata: JSON.stringify({ login: rawLogin, authType: 'aide_login' })
-      });
-      setLoading(false);
-      return { success: true };
+    // 2. Fallback to storageService mock / local user database (ONLY if NOT in production)
+    const isProduction = (import.meta as any).env?.PROD || (import.meta as any).env?.MODE === 'production';
+    if (!isProduction) {
+      const localUser = storageService.authenticate(rawLogin, password);
+      if (localUser) {
+        const now = new Date().toISOString();
+        const updatedUser: User = {
+          ...localUser,
+          lastLoginAt: now
+        };
+        setCurrentUser(updatedUser);
+        setIsFirebaseAuthenticated(false);
+        setFirebaseUser(null);
+        localStorage.setItem(AUTH_TYPE_KEY, 'demo');
+        storageService.saveUser(updatedUser);
+        storageService.recordAuditLog({
+          userId: localUser.uid || localUser.id,
+          userRole: localUser.role,
+          action: 'login',
+          entity: 'users',
+          entityId: localUser.uid || localUser.id,
+          metadata: JSON.stringify({ login: rawLogin, authType: 'aide_login' })
+        });
+        setLoading(false);
+        return { success: true };
+      }
+    } else {
+      console.warn('Authentication: Demo/Local fallback disabled in production.');
     }
 
     setLoading(false);
