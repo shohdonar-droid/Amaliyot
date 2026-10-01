@@ -113,30 +113,43 @@ export function Header({
                 className="absolute right-0 mt-1 w-72 rounded-xl border border-slate-200 bg-white shadow-xl py-1.5 z-50 text-xs"
                 onClick={e => e.stopPropagation()}
               >
-                <div className="px-3 py-2 border-b border-slate-100">
+                <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
                   <p className="font-semibold text-slate-900">Foydalanuvchi tanlash</p>
+                  <span className="text-[10px] text-blue-600 font-mono font-semibold">Super Admin</span>
                 </div>
 
-                {storageService.getUsers().filter(u => u.role !== 'STUDENT').map(user => {
-                  const cfg = ROLE_CONFIGS[user.role] || ROLE_CONFIGS['PRACTICE_HEAD'];
-                  const isSelected = currentUser?.id === user.id;
-                  return (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => { switchRole(user.id); setIsRoleDropdownOpen(false); }}
-                      className={`w-full px-3 py-2 text-left flex items-start justify-between gap-2 hover:bg-slate-50 transition-colors ${
-                        isSelected ? 'bg-blue-50/70 text-blue-700 font-semibold' : 'text-slate-700'
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{user.fullName}</p>
-                        <p className="text-[10px] text-slate-400 truncate">{cfg.title}</p>
-                      </div>
-                      {isSelected && <CheckCircle className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />}
-                    </button>
-                  );
-                })}
+                {/* Reset to Super Admin Button */}
+                <button
+                  type="button"
+                  onClick={() => { switchRole('RESET_SUPER_ADMIN'); setIsRoleDropdownOpen(false); }}
+                  className="w-full px-3 py-2 text-left flex items-center gap-2 bg-purple-50/70 hover:bg-purple-100/80 text-purple-900 font-bold border-b border-purple-100 transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                  <span>Asosiy Super Admin profiliga qaytish</span>
+                </button>
+
+                <div className="max-h-60 overflow-y-auto py-1 space-y-0.5">
+                  {storageService.getUsers().map(user => {
+                    const cfg = ROLE_CONFIGS[user.role] || ROLE_CONFIGS['PRACTICE_HEAD'];
+                    const isSelected = currentUser?.id === user.id;
+                    return (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => { switchRole(user.id); setIsRoleDropdownOpen(false); }}
+                        className={`w-full px-3 py-2 text-left flex items-start justify-between gap-2 hover:bg-slate-50 transition-colors ${
+                          isSelected ? 'bg-blue-50/70 text-blue-700 font-semibold' : 'text-slate-700'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{user.fullName}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{cfg.title}</p>
+                        </div>
+                        {isSelected && <CheckCircle className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

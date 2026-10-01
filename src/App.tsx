@@ -24,9 +24,50 @@ import { NotificationsModule } from './components/modules/notifications/Notifica
 import { AuditLogsModule } from './components/modules/auditLogs/AuditLogsModule';
 import { SettingsModule } from './components/modules/settings/SettingsModule';
 
+const VALID_MODULES: ActiveModule[] = [
+  'dashboard', 'students', 'academic', 'practices', 'practice_places',
+  'supervisors', 'allocation', 'attendance', 'daily_journal', 'skills',
+  'assessments', 'documents', 'reports', 'notifications', 'audit_logs', 'settings'
+];
+
+function getModuleFromUrl(): ActiveModule {
+  const hash = window.location.hash.replace('#', '').trim();
+  if (VALID_MODULES.includes(hash as ActiveModule)) {
+    return hash as ActiveModule;
+  }
+  
+  const path = window.location.pathname.replace(/^\//, '').trim();
+  if (VALID_MODULES.includes(path as ActiveModule)) {
+    return path as ActiveModule;
+  }
+
+  return 'dashboard';
+}
+
 function AppContent() {
   const { isAuthenticated, loading } = useAuth();
-  const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
+  const [activeModule, setActiveModuleState] = useState<ActiveModule>(getModuleFromUrl);
+
+  const setActiveModule = (mod: ActiveModule) => {
+    setActiveModuleState(mod);
+    if (window.location.hash !== `#${mod}`) {
+      window.location.hash = mod;
+    }
+  };
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const mod = getModuleFromUrl();
+      setActiveModuleState(mod);
+    };
+
+    window.addEventListener('hashchange', handleLocationChange);
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('hashchange', handleLocationChange);
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, []);
 
   useEffect(() => {
     journalTemplateService.seedPsixologiyaTemplate().catch(console.error);

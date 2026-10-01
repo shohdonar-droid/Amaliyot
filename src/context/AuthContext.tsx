@@ -282,6 +282,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser]);
 
+  const [originalSuperAdmin, setOriginalSuperAdmin] = useState<User | null>(null);
+
   /**
    * Universal Login with LOGIN + PAROL
    * Resolves login identifier to technical Firebase email and authenticates via Firebase Auth.
@@ -305,15 +307,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const cred = await signInWithEmailAndPassword(auth, email, password);
           if (cred.user) {
+            const isSuper = cred.user.email === 'shohdonar@gmail.com' || rawLogin === 'shohdonar';
+            const userRole: UserRole = isSuper ? 'SUPER_ADMIN' : 'STUDENT';
+            const derivedLogin = cred.user.email ? cred.user.email.split('@')[0] : rawLogin;
+            
+            const immediateProfile: User = {
+              id: cred.user.uid,
+              uid: cred.user.uid,
+              login: derivedLogin,
+              studentCode: derivedLogin.startsWith('T') ? derivedLogin : undefined,
+              fullName: isSuper ? 'SUPER ADMIN' : derivedLogin,
+              role: userRole,
+              email: cred.user.email || '',
+              phone: '',
+              status: 'ACTIVE',
+              createdAt: new Date().toISOString(),
+              lastLoginAt: new Date().toISOString()
+            };
+
             setFirebaseUser(cred.user);
             setIsFirebaseAuthenticated(true);
+            setCurrentUser(immediateProfile);
+            if (isSuper) {
+              setOriginalSuperAdmin(immediateProfile);
+            }
+            localStorage.setItem(AUTH_TYPE_KEY, 'firebase');
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(immediateProfile));
             setLoading(false);
             return { success: true };
           }
         } catch (err: any) {
-          // If password wrong on matching user, stop immediately
           if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-            // Note: could be wrong password or user doesn't exist under this candidate email
+            // wrong password
           }
         }
       }
@@ -330,6 +355,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           lastLoginAt: now
         };
         setCurrentUser(updatedUser);
+        if (updatedUser.role === 'SUPER_ADMIN' || updatedUser.role === 'super_admin') {
+          setOriginalSuperAdmin(updatedUser);
+        }
         setIsFirebaseAuthenticated(false);
         setFirebaseUser(null);
         localStorage.setItem(AUTH_TYPE_KEY, 'demo');
@@ -374,6 +402,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
     setCurrentUser(null);
+    setOriginalSuperAdmin(null);
     setFirebaseUser(null);
     setIsFirebaseAuthenticated(false);
     localStorage.removeItem(CURRENT_USER_KEY);
@@ -381,10 +410,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const switchRole = (userId: string) => {
-    if (canonicalRole !== 'SUPER_ADMIN') return;
+    if (userId === 'RESET_SUPER_ADMIN') {
+      if (originalSuperAdmin) {
+        setCurrentUser(originalSuperAdmin);
+      } else if (firebaseUser?.email === 'shohdonar@gmail.com') {
+        const defaultAdmin: User = {
+          id: firebaseUser.uid,
+          uid: firebaseUser.uid,
+          login: 'shohdonar',
+          fullName: 'SUPER ADMIN',
+          role: 'SUPER_ADMIN',
+          email: 'shohdonar@gmail.com',
+          phone: '',
+          status: 'ACTIVE',
+          createdAt: new Date().toISOString()
+        };
+        setCurrentUser(defaultAdmin);
+      }
+      return;
+    }
+
     const users = storageService.getUsers();
     const userToSwitch = users.find(u => u.id === userId || u.uid === userId);
     if (userToSwitch) {
+      // Save current as original if original not set
+      if (!originalSuperAdmin && (currentUser?.role === 'SUPER_ADMIN' || firebaseUser?.email === 'shohdonar@gmail.com')) {
+        setOriginalSuperAdmin(currentUser);
+      }
       setCurrentUser(userToSwitch);
     }
   };
@@ -392,7 +444,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const activeRole: UserRole = currentUser?.role || 'PRACTICE_HEAD';
   const canonicalRole = toCanonicalRole(activeRole);
   const roleConfig = ROLE_CONFIGS[activeRole] || ROLE_CONFIGS[canonicalRole];
-  const isSuperAdmin = canonicalRole === 'SUPER_ADMIN';
+  const isSuperAdmin = firebaseUser?.email === 'shohdonar@gmail.com' || canonicalRole === 'SUPER_ADMIN' || originalSuperAdmin !== null;
 
   return (
     <AuthContext.Provider
