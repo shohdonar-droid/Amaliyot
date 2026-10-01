@@ -143,6 +143,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isFirebaseAuthenticated, setIsFirebaseAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const isProduction = (import.meta as any).env?.PROD || (import.meta as any).env?.MODE === 'production';
+    if (isProduction) return null;
+
     const saved = localStorage.getItem(CURRENT_USER_KEY);
     if (saved) {
       try {
