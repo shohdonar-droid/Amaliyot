@@ -6034,7 +6034,7 @@ class StorageServiceV2 {
       notifications: [],
       auditLogs: []
     };
-    this.saveState(state);
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(state));
     window.location.reload();
   }
 
