@@ -1,6 +1,6 @@
 import express from 'express';
 import cron from 'node-cron';
-import { dailyJournalService } from './src/services/dailyJournalService';
+import { dailyJournalService } from './src/services/dailyJournalService.ts';
 
 const app = express();
 const port = process.env.PORT || 3000;
