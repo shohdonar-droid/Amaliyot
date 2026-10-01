@@ -2219,46 +2219,37 @@ class StorageServiceV2 {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (parsed.students && parsed.practices && parsed.practicePlaces && parsed.auditLogs) {
-          if (!parsed.attendanceSessions || parsed.attendanceSessions.length === 0) {
-            parsed.attendanceSessions = DEFAULT_ATTENDANCE_SESSIONS_V2;
-          }
-          if (!parsed.attendance || parsed.attendance.length < 5) {
-            parsed.attendance = DEFAULT_ATTENDANCE_V2;
-          }
-          if (!parsed.dailyJournals || parsed.dailyJournals.length < 4 || !parsed.dailyJournals[0].attendanceId) {
-            parsed.dailyJournals = DEFAULT_DAILY_JOURNALS_V2;
-          }
-          if (!parsed.skillLogs || parsed.skillLogs.length === 0) {
-            parsed.skillLogs = DEFAULT_SKILL_LOGS_V2;
-          }
-          if (!parsed.skills || parsed.skills.length < 8) {
-            parsed.skills = DEFAULT_SKILLS_V2;
-          }
-          if (!parsed.studentSkills || parsed.studentSkills.length < 5) {
-            parsed.studentSkills = DEFAULT_STUDENT_SKILLS_V2;
-          }
-          if (!parsed.skillCategories || parsed.skillCategories.length === 0) {
-            parsed.skillCategories = DEFAULT_SKILL_CATEGORIES_V2;
-          }
-          if (!parsed.finalExams || parsed.finalExams.length === 0) {
-            parsed.finalExams = DEFAULT_FINAL_EXAMS_V2;
-          }
-          if (!parsed.attestationCommissions || parsed.attestationCommissions.length === 0) {
-            parsed.attestationCommissions = DEFAULT_COMMISSIONS_V2;
-          }
-          if (!parsed.assessmentSettings) {
-            parsed.assessmentSettings = DEFAULT_ASSESSMENT_SETTINGS_V2;
-          }
-          if (!parsed.assessments || parsed.assessments.length === 0 || !parsed.assessments[0].attendanceMaxScore) {
-            parsed.assessments = DEFAULT_ASSESSMENTS_V2;
-          }
-          if (!parsed.vedomosts || parsed.vedomosts.length === 0) {
-            parsed.vedomosts = DEFAULT_VEDOMOSTS_V2;
-          }
-          if (!parsed.practiceDistributions || parsed.practiceDistributions.length === 0) {
-            parsed.practiceDistributions = DEFAULT_DISTRIBUTIONS_V2;
-          }
+        if (parsed && Array.isArray(parsed.students)) {
+          // Ensure all array fields exist without forcing mock data defaults if empty
+          parsed.users = parsed.users || DEFAULT_USERS_V2;
+          parsed.faculties = parsed.faculties || DEFAULT_FACULTIES;
+          parsed.directions = parsed.directions || DEFAULT_DIRECTIONS;
+          parsed.courses = parsed.courses || DEFAULT_COURSES;
+          parsed.groups = parsed.groups || DEFAULT_GROUPS;
+          parsed.students = parsed.students || [];
+          parsed.practicePlaces = parsed.practicePlaces || [];
+          parsed.practiceDepartments = parsed.practiceDepartments || [];
+          parsed.supervisors = parsed.supervisors || [];
+          parsed.clinicResponsibles = parsed.clinicResponsibles || [];
+          parsed.practices = parsed.practices || [];
+          parsed.practiceDistributions = parsed.practiceDistributions || [];
+          parsed.practiceAssignments = parsed.practiceAssignments || [];
+          parsed.attendance = parsed.attendance || [];
+          parsed.attendanceSessions = parsed.attendanceSessions || [];
+          parsed.dailyJournals = parsed.dailyJournals || [];
+          parsed.skills = parsed.skills || DEFAULT_SKILLS_V2;
+          parsed.studentSkills = parsed.studentSkills || [];
+          parsed.skillLogs = parsed.skillLogs || [];
+          parsed.skillCategories = parsed.skillCategories || DEFAULT_SKILL_CATEGORIES_V2;
+          parsed.tasks = parsed.tasks || [];
+          parsed.assessments = parsed.assessments || [];
+          parsed.finalExams = parsed.finalExams || [];
+          parsed.attestationCommissions = parsed.attestationCommissions || DEFAULT_COMMISSIONS_V2;
+          parsed.assessmentSettings = parsed.assessmentSettings || DEFAULT_ASSESSMENT_SETTINGS_V2;
+          parsed.vedomosts = parsed.vedomosts || [];
+          parsed.documents = parsed.documents || [];
+          parsed.notifications = parsed.notifications || [];
+          parsed.auditLogs = parsed.auditLogs || [];
           return parsed;
         }
       } catch (err) {
@@ -5991,13 +5982,14 @@ class StorageServiceV2 {
 
   // --- NOTIFICATIONS ---
   public clearDatabase(): void {
+    const adminUsers = DEFAULT_USERS_V2.filter(u => u.role === 'SUPER_ADMIN' || u.email === 'shohdonar@gmail.com');
     const state: DatabaseStateV2 = {
       mode: 'PRODUCTION',
-      users: [],
+      users: adminUsers,
       students: [],
-      faculties: [],
-      directions: [],
-      courses: [],
+      faculties: DEFAULT_FACULTIES,
+      directions: DEFAULT_DIRECTIONS,
+      courses: DEFAULT_COURSES,
       groups: [],
       practicePlaces: [],
       practiceDepartments: [],
@@ -6009,33 +6001,21 @@ class StorageServiceV2 {
       attendance: [],
       attendanceSessions: [],
       dailyJournals: [],
-      skills: [],
+      skills: DEFAULT_SKILLS_V2,
       studentSkills: [],
       skillLogs: [],
-      skillCategories: [],
+      skillCategories: DEFAULT_SKILL_CATEGORIES_V2,
       tasks: [],
       assessments: [],
       finalExams: [],
-      attestationCommissions: [],
-      assessmentSettings: {
-        id: 'default-settings',
-        attendanceMaxScore: 20,
-        journalMaxScore: 20,
-        skillsMaxScore: 30,
-        finalExamMaxScore: 30,
-        grade5Min: 86,
-        grade4Min: 71,
-        grade3Min: 56,
-        grade2Min: 0,
-        examCriteriaWeights: { theoryMax: 6, practicalMax: 8, clinicalCaseMax: 8, professionalismMax: 4, safetyMax: 4 }
-      },
+      attestationCommissions: DEFAULT_COMMISSIONS_V2,
+      assessmentSettings: DEFAULT_ASSESSMENT_SETTINGS_V2,
       vedomosts: [],
       documents: [],
       notifications: [],
       auditLogs: []
     };
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(state));
-    window.location.reload();
   }
 
   public getNotifications(): AppNotification[] {

@@ -143,11 +143,11 @@ export function SettingsModule() {
   };
 
   const handleResetData = () => {
-    storageService.resetToDefaults();
-    showToast('info', 'Baza qayta tiklandi', 'Barcha standart test ma\'lumotlari boshlang\'ich holatga keltirildi.');
+    storageService.clearDatabase();
+    showToast('info', 'Tizim 0 holatiga keltirildi', 'Barcha demo talabalar, klinik bazalar va statistikalar to\'liq o\'chirildi.');
     setTimeout(() => {
       window.location.reload();
-    }, 500);
+    }, 400);
   };
 
   const filteredUsers = usersList.filter(u => {
@@ -517,17 +517,17 @@ export function SettingsModule() {
       <div className="p-5 bg-red-50/50 rounded-xl border border-red-200 space-y-3">
         <h4 className="text-sm font-bold text-red-900 flex items-center gap-2">
           <RotateCcw className="w-4 h-4 text-red-600" />
-          <span>Boshlang'ich demo ma'lumotlarni qayta tiklash</span>
+          <span>Tizimni 0 (Nol) holatiga keltirish va demo ma'lumotlarni to'liq o'chirish</span>
         </h4>
         <p className="text-xs text-red-700 leading-relaxed">
-          Agar sinov jarayonida kiritilgan ma'lumotlarni tozalab, universitetning dastlabki to'liq klinik ma'lumotlar bazasini qaytadan yuklamoqchi bo'lsangiz, quyidagi tugmani bosing. Harakat audit loglarida saqlanadi.
+          Ushbu tugma bosilganda tizimdagi barcha demo talabalar, klinik amaliyot joylari (tashkilotlar), amaliyot buyruqlari, davomatlar va statistikalar butunlay o'chiriladi hamda real amaliy jarayonlarni boshlash uchun toza "0 holati" yaratiladi. Super Admin hisobi saqlanadi.
         </p>
         <button
           type="button"
           onClick={() => setIsResetConfirmOpen(true)}
-          className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-xs transition-colors"
+          className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-xs transition-colors cursor-pointer"
         >
-          Ma'lumotlar bazasini boshlang'ich holatga qaytarish
+          Tizimni 0 holatiga keltirish (Demo ma'lumotlarni o'chirish)
         </button>
       </div>
 
