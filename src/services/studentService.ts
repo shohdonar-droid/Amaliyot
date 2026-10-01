@@ -47,22 +47,24 @@ export const studentService = {
   },
 
   createStudent: async (data: Omit<Student, 'id'>) => {
-    return await runTransaction(db, async (transaction) => {
+    if (!db) throw new Error('Firestore is not initialized');
+    const firestoreDb = db;
+    return await runTransaction(firestoreDb, async (transaction) => {
       // Check duplicates
-      const studentIdQ = query(collection(db, COLLECTION), where('studentId', '==', data.studentId));
+      const studentIdQ = query(collection(firestoreDb, COLLECTION), where('studentId', '==', data.studentId));
       if (!(await getDocs(studentIdQ)).empty) throw new Error('Bu studentId allaqachon mavjud.');
       
       if (data.userId) {
-        const userIdQ = query(collection(db, COLLECTION), where('userId', '==', data.userId));
+        const userIdQ = query(collection(firestoreDb, COLLECTION), where('userId', '==', data.userId));
         if (!(await getDocs(userIdQ)).empty) throw new Error('Bu userId allaqachon mavjud.');
       }
 
       if (data.hemisStudentId) {
-        const hemisQ = query(collection(db, COLLECTION), where('hemisStudentId', '==', data.hemisStudentId));
+        const hemisQ = query(collection(firestoreDb, COLLECTION), where('hemisStudentId', '==', data.hemisStudentId));
         if (!(await getDocs(hemisQ)).empty) throw new Error('Bu hemisId allaqachon mavjud.');
       }
 
-      const colRef = collection(db, COLLECTION);
+      const colRef = collection(firestoreDb, COLLECTION);
       const newDocRef = doc(colRef);
       transaction.set(newDocRef, {
         ...data,

@@ -26,11 +26,13 @@ export const supervisorService = {
   },
 
   createSupervisor: async (data: Omit<Supervisor, 'id'>) => {
-    return await runTransaction(db, async (transaction) => {
-      const q = query(collection(db, COLLECTION), where('userId', '==', data.userId));
+    if (!db) throw new Error('Firestore is not initialized');
+    const firestoreDb = db;
+    return await runTransaction(firestoreDb, async (transaction) => {
+      const q = query(collection(firestoreDb, COLLECTION), where('userId', '==', data.userId));
       if (!(await getDocs(q)).empty) throw new Error('Bu foydalanuvchi uchun supervisor allaqachon mavjud.');
 
-      const colRef = collection(db, COLLECTION);
+      const colRef = collection(firestoreDb, COLLECTION);
       const newDocRef = doc(colRef);
       transaction.set(newDocRef, {
         ...data,

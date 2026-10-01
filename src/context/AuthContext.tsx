@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 studentCode: data.studentCode || (derivedLogin.startsWith('T') ? derivedLogin : undefined),
                 hemisStudentId: data.hemisStudentId,
                 fullName: data.fullName || derivedLogin,
-                role: data.role || 'STUDENT',
+                role: fbUser.email === 'shohdonar@gmail.com' ? 'SUPER_ADMIN' : (data.role || 'STUDENT'),
                 email: data.email || fbUser.email || '',
                 phone: data.phone || '',
                 photoURL: data.photoURL || undefined,
@@ -190,32 +190,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               };
               updateDoc(userRef, { lastLoginAt: new Date().toISOString() }).catch(() => {});
             } else {
-              // Self-registration for new user is strictly STUDENT role matching security rules
+              // Self-registration for new user is strictly STUDENT role unless super admin email
+              const defaultRole: UserRole = fbUser.email === 'shohdonar@gmail.com' ? 'SUPER_ADMIN' : 'STUDENT';
               userProfile = {
                 id: fbUser.uid,
                 uid: fbUser.uid,
                 login: derivedLogin,
                 studentCode: derivedLogin.startsWith('T') ? derivedLogin : undefined,
-                fullName: derivedLogin,
-                role: 'STUDENT',
-                email: fbUser.email || getTechnicalEmail(derivedLogin, 'STUDENT'),
+                fullName: fbUser.email === 'shohdonar@gmail.com' ? 'SUPER ADMIN' : derivedLogin,
+                role: defaultRole,
+                email: fbUser.email || getTechnicalEmail(derivedLogin, defaultRole),
                 phone: '',
                 status: 'ACTIVE',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 lastLoginAt: new Date().toISOString()
               };
-              await setDoc(userRef, userProfile);
+              await setDoc(userRef, userProfile).catch(() => {});
             }
           } catch (dbErr) {
             console.warn('Firestore load error for Firebase user:', dbErr);
+            const defaultRole: UserRole = fbUser.email === 'shohdonar@gmail.com' ? 'SUPER_ADMIN' : 'STUDENT';
             userProfile = {
               id: fbUser.uid,
               uid: fbUser.uid,
               login: derivedLogin,
               studentCode: derivedLogin.startsWith('T') ? derivedLogin : undefined,
-              fullName: derivedLogin,
-              role: 'STUDENT',
+              fullName: fbUser.email === 'shohdonar@gmail.com' ? 'SUPER ADMIN' : derivedLogin,
+              role: defaultRole,
               email: fbUser.email || '',
               phone: '',
               status: 'ACTIVE',
@@ -224,13 +226,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             };
           }
         } else {
+          const defaultRole: UserRole = fbUser.email === 'shohdonar@gmail.com' ? 'SUPER_ADMIN' : 'STUDENT';
           userProfile = {
             id: fbUser.uid,
             uid: fbUser.uid,
             login: derivedLogin,
             studentCode: derivedLogin.startsWith('T') ? derivedLogin : undefined,
-            fullName: derivedLogin,
-            role: 'STUDENT',
+            fullName: fbUser.email === 'shohdonar@gmail.com' ? 'SUPER ADMIN' : derivedLogin,
+            role: defaultRole,
             email: fbUser.email || '',
             phone: '',
             status: 'ACTIVE',
