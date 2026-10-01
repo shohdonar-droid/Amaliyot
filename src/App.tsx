@@ -93,6 +93,7 @@ function AppContent() {
   );
 }
 
+// Force rebuild: 2026-10-01
 export default function App() {
   return (
     <ToastProvider>
@@ -102,3 +103,5 @@ export default function App() {
     </ToastProvider>
   );
 }
+// Force rebuild: 2026-10-01
+
