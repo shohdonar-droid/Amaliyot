@@ -18,6 +18,7 @@ cron.schedule('0 0 * * *', async () => {
     timezone: 'Asia/Tashkent'
 });
 
+app.get('/', (req, res) => res.send('Server is running'));
 app.get('/health', (req, res) => res.send('OK'));
 
 app.listen(port, () => {
