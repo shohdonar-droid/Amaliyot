@@ -21,8 +21,8 @@ export function LoginPage() {
   const { login } = useAuth();
   const { showToast } = useToast();
 
-  const [username, setUsername] = useState('T00001');
-  const [password, setPassword] = useState('password123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -196,67 +196,7 @@ export function LoginPage() {
             </div>
           </form>
 
-          {/* Quick Test / Demo Logins Helper */}
-          <div className="mt-8 pt-6 border-t border-slate-100">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 text-center mb-3">
-              Sinov rollari (Login + Parol)
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('T00001')}
-                className="p-2 col-span-2 rounded-lg border border-emerald-300 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-800 font-semibold text-center transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <GraduationCap className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Talaba login: <strong>T00001</strong> (Olimov S.)</span>
-              </button>
 
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('Ergashev_Odil')}
-                className="p-2 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100/70 text-blue-800 font-medium text-left transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span className="truncate">Amaliyot boshlig'i (Ergashev_Odil)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('Karimov_Bahodir')}
-                className="p-2 rounded-lg border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100/70 text-indigo-800 font-medium text-left transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span className="truncate">Dekan (Karimov_Bahodir)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('Aliyev_Anvar')}
-                className="p-2 rounded-lg border border-teal-200 bg-teal-50/60 hover:bg-teal-100/70 text-teal-800 font-medium text-left transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Stethoscope className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span className="truncate">Rahbar (Aliyev_Anvar)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('Rasulova_Madina')}
-                className="p-2 rounded-lg border border-amber-200 bg-amber-50/60 hover:bg-amber-100/70 text-amber-800 font-medium text-left transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Users className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span className="truncate">Klinik mas'ul (Rasulova_Madina)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('admin')}
-                className="p-2 col-span-2 rounded-lg border border-purple-200 bg-purple-50/60 hover:bg-purple-100/70 text-purple-800 font-medium text-center transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <ShieldAlert className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                <span>Super Admin (admin)</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         <p className="mt-4 text-center text-xs text-slate-500">
