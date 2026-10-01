@@ -482,7 +482,7 @@ export const Stage8QATestsModal: React.FC<{ isOpen: boolean; onClose: () => void
       run: () => {
         const students = storageService.getStudents();
         const ids = students.map(s => s.studentId);
-        const dupes = ids.filter((id, idx) => ids.indexOf(id) !== idx);
+        const dupes = (ids || []).filter((id, idx) => (ids || []).indexOf(id) !== idx);
         if (dupes.length === 0) {
           return {
             status: 'PASS',
@@ -642,7 +642,7 @@ export const Stage8QATestsModal: React.FC<{ isOpen: boolean; onClose: () => void
       run: () => {
         const asgs = storageService.getPracticeAssignments();
         const pairs = asgs.map(a => `${a.studentId}_${a.practiceId}`);
-        const dupes = pairs.filter((p, i) => pairs.indexOf(p) !== i);
+        const dupes = (pairs || []).filter((p, i) => (pairs || []).indexOf(p) !== i);
         return {
           status: 'PASS',
           actual: `Takroriy taqsimotlar soni: ${dupes.length}`,
@@ -828,7 +828,7 @@ export const Stage8QATestsModal: React.FC<{ isOpen: boolean; onClose: () => void
       run: () => {
         const jnls = storageService.getDailyJournals();
         const keys = jnls.map(j => `${j.studentId}_${j.date}`);
-        const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
+        const dupes = (keys || []).filter((k, i) => (keys || []).indexOf(k) !== i);
         return {
           status: 'PASS',
           actual: `Bir kunga takroriy kundaliklar soni: ${dupes.length} ta`,

@@ -53,6 +53,10 @@ export const journalTemplateService = {
   },
 
   seedPsixologiyaTemplate: async () => {
+    if (!db) {
+        console.warn('Firebase not initialized, skipping template seeding');
+        return;
+    }
     const templateRef = doc(db, COLLECTION, 'PSYCHOLOGY_DAILY');
     const templateSnap = await getDoc(templateRef);
     if (!templateSnap.exists()) {
