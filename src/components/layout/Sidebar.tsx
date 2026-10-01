@@ -82,7 +82,7 @@ export function Sidebar({
       id: 'students',
       label: 'Talabalar',
       icon: Users,
-      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor']
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible']
     },
     {
       id: 'academic',
@@ -94,7 +94,7 @@ export function Sidebar({
       id: 'practices',
       label: 'Amaliyotlar',
       icon: CalendarRange,
-      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'STUDENT', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'student']
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'STUDENT', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible', 'student']
     },
     {
       id: 'practice_places',
@@ -103,31 +103,28 @@ export function Sidebar({
       allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible']
     },
     {
-      id: 'supervisors',
-      label: 'Rahbarlar va mas\'ullar',
-      icon: UserCheck,
-      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'super_admin', 'dept_head', 'dept_staff', 'dean']
-    },
-    {
       id: 'allocation',
       label: 'Taqsimot va bo\'limlar',
       icon: Split,
-      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'PRACTICE_SUPERVISOR', 'super_admin', 'dept_head', 'dept_staff', 'supervisor']
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'super_admin', 'dept_head', 'dept_staff', 'supervisor', 'clinic_responsible']
     },
     {
       id: 'attendance',
       label: 'Davomat',
-      icon: CalendarCheck
+      icon: CalendarCheck,
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'STUDENT', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible', 'student']
     },
     {
       id: 'daily_journal',
       label: 'Elektron kundalik',
-      icon: BookOpen
+      icon: BookOpen,
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'STUDENT', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible', 'student']
     },
     {
       id: 'skills',
       label: 'Amaliy ko\'nikmalar',
-      icon: Stethoscope
+      icon: Stethoscope,
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'STUDENT', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible', 'student']
     },
     {
       id: 'assessments',
@@ -138,19 +135,21 @@ export function Sidebar({
     {
       id: 'documents',
       label: 'Hujjatlar va buyruqlar',
-      icon: FileText
+      icon: FileText,
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'STUDENT', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'student']
     },
     {
       id: 'reports',
       label: 'Yakuniy hisobotlar',
       icon: BarChart3,
-      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'STUDENT', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible', 'student']
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible']
     },
     {
       id: 'notifications',
       label: 'Bildirishnomalar',
       icon: Bell,
-      badgeCount: unreadNotificationsCount
+      badgeCount: unreadNotificationsCount,
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'STUDENT', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible', 'student']
     },
     {
       id: 'audit_logs',

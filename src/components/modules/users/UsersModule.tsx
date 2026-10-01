@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { User, UserRole, CanonicalUserRole } from '../../../types';
 import { storageService } from '../../../services/storageService';
+import { generateStaffLogin, getNextStudentLogin } from '../../../services/loginGeneratorService';
 import { useAuth, ROLE_CONFIGS } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
 import { Modal } from '../../common/Modal';
@@ -102,10 +103,19 @@ export function UsersModule() {
     setIsCreateModalOpen(true);
   };
 
+  const computeAutoLogin = (fullName: string, targetRole: UserRole, existingUsersList: User[]): string => {
+    const isStudent = targetRole === 'STUDENT' || targetRole === 'student';
+    if (isStudent) {
+      return getNextStudentLogin(storageService.getStudents(), existingUsersList);
+    }
+    const existingLogins = existingUsersList.map(u => u.login || u.username || '');
+    return generateStaffLogin(fullName, existingLogins);
+  };
+
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.fullName.trim() || !formData.login.trim()) {
-      showToast('warning', 'Ma\'lumotlar yetarli emas', 'F.I.SH va Login kiritilishi shart');
+    if (!formData.fullName.trim()) {
+      showToast('warning', 'Ma\'lumotlar yetarli emas', 'F.I.SH (Familiya Ism Sharif) kiritilishi shart');
       return;
     }
 
@@ -115,21 +125,52 @@ export function UsersModule() {
       return;
     }
 
+    const currentUsers = storageService.getUsers();
+    const autoLogin = computeAutoLogin(formData.fullName.trim(), formData.role, currentUsers);
+    const standardPassword = 'password123'; // Standard one-time initial password for all created accounts
+
     const newUser: User = {
       id: `user-${Date.now()}`,
       uid: `uid-${Date.now()}`,
       fullName: formData.fullName.trim(),
-      login: formData.login.trim(),
-      username: formData.login.trim(),
-      password: formData.password.trim() || 'password123',
+      login: autoLogin,
+      username: autoLogin,
+      password: standardPassword,
       role: formData.role,
-      email: formData.email.trim() || `${formData.login.trim()}@med.uz`,
+      email: formData.email.trim() || `${autoLogin}@med.uz`,
       phone: formData.phone.trim() || '+998 (90) 000-00-00',
       status: formData.status,
       facultyId: formData.facultyId || undefined,
       practicePlaceId: formData.practicePlaceId || undefined,
       createdAt: new Date().toISOString()
     };
+
+    // If creating a STUDENT, also save to students table so they appear in student lists
+    if (formData.role === 'STUDENT' || formData.role === 'student') {
+      const faculties = storageService.getFaculties();
+      const directions = storageService.getDirections();
+      const courses = storageService.getCourses();
+      const groups = storageService.getGroups();
+      storageService.saveStudent({
+        id: newUser.id,
+        userId: newUser.uid,
+        studentId: `MED-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        login: autoLogin,
+        studentCode: autoLogin,
+        hemisStudentId: String(Math.floor(10000000 + Math.random() * 90000000)),
+        pinfl: '3140' + String(Math.floor(1000000000 + Math.random() * 9000000000)),
+        fullName: newUser.fullName,
+        facultyId: formData.facultyId || faculties[0]?.id || '',
+        directionId: directions[0]?.id || '',
+        courseId: courses[0]?.id || '',
+        groupId: groups[0]?.id || '',
+        phone: newUser.phone,
+        telegram: '@',
+        email: newUser.email,
+        status: 'active',
+        createdAt: new Date().toISOString()
+      });
+    }
 
     storageService.saveUser(newUser);
     storageService.recordAuditLog({
@@ -138,12 +179,12 @@ export function UsersModule() {
       action: 'createUser',
       entity: 'users',
       entityId: newUser.id,
-      metadata: JSON.stringify({ createdRole: newUser.role, fullName: newUser.fullName })
+      metadata: JSON.stringify({ createdRole: newUser.role, fullName: newUser.fullName, login: autoLogin })
     });
 
     loadUsers();
     setIsCreateModalOpen(false);
-    showToast('success', 'Foydalanuvchi yaratildi', `${newUser.fullName} (${ROLE_CONFIGS[newUser.role]?.title || newUser.role}) tizimga qo'shildi.`);
+    showToast('success', 'Foydalanuvchi yaratildi', `${newUser.fullName} (${ROLE_CONFIGS[newUser.role]?.title || newUser.role}) yaratildi. Login: ${autoLogin}, Parol: ${standardPassword}`);
   };
 
   const handleOpenEditModal = (u: User) => {
@@ -481,29 +522,30 @@ export function UsersModule() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Login (Foydalanuvchi nomi) *</label>
-              <input
-                type="text"
-                required
-                value={formData.login}
-                onChange={e => setFormData({ ...formData, login: e.target.value })}
-                placeholder="Ergashev_Odil"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white font-mono"
-              />
+          {/* Auto-Generated Login & Standard Password Notice */}
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-blue-900">Login va Parol Avtomatik Shakllantiriladi</p>
+                <p className="text-[11px] text-blue-700">Qo'lda kiritilmaydi. Roliga va F.I.Sh. ma'lumotiga qarab tizim tomonidan biriktiriladi.</p>
+              </div>
             </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Parol *</label>
-              <input
-                type="text"
-                required
-                value={formData.password}
-                onChange={e => setFormData({ ...formData, password: e.target.value })}
-                placeholder="password123"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white font-mono"
-              />
+            
+            <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-blue-100 text-xs">
+              <div className="p-2 bg-white rounded-lg border border-blue-200">
+                <span className="text-[10px] text-slate-400 block font-medium">Auto-Login:</span>
+                <span className="font-mono font-bold text-blue-900">
+                  {formData.fullName.trim()
+                    ? computeAutoLogin(formData.fullName.trim(), formData.role, users)
+                    : (formData.role === 'STUDENT' ? 'T000XX (Avtomatik)' : 'Familiya_Ism (Avtomatik)')
+                  }
+                </span>
+              </div>
+              <div className="p-2 bg-white rounded-lg border border-blue-200">
+                <span className="text-[10px] text-slate-400 block font-medium">Birlamchi Standard Parol:</span>
+                <span className="font-mono font-bold text-emerald-700">password123</span>
+              </div>
             </div>
           </div>
 

@@ -143,14 +143,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isFirebaseAuthenticated, setIsFirebaseAuthenticated] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem(CURRENT_USER_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
   
-  // Use Firebase Auth persistence; do not use localStorage directly to initialize.
-  // The useEffect below handles user loading onAuthStateChanged.
-
   // Listen for Firebase Auth state changes
   useEffect(() => {
     if (!auth) {
+      const saved = localStorage.getItem(CURRENT_USER_KEY);
+      if (saved) {
+        try {
+          setCurrentUser(JSON.parse(saved));
+        } catch {
+          // ignore
+        }
+      }
       setLoading(false);
       return;
     }

@@ -112,6 +112,24 @@ export function StudentFormModal({
     };
 
     onSave(payload);
+
+    // Auto-generate or update user account with standard 1-time password
+    storageService.saveUser({
+      id: payload.id,
+      uid: payload.userId,
+      fullName: payload.fullName,
+      login: finalLogin,
+      username: finalLogin,
+      password: 'password123',
+      role: 'STUDENT',
+      email: payload.email,
+      phone: payload.phone,
+      status: 'ACTIVE',
+      facultyId: payload.facultyId,
+      studentId: payload.id,
+      createdAt: studentToEdit?.createdAt || new Date().toISOString()
+    });
+
     setIsSubmitting(false);
     onClose();
   };
@@ -125,18 +143,21 @@ export function StudentFormModal({
       maxWidth="2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* AIDE System Login Preview (Read-only) */}
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+        {/* AIDE System Auto Login & Standard Password Info */}
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-emerald-900">AIDE Tizim Logini (Avtomatik)</p>
-              <p className="text-[11px] text-emerald-700">Tizimga kirish uchun o'zgarmas shaxsiy login</p>
+              <p className="text-xs font-bold text-emerald-900">Tizim Logini va Paroli (Avtomatik)</p>
+              <p className="text-[11px] text-emerald-700">Talaba uchun login T000XX formatida, bir martalik parol standart: <span className="font-mono font-bold">password123</span></p>
             </div>
           </div>
-          <span className="text-sm font-mono font-bold px-3 py-1 bg-white border border-emerald-300 rounded text-emerald-800 shadow-2xs">
-            {assignedLogin}
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-slate-500 font-medium">Login:</span>
+            <span className="text-sm font-mono font-bold px-2.5 py-1 bg-white border border-emerald-300 rounded text-emerald-800 shadow-2xs">
+              {assignedLogin}
+            </span>
+          </div>
         </div>
 
         {/* Full Name */}

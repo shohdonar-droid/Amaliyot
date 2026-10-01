@@ -221,12 +221,14 @@ export function DailyJournalModule() {
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const studentName = student?.fullName.toLowerCase() || '';
-        const dept = journal.department.toLowerCase();
+        const studentName = student?.fullName?.toLowerCase() || '';
+        const dept = (journal.department || '').toLowerCase();
         const summary = (journal.workSummary || '').toLowerCase();
         const diagnoses = (journal.patientDiagnosesSummary || '').toLowerCase();
         const cases = (journal.clinicalCasesSummary || '').toLowerCase();
-        const procedures = (journal.proceduresDone || []).join(' ').toLowerCase();
+        const procedures = Array.isArray(journal.proceduresDone)
+          ? journal.proceduresDone.map(p => typeof p === 'string' ? p : JSON.stringify(p)).join(' ').toLowerCase()
+          : '';
 
         if (
           !studentName.includes(q) &&

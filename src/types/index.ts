@@ -127,6 +127,7 @@ export type PracticePlaceType = 'Shifoxona' | 'Klinika' | 'Poliklinika' | 'Ilmiy
 export interface PracticePlace {
   id: string;
   organizationId: string; // e.g. TASH-000125
+  organizationCode?: string;
   name: string;
   type: PracticePlaceType;
   city: string;
@@ -149,7 +150,8 @@ export interface PracticePlace {
 
 export interface PracticeDepartment {
   id: string;
-  organizationId: string;
+  organizationId?: string;
+  practicePlaceId?: string;
   name: string;
   headDoctor?: string;
   bedCapacity?: number;
@@ -158,11 +160,11 @@ export interface PracticeDepartment {
 
 export interface Supervisor {
   id: string;
-  userId: string;
+  userId?: string;
   fullName: string;
   phone: string;
   email: string;
-  status: 'ACTIVE' | 'INACTIVE';
+  status?: 'ACTIVE' | 'INACTIVE';
   createdAt?: string;
   updatedAt?: string;
   department?: string;
@@ -327,14 +329,16 @@ export interface Attendance {
   studentId: string;
   assignmentId: string;
   supervisorId: string;
-  organizationId: string; // practicePlaceId
+  organizationId?: string; // practicePlaceId
   departmentId?: string;
-  groupId: string; // needed for getAttendanceByGroup
+  groupId?: string; // needed for getAttendanceByGroup
   date: string; // YYYY-MM-DD
-  checkInTime: string; // HH:MM
-  attendanceMethod: 'GPS' | 'QR' | 'TOKEN' | 'MANUAL';
-  approvalType: 'AUTO' | 'MANUAL';
-  status: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | 'FAILED' | 'BLOCKED';
+  checkInTime?: string; // HH:MM
+  checkOutTime?: string; // HH:MM
+  distributionId?: string;
+  attendanceMethod?: 'GPS' | 'QR' | 'TOKEN' | 'MANUAL';
+  approvalType?: 'AUTO' | 'MANUAL';
+  status: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | 'FAILED' | 'BLOCKED' | 'present' | 'absent' | 'excused' | 'late';
   latitude?: number;
   longitude?: number;
   failureReason?: string;
@@ -345,6 +349,7 @@ export interface Attendance {
   createdAt?: string;
   updatedAt?: string;
   // Keep legacy for compatibility
+  practiceId?: string;
   practicePlaceId?: string;
   qrSessionId?: string;
   qrId?: string;
@@ -403,23 +408,31 @@ export type JournalStatus =
     | "CLOSED_BY_3_DAY_TIMEOUT"
     | "REOPENED_BY_DEPARTMENT_HEAD"
     | "REOPENED_BY_SUPER_ADMIN"
-    | "PENDING_SUPERVISOR_AFTER_REOPEN";
+    | "PENDING_SUPERVISOR_AFTER_REOPEN"
+    | "PENDING"
+    | "APPROVED"
+    | "REJECTED"
+    | "REVISION"
+    | "pending"
+    | "approved"
+    | "rejected"
+    | "revision";
 
 export interface DailyJournal {
   id: string; // journalId
   studentId: string;
   assignmentId: string;
-  internshipId: string;
-  academicYearId: string;
-  groupId: string;
-  directionId: string;
-  course: number;
-  supervisorId: string;
-  organizationId: string;
+  internshipId?: string;
+  academicYearId?: string;
+  groupId?: string;
+  directionId?: string;
+  course?: number;
+  supervisorId?: string;
+  organizationId?: string;
   departmentId?: string;
   journalDate: string; // YYYY-MM-DD
   status: JournalStatus;
-  content: string; // Aggregate of all previous fields
+  content?: string; // Aggregate of all previous fields
   submittedAt?: string; // Timestamp ISO
   reviewedAt?: string; // Timestamp ISO
   reviewedBy?: string;
@@ -430,10 +443,32 @@ export interface DailyJournal {
   supervisorReviewDeadline?: string; // Timestamp ISO
   createdAt: string; // Timestamp ISO
   updatedAt: string; // Timestamp ISO
-  // Universal fields
+  // Universal & Compatibility fields
   templateId?: string;
   practiceTypeId?: string;
   activityData?: Record<string, unknown>;
+  date?: string; // Legacy/UI alias for journalDate
+  department?: string;
+  practiceId?: string;
+  practicePlaceId?: string;
+  workSummary?: string;
+  patientDiagnosesSummary?: string;
+  clinicalCasesSummary?: string;
+  proceduresDone?: string[];
+  procedures?: JournalProcedure[];
+  clinicalCases?: ClinicalCaseItem[];
+  reflection?: JournalReflection;
+  attachments?: JournalAttachment[];
+  version?: number;
+  supervisorRating?: number;
+  supervisorFeedback?: string;
+  revisionReason?: string;
+  topicsLearned?: string[];
+  questionsLearned?: string[];
+  selfReflection?: string;
+  reviewerId?: string;
+  attendanceId?: string;
+  patientsExaminedCount?: number;
 }
 
 export type JournalFieldType = "text" | "textarea" | "number" | "select" | "checkbox";
@@ -788,6 +823,7 @@ export type AuditAction =
   | 'practiceUpdated'
   | 'practiceStatusChanged'
   | 'assignmentCreated'
+  | 'assignmentUpdated'
   | 'assignmentRemoved'
   | 'attendanceCreated'
   | 'attendanceUpdated'

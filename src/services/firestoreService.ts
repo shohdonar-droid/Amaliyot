@@ -43,46 +43,74 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Pr
 export const firestoreService = {
   // Get document by ID
   getDocumentById: async (collectionName: string, id: string) => {
-    const docRef = doc(db, collectionName, id);
-    const docSnap = await withRetry(() => getDoc(docRef));
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
+    if (!db) return null;
+    try {
+      const docRef = doc(db, collectionName, id);
+      const docSnap = await withRetry(() => getDoc(docRef));
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() };
+      }
+      return null;
+    } catch (e) {
+      console.warn(`Firestore getDocumentById (${collectionName}/${id}) error:`, e);
+      return null;
     }
-    return null;
   },
 
   // Create new document
   createDocument: async (collectionName: string, data: DocumentData) => {
-    const colRef = collection(db, collectionName);
-    const docRef = await addDoc(colRef, {
-      ...data,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
-    });
-    return docRef.id;
+    if (!db) return 'local_' + Date.now();
+    try {
+      const colRef = collection(db, collectionName);
+      const docRef = await addDoc(colRef, {
+        ...data,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+      return docRef.id;
+    } catch (e) {
+      console.warn(`Firestore createDocument (${collectionName}) error:`, e);
+      return 'local_' + Date.now();
+    }
   },
 
   // Update existing document
   updateDocument: async (collectionName: string, id: string, data: DocumentData) => {
-    const docRef = doc(db, collectionName, id);
-    await updateDoc(docRef, {
-      ...data,
-      updatedAt: Timestamp.now()
-    });
+    if (!db) return;
+    try {
+      const docRef = doc(db, collectionName, id);
+      await updateDoc(docRef, {
+        ...data,
+        updatedAt: Timestamp.now()
+      });
+    } catch (e) {
+      console.warn(`Firestore updateDocument (${collectionName}/${id}) error:`, e);
+    }
   },
 
   // Delete document
   deleteDocument: async (collectionName: string, id: string) => {
-    const docRef = doc(db, collectionName, id);
-    await deleteDoc(docRef);
+    if (!db) return;
+    try {
+      const docRef = doc(db, collectionName, id);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.warn(`Firestore deleteDocument (${collectionName}/${id}) error:`, e);
+    }
   },
 
   // Query documents with constraints
   queryDocuments: async (collectionName: string, constraints: QueryConstraint[]) => {
-    const colRef = collection(db, collectionName);
-    const q = query(colRef, ...constraints);
-    const querySnapshot = await withRetry(() => getDocs(q));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (!db) return [];
+    try {
+      const colRef = collection(db, collectionName);
+      const q = query(colRef, ...constraints);
+      const querySnapshot = await withRetry(() => getDocs(q));
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e) {
+      console.warn(`Firestore queryDocuments (${collectionName}) error:`, e);
+      return [];
+    }
   },
   
   // Export QueryConstraint for convenience

@@ -1,4 +1,3 @@
-import React, { useState, useMemo } from 'react';
 import {
   Users,
   Search,
@@ -10,7 +9,8 @@ import {
   Download,
   GraduationCap,
   Building2,
-  X
+  X,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Student } from '../../../types';
 import { studentService } from '../../../services/studentService';
@@ -20,6 +20,7 @@ import { StatusBadge } from '../../common/Badge';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
 import { StudentDetailModal } from './StudentDetailModal';
 import { StudentFormModal } from './StudentFormModal';
+import { BulkStudentImportModal } from './BulkStudentImportModal';
 import { EmptyState } from '../../common/EmptyState';
 import { useAuth } from '../../../context/AuthContext';
 import { useEffect } from 'react';
@@ -58,6 +59,7 @@ export function StudentsModule() {
   const [selectedStudentForDetail, setSelectedStudentForDetail] = useState<Student | null>(null);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
   const refreshList = async () => {
@@ -159,6 +161,15 @@ export function StudentsModule() {
 
         {!isSupervisor && (
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsBulkModalOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shadow-2xs transition-colors"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-blue-600" />
+              <span>Bittada yuklash (Excel/CSV)</span>
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -455,6 +466,13 @@ export function StudentsModule() {
         }}
         onSave={handleSaveStudent}
         studentToEdit={studentToEdit}
+      />
+
+      {/* Bulk Student Import Modal */}
+      <BulkStudentImportModal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        onSuccess={refreshList}
       />
 
       {/* Delete Confirmation */}
