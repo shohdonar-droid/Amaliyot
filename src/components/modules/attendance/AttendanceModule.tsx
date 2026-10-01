@@ -33,6 +33,7 @@ import {
   Supervisor,
   AttendanceSession
 } from '../../../types';
+import { attendanceService } from '../../../services/attendanceService';
 import { storageService } from '../../../services/storageService';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -99,11 +100,16 @@ export function AttendanceModule() {
   const [editingStudentId, setEditingStudentId] = useState<string | undefined>(undefined);
 
   // Attendance records state
-  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>(() => storageService.getAttendance());
+  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
   const [attendanceSessions, setAttendanceSessions] = useState<AttendanceSession[]>(() => storageService.getAttendanceSessions());
 
-  const refreshData = () => {
-    setAttendanceRecords(storageService.getAttendance());
+  useEffect(() => {
+    refreshData();
+  }, []);
+
+  const refreshData = async () => {
+    const data = await attendanceService.getAllAttendance();
+    setAttendanceRecords(data);
     setAttendanceSessions(storageService.getAttendanceSessions());
   };
 

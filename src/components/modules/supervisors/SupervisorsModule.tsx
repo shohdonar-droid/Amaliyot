@@ -12,34 +12,43 @@ import {
   Search
 } from 'lucide-react';
 import { Supervisor, ClinicResponsible } from '../../../types';
+import { supervisorService } from '../../../services/supervisorService';
 import { storageService } from '../../../services/storageService';
 import { useToast } from '../../../context/ToastContext';
 import { Modal } from '../../common/Modal';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
+import { useEffect } from 'react';
 
 export function SupervisorsModule() {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'university' | 'clinic'>('university');
 
-  const [supervisors, setSupervisors] = useState<Supervisor[]>(() => storageService.getSupervisors());
+  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
   const [clinicResponsibles, setClinicResponsibles] = useState<ClinicResponsible[]>(() => storageService.getClinicResponsibles());
   const places = storageService.getPracticePlaces();
+
+  useEffect(() => {
+    supervisorService.getSupervisors().then(setSupervisors);
+  }, []);
+
+  const refreshList = async () => {
+    const data = await supervisorService.getSupervisors();
+    setSupervisors(data);
+    setClinicResponsibles(storageService.getClinicResponsibles());
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [supervisorToEdit, setSupervisorToEdit] = useState<Supervisor | null>(null);
   const [isSupervisorModalOpen, setIsSupervisorModalOpen] = useState(false);
   const [supervisorToDelete, setSupervisorToDelete] = useState<Supervisor | null>(null);
 
-  const refreshList = () => {
-    setSupervisors(storageService.getSupervisors());
-    setClinicResponsibles(storageService.getClinicResponsibles());
-  };
-
-  const handleSaveSupervisor = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSaveSupervisor = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const sup: Supervisor = {
+    const sup = {
+      ...supervisorToEdit,
       id: supervisorToEdit?.id || `sup-${Date.now()}`,
+      userId: supervisorToEdit?.userId || `user-${Date.now()}`, // Temporary, need user creation logic
       fullName: formData.get('fullName') as string,
       department: formData.get('department') as string,
       academicDegree: formData.get('academicDegree') as string,
@@ -47,18 +56,23 @@ export function SupervisorsModule() {
       email: formData.get('email') as string,
       type: formData.get('type') as any,
       practicePlaceId: (formData.get('practicePlaceId') as string) || undefined,
-      assignedStudentsCount: supervisorToEdit?.assignedStudentsCount || 0
+      assignedStudentsCount: supervisorToEdit?.assignedStudentsCount || 0,
+      status: 'ACTIVE' as const
     };
 
-    storageService.saveSupervisor(sup);
+    if (supervisorToEdit) {
+      await supervisorService.updateSupervisor(supervisorToEdit.id, sup as Partial<Supervisor>);
+    } else {
+      await supervisorService.createSupervisor(sup as Omit<Supervisor, 'id'>);
+    }
     refreshList();
     setIsSupervisorModalOpen(false);
     showToast('success', 'Rahbar saqlandi', sup.fullName);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!supervisorToDelete) return;
-    storageService.deleteSupervisor(supervisorToDelete.id);
+    await supervisorService.softDeleteSupervisor(supervisorToDelete.id);
     refreshList();
     showToast('info', 'O\'chirildi', `${supervisorToDelete.fullName} olib tashlandi.`);
     setSupervisorToDelete(null);

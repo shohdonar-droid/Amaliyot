@@ -10,6 +10,8 @@ import {
   Supervisor,
   ClinicResponsible,
   Practice,
+  PracticeDistribution,
+  PracticeGroupSchedule,
   PracticeAssignment,
   Attendance,
   AttendanceStatus,
@@ -60,6 +62,7 @@ export interface DatabaseStateV2 {
   supervisors: Supervisor[];
   clinicResponsibles: ClinicResponsible[];
   practices: Practice[];
+  practiceDistributions: PracticeDistribution[];
   practiceAssignments: PracticeAssignment[];
   attendance: Attendance[];
   attendanceSessions: AttendanceSession[];
@@ -350,27 +353,29 @@ const DEFAULT_GROUPS: Group[] = [
 const DEFAULT_PRACTICE_PLACES: PracticePlace[] = [
   {
     id: 'place-1',
-    name: '1-son Respublika Klinik Shifoxonasi',
+    organizationCode: 'TASH-000125',
+    name: 'Chirchiq shahar tibbiyot birlashmasi',
     type: 'Shifoxona',
-    city: 'Toshkent shahri',
-    address: 'Chilonzor tumani, Maxtumquli ko\'chasi, 103-uy',
-    phone: '+998 (71) 230-45-12',
-    email: 'rksh1@minzdrav.uz',
-    capacity: 60,
-    activeStudentsCount: 38,
+    city: 'Chirchiq shahri',
+    address: 'Chirchiq shahri, Tibbiyotchilar ko\'chasi, 12-uy',
+    phone: '+998 (70) 715-20-30',
+    email: 'chirchiq_ttb@minzdrav.uz',
+    capacity: 100,
+    activeStudentsCount: 42,
     contactPerson: 'Dr. Karimov Rustam Baxtiyorovich',
     contactPhone: '+998 (90) 123-45-67',
-    departments: ['Terapiya', 'Umumiy xirurgiya', 'Kardiologiya', 'Reanimatsiya', 'Qabul bo\'limi'],
+    departments: ['Jarrohlik', 'Terapiya', 'Pediatriya', 'Qabul bo\'limi', 'Reanimatsiya'],
     contractNumber: 'SH-2025/114',
     contractDate: '2025-01-10',
     contractExpiryDate: '2026-12-31',
-    latitude: 41.2995,
-    longitude: 69.2401,
+    latitude: 41.4689,
+    longitude: 69.5822,
     allowedRadius: 300,
     createdAt: '2025-01-10T00:00:00Z'
   },
   {
     id: 'place-2',
+    organizationCode: 'TASH-000126',
     name: 'Respublika Shoshilinch Tibbiy Yordam Ilmiy Markazi (RSHTYOIM)',
     type: 'Ilmiy Markaz',
     city: 'Toshkent shahri',
@@ -392,6 +397,7 @@ const DEFAULT_PRACTICE_PLACES: PracticePlace[] = [
   },
   {
     id: 'place-3',
+    organizationCode: 'TASH-000127',
     name: '1-son Bolalar Klinik Shifoxonasi',
     type: 'Shifoxona',
     city: 'Toshkent shahri',
@@ -413,6 +419,7 @@ const DEFAULT_PRACTICE_PLACES: PracticePlace[] = [
   },
   {
     id: 'place-4',
+    organizationCode: 'TASH-000128',
     name: '14-son Markaziy Ko\'p Tarmoqli Poliklinika',
     type: 'Poliklinika',
     city: 'Toshkent shahri',
@@ -435,11 +442,13 @@ const DEFAULT_PRACTICE_PLACES: PracticePlace[] = [
 ];
 
 const DEFAULT_PRACTICE_DEPARTMENTS: PracticeDepartment[] = [
-  { id: 'pdept-1', practicePlaceId: 'place-1', name: 'Terapiya bo\'limi', headDoctor: 'Dr. Yusupov A.', bedCapacity: 50, activeStudentQuota: 15 },
-  { id: 'pdept-2', practicePlaceId: 'place-1', name: 'Umumiy xirurgiya', headDoctor: 'Dr. Mahmudov B.', bedCapacity: 40, activeStudentQuota: 12 },
-  { id: 'pdept-3', practicePlaceId: 'place-1', name: 'Kardiologiya', headDoctor: 'Dr. Ergashev N.', bedCapacity: 35, activeStudentQuota: 10 },
-  { id: 'pdept-4', practicePlaceId: 'place-2', name: 'Shoshilinch terapiya', headDoctor: 'Dr. Rahmonova N.', bedCapacity: 60, activeStudentQuota: 18 },
-  { id: 'pdept-5', practicePlaceId: 'place-3', name: 'Pediatriya', headDoctor: 'Dr. Qodirova G.', bedCapacity: 45, activeStudentQuota: 20 }
+  { id: 'pdept-1', practicePlaceId: 'place-1', name: 'Jarrohlik', headDoctor: 'Dr. Mahmudov B.', bedCapacity: 40, activeStudentQuota: 15 },
+  { id: 'pdept-2', practicePlaceId: 'place-1', name: 'Terapiya', headDoctor: 'Dr. Yusupov A.', bedCapacity: 50, activeStudentQuota: 18 },
+  { id: 'pdept-3', practicePlaceId: 'place-1', name: 'Pediatriya', headDoctor: 'Dr. Qodirova G.', bedCapacity: 35, activeStudentQuota: 12 },
+  { id: 'pdept-4', practicePlaceId: 'place-1', name: 'Qabul bo\'limi', headDoctor: 'Dr. Rahmonov K.', bedCapacity: 20, activeStudentQuota: 8 },
+  { id: 'pdept-5', practicePlaceId: 'place-1', name: 'Reanimatsiya', headDoctor: 'Dr. Ismoilov T.', bedCapacity: 25, activeStudentQuota: 10 },
+  { id: 'pdept-6', practicePlaceId: 'place-2', name: 'Shoshilinch terapiya', headDoctor: 'Dr. Rahmonova N.', bedCapacity: 60, activeStudentQuota: 18 },
+  { id: 'pdept-7', practicePlaceId: 'place-3', name: 'Pediatriya', headDoctor: 'Dr. Qodirova G.', bedCapacity: 45, activeStudentQuota: 20 }
 ];
 
 const DEFAULT_SUPERVISORS: Supervisor[] = [
@@ -745,76 +754,243 @@ const DEFAULT_PRACTICES_V2: Practice[] = [
   }
 ];
 
+const DEFAULT_DISTRIBUTIONS_V2: PracticeDistribution[] = [
+  {
+    id: 'dist-1',
+    distributionCode: 'TAQ-2026-00125',
+    practiceId: 'prac-1',
+    academicYear: '2025-2026',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1', // Rahbar A (Prof. Sobirov Alisher)
+    organizationId: 'place-1', // Chirchiq shahar tibbiyot birlashmasi (TASH-000125)
+    startDate: '2026-09-01',
+    endDate: '2026-10-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    status: 'active',
+    totalStudentsCount: 22,
+    assignedDepartmentsCount: 19,
+    unassignedDepartmentsCount: 3,
+    createdAt: '2026-08-25T08:00:00Z',
+    updatedAt: '2026-08-25T08:00:00Z'
+  },
+  {
+    id: 'dist-2',
+    distributionCode: 'TAQ-2026-00126',
+    practiceId: 'prac-1',
+    academicYear: '2025-2026',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    groupId: 'grp-402',
+    supervisorId: 'sup-2', // Rahbar B (Dots. Ismoilova Shahnoza)
+    organizationId: 'place-1', // Chirchiq shahar tibbiyot birlashmasi (TASH-000125)
+    startDate: '2026-09-01',
+    endDate: '2026-10-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    status: 'active',
+    totalStudentsCount: 20,
+    assignedDepartmentsCount: 20,
+    unassignedDepartmentsCount: 0,
+    createdAt: '2026-08-25T08:30:00Z',
+    updatedAt: '2026-08-25T08:30:00Z'
+  },
+  {
+    id: 'dist-3',
+    distributionCode: 'TAQ-2026-00127',
+    practiceId: 'prac-2',
+    academicYear: '2025-2026',
+    courseLevel: 3,
+    directionId: 'dir-3',
+    groupId: 'grp-301',
+    supervisorId: 'sup-3', // Rahbar C (Dots. Abdullayev Jasur)
+    organizationId: 'place-3', // 1-son Bolalar Klinik Shifoxonasi
+    startDate: '2026-09-10',
+    endDate: '2026-10-05',
+    practiceDays: ['Dushanba', 'Chorshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    status: 'active',
+    totalStudentsCount: 24,
+    assignedDepartmentsCount: 24,
+    unassignedDepartmentsCount: 0,
+    createdAt: '2026-08-28T09:00:00Z',
+    updatedAt: '2026-08-28T09:00:00Z'
+  }
+];
+
 const DEFAULT_ASSIGNMENTS_V2: PracticeAssignment[] = [
   {
     id: 'asg-1',
+    assignmentId: 'TAQ-2026-00125-01',
+    distributionId: 'dist-1',
+    distributionCode: 'TAQ-2026-00125',
     practiceId: 'prac-1',
     studentId: 'std-1',
+    groupId: 'grp-401',
     practicePlaceId: 'place-1',
     department: 'Terapiya',
-    departmentId: 'pdept-1',
+    departmentId: 'pdept-2',
     supervisorId: 'sup-1',
     clinicResponsibleId: 'cresp-1',
     startDate: '2026-09-01',
     endDate: '2026-10-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2025-2026',
+    courseLevel: 4,
+    directionId: 'dir-1',
     status: 'in_progress',
     createdAt: '2026-08-30T10:00:00Z'
   },
   {
     id: 'asg-2',
+    assignmentId: 'TAQ-2026-00125-02',
+    distributionId: 'dist-1',
+    distributionCode: 'TAQ-2026-00125',
     practiceId: 'prac-1',
     studentId: 'std-2',
+    groupId: 'grp-401',
     practicePlaceId: 'place-1',
-    department: 'Kardiologiya',
-    departmentId: 'pdept-3',
+    department: 'Jarrohlik',
+    departmentId: 'pdept-1',
     supervisorId: 'sup-1',
     clinicResponsibleId: 'cresp-1',
     startDate: '2026-09-01',
     endDate: '2026-10-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2025-2026',
+    courseLevel: 4,
+    directionId: 'dir-1',
     status: 'in_progress',
     createdAt: '2026-08-30T10:00:00Z'
   },
   {
     id: 'asg-3',
+    assignmentId: 'TAQ-2026-00126-01',
+    distributionId: 'dist-2',
+    distributionCode: 'TAQ-2026-00126',
     practiceId: 'prac-1',
     studentId: 'std-3',
-    practicePlaceId: 'place-2',
-    department: 'Shoshilinch terapiya',
-    departmentId: 'pdept-4',
-    supervisorId: 'sup-2',
-    clinicResponsibleId: 'cresp-2',
-    startDate: '2026-09-01',
-    endDate: '2026-10-15',
-    status: 'in_progress',
-    createdAt: '2026-08-30T10:00:00Z'
-  },
-  {
-    id: 'asg-4',
-    practiceId: 'prac-1',
-    studentId: 'std-4',
+    groupId: 'grp-402',
     practicePlaceId: 'place-1',
-    department: 'Umumiy xirurgiya',
+    department: 'Terapiya',
     departmentId: 'pdept-2',
     supervisorId: 'sup-2',
     clinicResponsibleId: 'cresp-1',
     startDate: '2026-09-01',
     endDate: '2026-10-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2025-2026',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    status: 'in_progress',
+    createdAt: '2026-08-30T10:00:00Z'
+  },
+  {
+    id: 'asg-4',
+    assignmentId: 'TAQ-2026-00125-04',
+    distributionId: 'dist-1',
+    distributionCode: 'TAQ-2026-00125',
+    practiceId: 'prac-1',
+    studentId: 'std-4',
+    groupId: 'grp-401',
+    practicePlaceId: 'place-1',
+    department: '', // Biriktirilmagan!
+    departmentId: undefined,
+    supervisorId: 'sup-1',
+    clinicResponsibleId: 'cresp-1',
+    startDate: '2026-09-01',
+    endDate: '2026-10-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2025-2026',
+    courseLevel: 4,
+    directionId: 'dir-1',
     status: 'in_progress',
     createdAt: '2026-08-30T10:00:00Z'
   },
   {
     id: 'asg-5',
+    assignmentId: 'TAQ-2026-00127-01',
+    distributionId: 'dist-3',
+    distributionCode: 'TAQ-2026-00127',
     practiceId: 'prac-2',
     studentId: 'std-5',
+    groupId: 'grp-301',
     practicePlaceId: 'place-3',
     department: 'Pediatriya',
-    departmentId: 'pdept-5',
+    departmentId: 'pdept-3',
     supervisorId: 'sup-3',
     clinicResponsibleId: 'cresp-3',
     startDate: '2026-09-10',
     endDate: '2026-10-05',
+    practiceDays: ['Dushanba', 'Chorshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2025-2026',
+    courseLevel: 3,
+    directionId: 'dir-3',
     status: 'in_progress',
     createdAt: '2026-09-05T10:00:00Z'
+  },
+  {
+    id: 'asg-6',
+    assignmentId: 'TAQ-2026-00125-06',
+    distributionId: 'dist-1',
+    distributionCode: 'TAQ-2026-00125',
+    practiceId: 'prac-1',
+    studentId: 'std-6',
+    groupId: 'grp-401',
+    practicePlaceId: 'place-1',
+    department: '', // Biriktirilmagan!
+    departmentId: undefined,
+    supervisorId: 'sup-1',
+    clinicResponsibleId: 'cresp-1',
+    startDate: '2026-09-01',
+    endDate: '2026-10-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2025-2026',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    status: 'in_progress',
+    createdAt: '2026-08-30T10:00:00Z'
+  },
+  {
+    id: 'asg-8',
+    assignmentId: 'TAQ-2026-00125-08',
+    distributionId: 'dist-1',
+    distributionCode: 'TAQ-2026-00125',
+    practiceId: 'prac-1',
+    studentId: 'std-8',
+    groupId: 'grp-401',
+    practicePlaceId: 'place-1',
+    department: '', // Biriktirilmagan!
+    departmentId: undefined,
+    supervisorId: 'sup-1',
+    clinicResponsibleId: 'cresp-1',
+    startDate: '2026-09-01',
+    endDate: '2026-10-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2025-2026',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    status: 'in_progress',
+    createdAt: '2026-08-30T10:00:00Z'
   }
 ];
 
@@ -2080,6 +2256,9 @@ class StorageServiceV2 {
           if (!parsed.vedomosts || parsed.vedomosts.length === 0) {
             parsed.vedomosts = DEFAULT_VEDOMOSTS_V2;
           }
+          if (!parsed.practiceDistributions || parsed.practiceDistributions.length === 0) {
+            parsed.practiceDistributions = DEFAULT_DISTRIBUTIONS_V2;
+          }
           return parsed;
         }
       } catch (err) {
@@ -2100,6 +2279,7 @@ class StorageServiceV2 {
       supervisors: DEFAULT_SUPERVISORS,
       clinicResponsibles: DEFAULT_CLINIC_RESPONSIBLES,
       practices: DEFAULT_PRACTICES_V2,
+      practiceDistributions: DEFAULT_DISTRIBUTIONS_V2,
       practiceAssignments: DEFAULT_ASSIGNMENTS_V2,
       attendance: DEFAULT_ATTENDANCE_V2,
       attendanceSessions: DEFAULT_ATTENDANCE_SESSIONS_V2,
@@ -2658,6 +2838,376 @@ class StorageServiceV2 {
     return this.getState().clinicResponsibles;
   }
 
+  // --- PRACTICE DISTRIBUTIONS (AMALIYOT TAQSIMOTI) ---
+  public getDistributions(): PracticeDistribution[] {
+    return this.getState().practiceDistributions || [];
+  }
+
+  public getDistributionById(id: string): PracticeDistribution | undefined {
+    return this.getDistributions().find(d => d.id === id || d.distributionCode === id);
+  }
+
+  public getDistributionsForPractice(practiceId: string): PracticeDistribution[] {
+    return this.getDistributions().filter(d => d.practiceId === practiceId);
+  }
+
+  public getDistributionsForSupervisor(supervisorId: string): PracticeDistribution[] {
+    return this.getDistributions().filter(d => d.supervisorId === supervisorId);
+  }
+
+  public savePracticeDistribution(
+    distribution: PracticeDistribution,
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_HEAD'
+  ): PracticeDistribution {
+    const state = this.getState();
+    if (!state.practiceDistributions) state.practiceDistributions = [];
+    const idx = state.practiceDistributions.findIndex(d => d.id === distribution.id);
+    distribution.updatedAt = new Date().toISOString();
+    if (idx >= 0) {
+      state.practiceDistributions[idx] = distribution;
+    } else {
+      distribution.createdAt = distribution.createdAt || new Date().toISOString();
+      state.practiceDistributions.unshift(distribution);
+    }
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'practiceUpdated',
+      entity: 'practiceDistributions',
+      entityId: distribution.id,
+      metadata: JSON.stringify({ code: distribution.distributionCode, groupId: distribution.groupId })
+    });
+    this.saveState(state);
+    return distribution;
+  }
+
+  public createPracticeDistribution(
+    data: Omit<PracticeDistribution, 'id' | 'distributionCode' | 'createdAt' | 'status' | 'totalStudentsCount' | 'assignedDepartmentsCount' | 'unassignedDepartmentsCount'>,
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_HEAD'
+  ): PracticeDistribution {
+    const state = this.getState();
+    if (!state.practiceDistributions) state.practiceDistributions = [];
+
+    // 1. Generate sequential unique code: TAQ-YYYY-XXXXX
+    const allCodes = state.practiceDistributions.map(d => d.distributionCode || '').filter(Boolean);
+    let maxSeq = 124;
+    allCodes.forEach(code => {
+      const match = code.match(/TAQ-\d{4}-(\d+)/);
+      if (match) {
+        const val = parseInt(match[1], 10);
+        if (!isNaN(val) && val > maxSeq) maxSeq = val;
+      }
+    });
+    const currentYear = new Date().getFullYear();
+    const distributionCode = `TAQ-${currentYear}-${String(maxSeq + 1).padStart(5, '0')}`;
+    const newDistId = `dist-${Date.now()}`;
+
+    // 2. Identify students in this group
+    const groupStudents = state.students.filter(s => s.groupId === data.groupId);
+    if (groupStudents.length === 0) {
+      throw new Error(`Ushbu guruhda talabalar mavjud emas.`);
+    }
+
+    // 3. Verify no student in this group has an active assignment for this practice (Prevent double-assignment)
+    const activeForThisPractice = groupStudents.filter(s =>
+      state.practiceAssignments.some(
+        a => a.practiceId === data.practiceId &&
+             a.studentId === s.id &&
+             (a.status === 'in_progress' || a.status === 'assigned')
+      )
+    );
+    if (activeForThisPractice.length === groupStudents.length) {
+      throw new Error(`Ushbu guruhdagi barcha talabalar (${groupStudents.length} nafar) allaqachon ushbu amaliyotga biriktirilgan.`);
+    }
+
+    // 4. Create individual assignments for unassigned students in this group
+    const studentsToAssign = groupStudents.filter(s =>
+      !state.practiceAssignments.some(
+        a => a.practiceId === data.practiceId &&
+             a.studentId === s.id &&
+             (a.status === 'in_progress' || a.status === 'assigned')
+      )
+    );
+
+    const now = new Date().toISOString();
+    studentsToAssign.forEach((student, index) => {
+      const asgId = `asg-${distributionCode}-${String(index + 1).padStart(2, '0')}`;
+      const newAssignment: PracticeAssignment = {
+        id: asgId,
+        assignmentId: asgId,
+        distributionId: newDistId,
+        distributionCode,
+        practiceId: data.practiceId,
+        studentId: student.id,
+        groupId: data.groupId,
+        practicePlaceId: data.organizationId,
+        department: '', // Initially unassigned to department
+        departmentId: undefined,
+        supervisorId: data.supervisorId, // Amaliyot rahbari guruh kesimida biriktiriladi
+        startDate: data.startDate,
+        endDate: data.endDate,
+        practiceDays: data.practiceDays,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        academicYear: data.academicYear,
+        courseLevel: data.courseLevel,
+        directionId: data.directionId,
+        status: 'in_progress',
+        createdAt: now
+      };
+
+      state.practiceAssignments.unshift(newAssignment);
+      student.status = 'in_practice';
+      student.currentPracticeId = data.practiceId;
+      student.currentPracticePlaceId = data.organizationId;
+    });
+
+    // 5. Create the PracticeDistribution record
+    const newDistribution: PracticeDistribution = {
+      ...data,
+      id: newDistId,
+      distributionCode,
+      status: 'active',
+      totalStudentsCount: studentsToAssign.length,
+      assignedDepartmentsCount: 0,
+      unassignedDepartmentsCount: studentsToAssign.length,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    state.practiceDistributions.unshift(newDistribution);
+    this.recalculatePlaceStudentCounts(state);
+
+    // 6. Send real-time notification to the assigned students
+    const practice = state.practices.find(p => p.id === data.practiceId);
+    const direction = state.directions.find(d => d.id === data.directionId);
+    const group = state.groups.find(g => g.id === data.groupId);
+    const org = state.practicePlaces.find(p => p.id === data.organizationId);
+    const supervisor = state.supervisors.find(s => s.id === data.supervisorId);
+
+    studentsToAssign.forEach(st => {
+      state.notifications.unshift({
+        id: `notif-dist-${Date.now()}-${st.id}`,
+        recipientUserId: st.userId || st.id,
+        recipientRoles: ['STUDENT'],
+        title: '🔔 Amaliyot belgilandi',
+        message: `${data.courseLevel}-kurs · ${direction?.name || 'Tibbiyot yo\'nalishi'} · ${group?.name || 'Guruh'}\nSanasi: ${data.startDate} – ${data.endDate} (${data.practiceDays.join(', ')})\nVaqti: ${data.startTime} – ${data.endTime}\nTashkilot: ${org?.name || ''} (${org?.organizationCode || ''})\nRahbar: ${supervisor?.fullName || ''}`,
+        type: 'info',
+        createdAt: now,
+        isRead: false,
+        linkModule: 'practices'
+      });
+    });
+
+    // 7. Audit log
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'assignmentCreated',
+      entity: 'practiceDistributions',
+      entityId: newDistId,
+      metadata: JSON.stringify({
+        distributionCode,
+        groupId: data.groupId,
+        organizationId: data.organizationId,
+        supervisorId: data.supervisorId,
+        assignedStudentsCount: studentsToAssign.length
+      })
+    });
+
+    this.saveState(state);
+    return newDistribution;
+  }
+
+  public deletePracticeDistribution(
+    id: string,
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_HEAD'
+  ): void {
+    const state = this.getState();
+    const dist = (state.practiceDistributions || []).find(d => d.id === id || d.distributionCode === id);
+    if (!dist) return;
+
+    // Remove assignments created under this distribution
+    const affectedAssignments = state.practiceAssignments.filter(
+      a => a.distributionId === dist.id || a.distributionCode === dist.distributionCode
+    );
+    const affectedStudentIds = new Set(affectedAssignments.map(a => a.studentId));
+
+    state.practiceAssignments = state.practiceAssignments.filter(
+      a => a.distributionId !== dist.id && a.distributionCode !== dist.distributionCode
+    );
+
+    // Reset student statuses if they have no other active assignments
+    state.students.forEach(st => {
+      if (affectedStudentIds.has(st.id)) {
+        const hasOther = state.practiceAssignments.some(
+          a => a.studentId === st.id && (a.status === 'in_progress' || a.status === 'assigned')
+        );
+        if (!hasOther) {
+          st.status = 'active';
+          st.currentPracticeId = undefined;
+          st.currentPracticePlaceId = undefined;
+        }
+      }
+    });
+
+    state.practiceDistributions = (state.practiceDistributions || []).filter(
+      d => d.id !== dist.id
+    );
+
+    this.recalculatePlaceStudentCounts(state);
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'assignmentRemoved',
+      entity: 'practiceDistributions',
+      entityId: dist.id,
+      metadata: JSON.stringify({ distributionCode: dist.distributionCode, groupId: dist.groupId })
+    });
+
+    this.saveState(state);
+  }
+
+  // Supervisor-specific authorization & query methods
+  public getStudentsForSupervisor(supervisorId: string): Student[] {
+    const state = this.getState();
+    const supervisorAssignments = (state.practiceAssignments || []).filter(
+      a => a.supervisorId === supervisorId && (a.status === 'in_progress' || a.status === 'assigned')
+    );
+    const studentIds = new Set(supervisorAssignments.map(a => a.studentId));
+    return state.students.filter(s => studentIds.has(s.id));
+  }
+
+  public getGroupsForSupervisor(supervisorId: string): Group[] {
+    const state = this.getState();
+    const distributions = (state.practiceDistributions || []).filter(d => d.supervisorId === supervisorId);
+    const groupIdsFromDist = distributions.map(d => d.groupId);
+    const groupIdsFromAsg = (state.practiceAssignments || [])
+      .filter(a => a.supervisorId === supervisorId && a.groupId)
+      .map(a => a.groupId as string);
+    const allGroupIds = new Set([...groupIdsFromDist, ...groupIdsFromAsg]);
+    return state.groups.filter(g => allGroupIds.has(g.id));
+  }
+
+  public getUnassignedDepartmentStudentsForSupervisor(supervisorId: string): {
+    student: Student;
+    assignment: PracticeAssignment;
+    group?: Group;
+    organization?: PracticePlace;
+  }[] {
+    const state = this.getState();
+    const supervisorAssignments = (state.practiceAssignments || []).filter(
+      a => a.supervisorId === supervisorId &&
+           (a.status === 'in_progress' || a.status === 'assigned') &&
+           (!a.departmentId || a.department === '' || a.department === 'Biriktirilmagan')
+    );
+    return supervisorAssignments.map(asg => {
+      const student = state.students.find(s => s.id === asg.studentId);
+      const group = state.groups.find(g => g.id === (asg.groupId || student?.groupId));
+      const org = state.practicePlaces.find(p => p.id === asg.practicePlaceId);
+      return {
+        student: student!,
+        assignment: asg,
+        group,
+        organization: org
+      };
+    }).filter(item => item.student != null);
+  }
+
+  public assignStudentsToDepartment(
+    assignmentIds: string[],
+    departmentId: string,
+    departmentName: string,
+    supervisorId?: string,
+    actorUserId = 'system',
+    actorRole = 'PRACTICE_SUPERVISOR'
+  ): { successCount: number } {
+    const state = this.getState();
+    let count = 0;
+    const now = new Date().toISOString();
+
+    state.practiceAssignments.forEach(asg => {
+      if (assignmentIds.includes(asg.id)) {
+        // Authorization check: If supervisorId provided, only update their own students!
+        if (supervisorId && asg.supervisorId !== supervisorId) {
+          return;
+        }
+        asg.departmentId = departmentId;
+        asg.department = departmentName;
+        asg.updatedAt = now;
+        count++;
+      }
+    });
+
+    // Update distribution counters
+    (state.practiceDistributions || []).forEach(dist => {
+      const distAssignments = state.practiceAssignments.filter(
+        a => a.distributionId === dist.id || a.distributionCode === dist.distributionCode
+      );
+      if (distAssignments.length > 0) {
+        dist.totalStudentsCount = distAssignments.length;
+        dist.assignedDepartmentsCount = distAssignments.filter(a => !!a.departmentId && a.department !== '').length;
+        dist.unassignedDepartmentsCount = dist.totalStudentsCount - dist.assignedDepartmentsCount;
+        dist.updatedAt = now;
+      }
+    });
+
+    if (count > 0) {
+      this.recordAuditLog({
+        userId: actorUserId,
+        userRole: actorRole,
+        action: 'assignmentUpdated',
+        entity: 'practiceAssignments',
+        entityId: `bulk-dept-${Date.now()}`,
+        metadata: JSON.stringify({ count, departmentId, departmentName })
+      });
+      this.saveState(state);
+    }
+
+    return { successCount: count };
+  }
+
+  public getStudentActivePracticeDetails(studentId: string): {
+    practice?: Practice;
+    assignment?: PracticeAssignment;
+    distribution?: PracticeDistribution;
+    organization?: PracticePlace;
+    supervisor?: Supervisor;
+    department?: PracticeDepartment;
+    hasActivePractice: boolean;
+  } {
+    const state = this.getState();
+    const assignment = (state.practiceAssignments || []).find(
+      a => a.studentId === studentId && (a.status === 'in_progress' || a.status === 'assigned')
+    );
+    if (!assignment) {
+      return { hasActivePractice: false };
+    }
+    const practice = state.practices.find(p => p.id === assignment.practiceId);
+    const distribution = (state.practiceDistributions || []).find(
+      d => d.id === assignment.distributionId || d.distributionCode === assignment.distributionCode
+    );
+    const organization = state.practicePlaces.find(p => p.id === assignment.practicePlaceId);
+    const supervisor = state.supervisors.find(s => s.id === assignment.supervisorId);
+    const department = assignment.departmentId 
+      ? state.practiceDepartments.find(d => d.id === assignment.departmentId)
+      : undefined;
+
+    return {
+      practice,
+      assignment,
+      distribution,
+      organization,
+      supervisor,
+      department,
+      hasActivePractice: true
+    };
+  }
+
   // --- ASSIGNMENTS & ALLOCATION ---
   public getAssignments(): PracticeAssignment[] {
     return this.getState().practiceAssignments;
@@ -2967,6 +3517,73 @@ class StorageServiceV2 {
   }
 
   /**
+   * Section 14: Schedule Validation for Attendance
+   * Ensures student only attends on valid dates, practice days (Mon-Fri etc.), and allowed hours.
+   */
+  public validateAttendanceEligibility(
+    studentId: string,
+    practiceId: string,
+    targetDate: string,
+    targetTime?: string
+  ): {
+    eligible: boolean;
+    reason?: string;
+    assignment?: PracticeAssignment;
+  } {
+    const state = this.getState();
+    const assignment = state.practiceAssignments.find(
+      a => a.studentId === studentId && (practiceId ? a.practiceId === practiceId : true)
+    );
+
+    if (!assignment) {
+      return {
+        eligible: false,
+        reason: 'Siz ushbu amaliyotga biriktirilmagansiz.'
+      };
+    }
+
+    // 1. Date range check
+    if (targetDate < assignment.startDate) {
+      return {
+        eligible: false,
+        reason: `Amaliyot hali boshlanmagan (Boshlanish sanasi: ${assignment.startDate}).`,
+        assignment
+      };
+    }
+
+    if (targetDate > assignment.endDate) {
+      return {
+        eligible: false,
+        reason: `Amaliyot muddati (${assignment.endDate}) yakunlangan. Yangi davomat jarayonlari yopiq.`,
+        assignment
+      };
+    }
+
+    // 2. Day of week check
+    if (assignment.practiceDays && assignment.practiceDays.length > 0) {
+      const d = new Date(targetDate);
+      const dayIndex = d.getDay(); // 0: Sun, 1: Mon, ..., 6: Sat
+      const dayNames = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+      const currentDayName = dayNames[dayIndex];
+      const isAllowedDay = assignment.practiceDays.some(day => 
+        day.toLowerCase().trim() === currentDayName.toLowerCase().trim()
+      );
+      if (!isAllowedDay) {
+        return {
+          eligible: false,
+          reason: `Bugun (${currentDayName}) amaliyot jadvalida belgilanmagan. Jadvaldagi kunlar: ${assignment.practiceDays.join(', ')}.`,
+          assignment
+        };
+      }
+    }
+
+    return {
+      eligible: true,
+      assignment
+    };
+  }
+
+  /**
    * Section 4, 5, 6, 7, 10, 21, 23: Complete Validation & QR Attendance Recording
    */
   public validateAndRecordQRAttendance(params: {
@@ -3041,6 +3658,12 @@ class StorageServiceV2 {
       return { success: false, error: 'Siz ushbu amaliyot joyiga biriktirilmagansiz.' };
     }
 
+    // Schedule Eligibility Check (Requirement 14)
+    const scheduleCheck = this.validateAttendanceEligibility(params.studentId, session.practiceId, todayStr, nowHHMM);
+    if (!scheduleCheck.eligible) {
+      return { success: false, error: scheduleCheck.reason || 'Amaliyot jadvali bo\'yicha bugun davomatga ruxsat berilmagan.' };
+    }
+
     // 6. Check Duplicate Check-in Today
     const existing = state.attendance.find(
       a => a.studentId === params.studentId &&
@@ -3093,6 +3716,7 @@ class StorageServiceV2 {
       practiceId: session.practiceId,
       studentId: params.studentId,
       assignmentId: assignment.id,
+      distributionId: assignment.distributionId,
       practicePlaceId: session.practicePlaceId,
       departmentId: assignment.departmentId || session.departmentId || '',
       supervisorId: assignment.supervisorId,
@@ -3118,6 +3742,26 @@ class StorageServiceV2 {
       if (idx >= 0) state.attendance[idx] = newRecord;
     } else {
       state.attendance.unshift(newRecord);
+    }
+
+    // Real-time Event / Notification to Assigned Supervisor (Requirement 12)
+    if (assignment.supervisorId) {
+      const supervisor = state.supervisors.find(s => s.id === assignment.supervisorId);
+      const student = state.students.find(s => s.id === params.studentId);
+      const group = state.groups.find(g => g.id === student?.groupId);
+      if (supervisor && student) {
+        state.notifications.unshift({
+          id: `notif-att-${Date.now()}-${student.id}`,
+          recipientUserId: supervisor.userId || supervisor.id,
+          recipientRoles: ['PRACTICE_SUPERVISOR'],
+          title: '🟢 Davomat qayd etildi',
+          message: `${student.fullName} davomatdan o'tdi · ${nowHHMM} · ${group?.name || 'Guruh'} · ${assignment.department || 'Bo\'lim belgilanmagan'}`,
+          type: 'success',
+          createdAt: now.toISOString(),
+          isRead: false,
+          linkModule: 'attendance'
+        });
+      }
     }
 
     // 10. Audit Log: attendanceCheckIn
@@ -3353,6 +3997,13 @@ class StorageServiceV2 {
       };
     }
 
+    if (date > assignment.endDate) {
+      return {
+        eligible: false,
+        reason: `Amaliyot muddati (${assignment.endDate}) yakunlangan. Yangi kundalik to'ldirish yopiq.`
+      };
+    }
+
     // 3. Check attendance record for the date
     const attendance = state.attendance.find(
       a => a.studentId === studentId && a.practiceId === practiceId && a.date === date
@@ -3581,14 +4232,26 @@ class StorageServiceV2 {
       });
     }
 
-    // Add notification to supervisor / clinic responsible
-    this.addNotification({
-      recipientRoles: ['PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'PRACTICE_HEAD'],
-      title: isResubmit ? 'Kundalik qayta topshirildi' : 'Yangi amaliyot kundaligi topshirildi',
-      message: `${student?.fullName || 'Talaba'} ${linkedJournal.date} kungi amaliyot kundaligini ${isResubmit ? 'tahrirlab qayta topshirdi' : 'tekshiruvga topshirdi'} (${linkedJournal.department}).`,
-      type: 'info',
-      linkModule: 'daily_journal'
-    });
+    // Add notification to assigned supervisor
+    const group = state.groups.find(g => g.id === student?.groupId);
+    if (supervisor) {
+      this.addNotification({
+        recipientUserId: supervisor.userId || supervisor.id,
+        recipientRoles: ['PRACTICE_SUPERVISOR'],
+        title: '🟡 Kundalik tasdiqlashni kutmoqda',
+        message: `${student?.fullName || 'Talaba'} (${group?.name || 'Guruh'}) ${linkedJournal.date} kungi kundaligini tekshirish uchun yubordi.`,
+        type: 'warning',
+        linkModule: 'daily_journal'
+      });
+    } else {
+      this.addNotification({
+        recipientRoles: ['PRACTICE_SUPERVISOR', 'PRACTICE_HEAD'],
+        title: isResubmit ? 'Kundalik qayta topshirildi' : 'Yangi amaliyot kundaligi topshirildi',
+        message: `${student?.fullName || 'Talaba'} ${linkedJournal.date} kungi amaliyot kundaligini tekshiruvga topshirdi.`,
+        type: 'info',
+        linkModule: 'daily_journal'
+      });
+    }
 
     // Record audit log
     this.recordAuditLog({

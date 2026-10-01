@@ -126,6 +126,7 @@ export type PracticePlaceType = 'Shifoxona' | 'Klinika' | 'Poliklinika' | 'Ilmiy
 
 export interface PracticePlace {
   id: string;
+  organizationId: string; // e.g. TASH-000125
   name: string;
   type: PracticePlaceType;
   city: string;
@@ -148,7 +149,7 @@ export interface PracticePlace {
 
 export interface PracticeDepartment {
   id: string;
-  practicePlaceId: string;
+  organizationId: string;
   name: string;
   headDoctor?: string;
   bedCapacity?: number;
@@ -157,17 +158,19 @@ export interface PracticeDepartment {
 
 export interface Supervisor {
   id: string;
-  userId?: string;
+  userId: string;
   fullName: string;
-  department: string;
-  academicDegree: string;
-  position?: string;
   phone: string;
   email: string;
-  type: 'university' | 'clinic';
-  practicePlaceId?: string;
-  assignedStudentsCount: number;
+  status: 'ACTIVE' | 'INACTIVE';
   createdAt?: string;
+  updatedAt?: string;
+  department?: string;
+  academicDegree?: string;
+  position?: string;
+  type?: 'university' | 'clinic';
+  practicePlaceId?: string;
+  assignedStudentsCount?: number;
 }
 
 export interface ClinicResponsible {
@@ -200,6 +203,19 @@ export type PracticeStatus =
   | 'draft' | 'active' | 'paused' | 'completed' | 'archived'
   | 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ARCHIVED';
 
+export interface PracticeGroupSchedule {
+  groupId: string;
+  courseLevel?: number;
+  directionId?: string;
+  startDate: string;
+  endDate: string;
+  practiceDays: string[]; // e.g. ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma']
+  startTime: string; // e.g. "08:00"
+  endTime: string; // e.g. "14:00"
+  organizationId?: string;
+  supervisorId?: string;
+}
+
 export interface Practice {
   id: string;
   name: string;
@@ -222,23 +238,62 @@ export interface Practice {
   totalHours: number;
   credits: number;
   durationDays?: number;
+  practiceDays?: string[]; // Standard practice days
+  startTime?: string; // Standard start time e.g. "08:00"
+  endTime?: string; // Standard end time e.g. "14:00"
+  groupSchedules?: Record<string, PracticeGroupSchedule>; // Custom schedules per group
   createdAt?: string;
+  updatedAt?: string;
+}
+
+// Alohida "Amaliyot taqsimoti" (Group Assignment / Distribution Model)
+export interface PracticeDistribution {
+  id: string; // Unique id e.g. "dist-123"
+  distributionCode: string; // e.g. "TAQ-2026-00125"
+  practiceId: string; // internshipId
+  academicYear: string; // e.g. "2026-2027"
+  courseLevel: number; // 1-6
+  directionId: string;
+  groupId: string;
+  supervisorId: string; // Amaliyot rahbari GURUH KESIMIDA biriktiriladi
+  organizationId: string; // practicePlaceId e.g. "place-1" (TASH-000125)
+  startDate: string;
+  endDate: string;
+  practiceDays: string[]; // e.g. ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma']
+  startTime: string; // "08:00"
+  endTime: string; // "14:00"
+  status: 'draft' | 'active' | 'completed' | 'cancelled';
+  totalStudentsCount?: number;
+  assignedDepartmentsCount?: number;
+  unassignedDepartmentsCount?: number;
+  createdAt: string;
   updatedAt?: string;
 }
 
 export interface PracticeAssignment {
   id: string;
+  assignmentId?: string; // Alias or unique code
+  distributionId?: string; // Links to PracticeDistribution
+  distributionCode?: string; // e.g. "TAQ-2026-00125"
   practiceId: string;
   studentId: string;
-  practicePlaceId: string;
-  department: string;
-  departmentId?: string;
+  groupId?: string;
+  practicePlaceId: string; // organizationId
+  department: string; // e.g. "Jarrohlik", "Terapiya" or empty if unassigned
+  departmentId?: string; // pdept-1 or empty if unassigned
   supervisorId: string;
   clinicResponsibleId?: string;
   startDate: string;
   endDate: string;
+  practiceDays?: string[];
+  startTime?: string;
+  endTime?: string;
+  academicYear?: string;
+  courseLevel?: number;
+  directionId?: string;
   status: 'assigned' | 'in_progress' | 'completed' | 'failed' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export type AttendanceStatus = 
@@ -268,30 +323,38 @@ export interface AttendanceSession {
 }
 
 export interface Attendance {
-  id: string;
-  practiceId: string;
+  id: string; // attendanceId
   studentId: string;
-  assignmentId?: string;
-  practicePlaceId?: string;
+  assignmentId: string;
+  supervisorId: string;
+  organizationId: string; // practicePlaceId
   departmentId?: string;
-  supervisorId?: string;
+  groupId: string; // needed for getAttendanceByGroup
   date: string; // YYYY-MM-DD
-  checkInTime?: string; // HH:MM
-  checkOutTime?: string; // HH:MM
-  status: AttendanceStatus;
+  checkInTime: string; // HH:MM
+  attendanceMethod: 'GPS' | 'QR' | 'TOKEN' | 'MANUAL';
+  approvalType: 'AUTO' | 'MANUAL';
+  status: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | 'FAILED' | 'BLOCKED';
+  latitude?: number;
+  longitude?: number;
+  failureReason?: string;
+  excuseReason?: string;
+  excuseDocumentUrl?: string;
+  approvedBy?: string; // userId of approver
+  approvalComment?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  // Keep legacy for compatibility
+  practicePlaceId?: string;
   qrSessionId?: string;
   qrId?: string;
   qrTokenHash?: string;
-  latitude?: number;
-  longitude?: number;
   locationVerified?: boolean;
   deviceInfo?: string;
   note?: string;
   notes?: string;
   verifiedBy?: string;
   verifiedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 export type ProcedureParticipationType = 'Mustaqil' | 'Rahbar nazoratida' | 'Kuzatuvchi';
@@ -333,69 +396,40 @@ export interface JournalAttachment {
 }
 
 export type JournalStatus = 
-  | 'pending' | 'approved' | 'rejected' | 'revision'
-  | 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVISION' | 'DRAFT';
+    | "OPEN"
+    | "SUBMITTED_TO_SUPERVISOR"
+    | "RETURNED_FOR_EDIT"
+    | "APPROVED_BY_SUPERVISOR"
+    | "CLOSED_BY_3_DAY_TIMEOUT"
+    | "REOPENED_BY_DEPARTMENT_HEAD"
+    | "REOPENED_BY_SUPER_ADMIN"
+    | "PENDING_SUPERVISOR_AFTER_REOPEN";
 
 export interface DailyJournal {
-  id: string;
-  practiceId: string;
+  id: string; // journalId
   studentId: string;
-  assignmentId?: string;
-  practicePlaceId?: string;
+  assignmentId: string;
+  internshipId: string;
+  academicYearId: string;
+  groupId: string;
+  directionId: string;
+  course: number;
+  supervisorId: string;
+  organizationId: string;
   departmentId?: string;
-  department: string;
-  supervisorId?: string;
-  attendanceId?: string;
-  date: string; // YYYY-MM-DD
-  
-  // A. Bog'langan amaliyot va davomat ma'lumotlari (readonly)
-  attendanceSnapshot?: {
-    status: AttendanceStatus;
-    checkInTime?: string;
-    checkOutTime?: string;
-    verifiedBy?: string;
-    practicePlaceName?: string;
-    supervisorName?: string;
-    departmentName?: string;
-  };
-
-  // B. Bugun bajarilgan ishlar
-  workSummary?: string;
-
-  // C. Ko'rilgan bemorlar
-  patientsExaminedCount: number;
-  patientDiagnosesSummary?: string;
-
-  // D. Bajarilgan muolajalar
-  procedures?: JournalProcedure[];
-  proceduresDone: string[]; // for backward compat
-
-  // E. Klinik holatlar
-  clinicalCases?: ClinicalCaseItem[];
-  clinicalCasesSummary: string; // for backward compat
-
-  // F. O'rganilgan mavzular
-  topicsLearned?: string;
-  questionsLearned: string; // for backward compat
-
-  // G. O'z-o'zini tahlil qilish
-  selfReflection?: JournalReflection;
-
-  // Fayllar va rasmlar
-  attachments?: JournalAttachment[];
-  photoURLs?: string[];
-
-  // Rahbar tekshiruvi va baholash
+  journalDate: string; // YYYY-MM-DD
   status: JournalStatus;
-  supervisorFeedback?: string;
-  supervisorRating?: number; // 1-5 yulduz yoki ball
-  revisionReason?: string;
-  submittedAt: string;
-  reviewedAt?: string;
+  content: string; // Aggregate of all previous fields
+  submittedAt?: string; // Timestamp ISO
+  reviewedAt?: string; // Timestamp ISO
   reviewedBy?: string;
-  reviewerId?: string;
-  version?: number;
-  updatedAt?: string;
+  reviewComment?: string;
+  reopenedAt?: string; // Timestamp ISO
+  reopenedBy?: string;
+  reopenReason?: string;
+  supervisorReviewDeadline?: string; // Timestamp ISO
+  createdAt: string; // Timestamp ISO
+  updatedAt: string; // Timestamp ISO
 }
 
 export type StandardSkillCategory = 
@@ -785,6 +819,8 @@ export type AuditAction =
   | 'finalStatusCalculated'
   | 'studentStatusSynced'
   | 'problemResolved'
+  | 'hemisSyncCreated'
+  | 'hemisSyncUpdated'
   | 'systemReset';
 
 export interface AuditLog {

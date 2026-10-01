@@ -12,15 +12,20 @@ import {
   FileCheck
 } from 'lucide-react';
 import { PracticePlace, PracticePlaceType } from '../../../types';
-import { storageService } from '../../../services/storageService';
+import { organizationService } from '../../../services/organizationService';
 import { useToast } from '../../../context/ToastContext';
 import { Modal } from '../../common/Modal';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
 import { EmptyState } from '../../common/EmptyState';
+import { useEffect } from 'react';
 
 export function PracticePlacesModule() {
   const { showToast } = useToast();
-  const [places, setPlaces] = useState<PracticePlace[]>(() => storageService.getPracticePlaces());
+  const [places, setPlaces] = useState<PracticePlace[]>([]);
+  
+  useEffect(() => {
+    organizationService.getOrganizations().then(setPlaces);
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
 
@@ -28,18 +33,20 @@ export function PracticePlacesModule() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [placeToDelete, setPlaceToDelete] = useState<PracticePlace | null>(null);
 
-  const refreshList = () => {
-    setPlaces(storageService.getPracticePlaces());
+  const refreshList = async () => {
+    const data = await organizationService.getOrganizations();
+    setPlaces(data);
   };
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const deptsRaw = (formData.get('departments') as string) || '';
     const departments = deptsRaw.split(',').map(s => s.trim()).filter(Boolean);
 
-    const place: PracticePlace = {
-      id: placeToEdit?.id || `place-${Date.now()}`,
+    const place = {
+      id: placeToEdit?.id || 'new',
+      organizationId: formData.get('organizationId') as string || `place-${Date.now()}`,
       name: formData.get('name') as string,
       type: formData.get('type') as PracticePlaceType,
       city: formData.get('city') as string,
@@ -50,21 +57,25 @@ export function PracticePlacesModule() {
       activeStudentsCount: placeToEdit?.activeStudentsCount || 0,
       contactPerson: formData.get('contactPerson') as string,
       contactPhone: formData.get('contactPhone') as string,
-      departments: departments.length > 0 ? departments : ['Terapiya', 'Umumiy xirurgiya'],
+      departments: departments,
       contractNumber: formData.get('contractNumber') as string,
       contractDate: (formData.get('contractDate') as string) || '2025-01-10',
       contractExpiryDate: (formData.get('contractExpiryDate') as string) || '2026-12-31'
     };
 
-    storageService.savePracticePlace(place);
+    if (placeToEdit) {
+      await organizationService.updateOrganization(placeToEdit.id, place as Partial<PracticePlace>);
+    } else {
+      await organizationService.createOrganization(place as Omit<PracticePlace, 'id'>);
+    }
     refreshList();
     setIsModalOpen(false);
     showToast('success', 'Amaliyot joyi saqlandi', place.name);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!placeToDelete) return;
-    storageService.deletePracticePlace(placeToDelete.id);
+    await organizationService.softDeleteOrganization(placeToDelete.id);
     refreshList();
     showToast('info', 'O\'chirildi', `${placeToDelete.name} bazasi olib tashlandi.`);
     setPlaceToDelete(null);
@@ -253,7 +264,11 @@ export function PracticePlacesModule() {
         maxWidth="2xl"
       >
         <form onSubmit={handleSave} className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="sm:col-span-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Tashkilot ID *</label>
+              <input type="text" name="organizationId" required defaultValue={placeToEdit?.organizationId || ''} placeholder="TASH-000001" className="w-full px-3 py-2 text-xs border rounded-lg font-mono" />
+            </div>
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-slate-700 mb-1">Muassasa nomi *</label>
               <input type="text" name="name" required defaultValue={placeToEdit?.name || ''} placeholder="Masalan: 1-son Respublika Klinik Shifoxonasi" className="w-full px-3 py-2 text-xs border rounded-lg" />

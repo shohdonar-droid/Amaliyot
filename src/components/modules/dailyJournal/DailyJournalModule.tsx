@@ -28,6 +28,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { DailyJournal, Student, Practice, PracticePlace, Supervisor, Faculty, Direction, Group, Course, PracticeAssignment } from '../../../types';
+import { dailyJournalService } from '../../../services/dailyJournalService';
 import { storageService } from '../../../services/storageService';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
@@ -40,8 +41,11 @@ import { DailyJournalPrintView } from './DailyJournalPrintView';
 export function DailyJournalModule() {
   const { showToast } = useToast();
   const { currentUser, role, canonicalRole } = useAuth();
-
-  const [journals, setJournals] = useState<DailyJournal[]>(() => storageService.getDailyJournals());
+  const [journals, setJournals] = useState<DailyJournal[]>([]);
+  
+  useEffect(() => {
+      refreshJournals();
+  }, []);
   const students = storageService.getStudents();
   const practices = storageService.getPractices();
   const practicePlaces = storageService.getPracticePlaces();
@@ -88,8 +92,9 @@ export function DailyJournalModule() {
   const [isPrintViewOpen, setIsPrintViewOpen] = useState(false);
   const [journalToPrint, setJournalToPrint] = useState<DailyJournal | null>(null);
 
-  const refreshJournals = () => {
-    setJournals(storageService.getDailyJournals());
+  const refreshJournals = async () => {
+    const data = await dailyJournalService.getAllJournals(); // Need to add this to service
+    setJournals(data);
   };
 
   // Determine current student profile for Student Cabinet view

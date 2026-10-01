@@ -108,6 +108,10 @@ service cloud.firestore {
     }
 
     // --- ACADEMIC STRUCTURE (Faculties, Directions, Courses, Groups) ---
+    match /academicYears/{yearId} {
+      allow read: if isSignedIn();
+      allow write: if isPracticeHead();
+    }
     match /faculties/{facultyId} {
       allow read: if isSignedIn();
       allow write: if isPracticeHead();
@@ -129,12 +133,12 @@ service cloud.firestore {
     }
 
     // --- CLINICAL PLACES & DEPARTMENTS ---
-    match /practicePlaces/{placeId} {
+    match /organizations/{placeId} {
       allow read: if isSignedIn();
       allow write: if isPracticeStaff();
     }
 
-    match /practiceDepartments/{deptId} {
+    match /organizationDepartments/{deptId} {
       allow read: if isSignedIn();
       allow write: if isPracticeStaff();
     }
@@ -161,7 +165,7 @@ service cloud.firestore {
     match /practiceAssignments/{assignmentId} {
       allow read: if isSignedIn() && (
         isPracticeStaff() ||
-        isSupervisor() ||
+        (isSupervisor() && resource.data.supervisorId == get(/databases/$(database)/documents/supervisors/$(request.auth.uid)).data.id) ||
         resource.data.studentId == getUserData().studentId ||
         (getUserRole() == 'CLINIC_RESPONSIBLE' && getUserData().practicePlaceId == resource.data.practicePlaceId)
       );
@@ -174,7 +178,7 @@ service cloud.firestore {
         isPracticeStaff() ||
         isSupervisor() ||
         resource.data.studentId == getUserData().studentId ||
-        (getUserRole() == 'CLINIC_RESPONSIBLE' && getUserData().practicePlaceId == resource.data.practicePlaceId)
+        (getUserRole() == 'CLINIC_RESPONSIBLE' && getUserData().practicePlaceId == resource.data.organizationId)
       );
       // Student can create their own attendance record (e.g. check-in via QR)
       allow create: if isSignedIn() && (
@@ -183,16 +187,17 @@ service cloud.firestore {
         getUserRole() == 'CLINIC_RESPONSIBLE' ||
         (getUserRole() == 'STUDENT' && request.resource.data.studentId == getUserData().studentId)
       );
-      // Practice staff, supervisors, clinic responsibles can update attendance.
+      // Practice staff can update attendance.
       // Student can ONLY update their own existing record and CANNOT alter the studentId.
+      // Head/Admin can approve exceptions.
       allow update: if isSignedIn() && (
-        isPracticeStaff() ||
-        isSupervisor() ||
-        getUserRole() == 'CLINIC_RESPONSIBLE' ||
+        (isPracticeStaff() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'approvalType'])) ||
+        (isPracticeHead() && request.resource.data.status in ['PRESENT', 'ABSENT', 'EXCUSED']) ||
         (
           getUserRole() == 'STUDENT' &&
           resource.data.studentId == getUserData().studentId &&
-          request.resource.data.studentId == resource.data.studentId
+          request.resource.data.studentId == resource.data.studentId &&
+          resource.data.status == 'BLOCKED'
         )
       );
       allow delete: if isPracticeHead();
@@ -213,9 +218,8 @@ service cloud.firestore {
     match /dailyJournals/{journalId} {
       allow read: if isSignedIn() && (
         isPracticeStaff() ||
-        isSupervisor() ||
-        resource.data.studentId == getUserData().studentId ||
-        getUserRole() == 'CLINIC_RESPONSIBLE'
+        (isSupervisor() && resource.data.supervisorId == get(/databases/$(database)/documents/supervisors/$(request.auth.uid)).data.id) ||
+        resource.data.studentId == getUserData().studentId
       );
       allow create: if isSignedIn() && (
         isPracticeStaff() ||
@@ -223,13 +227,14 @@ service cloud.firestore {
       );
       allow update: if isSignedIn() && (
         isPracticeStaff() ||
-        isSupervisor() ||
+        (isSupervisor() && request.resource.data.status in ['APPROVED_BY_SUPERVISOR', 'RETURNED_FOR_EDIT']) ||
         (
           getUserRole() == 'STUDENT' &&
           resource.data.studentId == getUserData().studentId &&
           request.resource.data.studentId == resource.data.studentId &&
-          resource.data.status == 'PENDING'
-        )
+          resource.data.status in ['OPEN', 'RETURNED_FOR_EDIT']
+        ) ||
+        (isPracticeHead() && request.resource.data.status in ['REOPENED_BY_DEPARTMENT_HEAD', 'REOPENED_BY_SUPER_ADMIN'])
       );
       allow delete: if isPracticeHead();
     }

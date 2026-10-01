@@ -27,7 +27,9 @@ interface DashboardModuleProps {
 }
 
 export function DashboardModule({ onNavigate }: DashboardModuleProps) {
-  const { role, currentUser } = useAuth();
+  const { role, canonicalRole, currentUser } = useAuth();
+  const isSupervisor = canonicalRole === 'PRACTICE_SUPERVISOR';
+  const supervisorId = currentUser?.supervisorId || (isSupervisor ? 'sup-1' : undefined);
 
   // Load live data from service layer
   const students = storageService.getStudents();
@@ -39,9 +41,22 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
   const journals = storageService.getDailyJournals();
   const assessments = storageService.getAssessments();
 
+  // Supervisor-specific calculations
+  const mySupervisorStudents = isSupervisor && supervisorId
+    ? storageService.getStudentsForSupervisor(supervisorId)
+    : [];
+  const supervisorUnassigned = isSupervisor && supervisorId
+    ? storageService.getUnassignedDepartmentStudentsForSupervisor(supervisorId)
+    : [];
+  const supervisorPendingJournals = isSupervisor && supervisorId
+    ? journals.filter(j => j.status?.toUpperCase() === 'PENDING' && (j.supervisorId === supervisorId || mySupervisorStudents.some(s => s.id === j.studentId)))
+    : [];
+
   // Compute live statistics requested in Section 3:
-  const totalStudents = students.length;
-  const inPracticeStudents = students.filter(s => s.status === 'in_practice').length;
+  const totalStudents = isSupervisor ? mySupervisorStudents.length : students.length;
+  const inPracticeStudents = isSupervisor
+    ? mySupervisorStudents.length
+    : students.filter(s => s.status === 'in_practice').length;
   const totalPlaces = places.length;
   const totalSupervisors = supervisors.length;
   const activePractices = practices.filter(p => p.status === 'active');
@@ -122,6 +137,80 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           </button>
         </div>
       </div>
+
+      {/* Supervisor Special Action Center (Requirement 10 & 13) */}
+      {isSupervisor && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button
+            type="button"
+            onClick={() => onNavigate('allocation')}
+            className={`p-4 rounded-xl border text-left transition-all cursor-pointer shadow-xs ${
+              supervisorUnassigned.length > 0
+                ? 'bg-rose-50 border-rose-200 hover:bg-rose-100/80'
+                : 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100/80'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                supervisorUnassigned.length > 0 ? 'text-rose-700' : 'text-emerald-700'
+              }`}>
+                Bo'limlarga taqsimot
+              </span>
+              <span className={`w-2.5 h-2.5 rounded-full ${
+                supervisorUnassigned.length > 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'
+              }`} />
+            </div>
+            <div className={`text-xl font-extrabold mt-1 ${
+              supervisorUnassigned.length > 0 ? 'text-rose-900' : 'text-emerald-900'
+            }`}>
+              {supervisorUnassigned.length > 0
+                ? `🔴 ${supervisorUnassigned.length} nafar biriktirilmagan`
+                : '🟢 Barchasi biriktirilgan'}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Guruh talabalarini klinik bo'limlarga biriktirish uchun bosing →
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('daily_journal')}
+            className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-left hover:bg-amber-100/80 transition-all cursor-pointer shadow-xs"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                Elektron Kundaliklar
+              </span>
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            </div>
+            <div className="text-xl font-extrabold text-amber-900 mt-1">
+              🟡 {supervisorPendingJournals.length} ta tekshirish kutilmoqda
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Talabalaringiz yuborgan kundaliklarni ko'rib chiqish va baholash →
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('students')}
+            className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-left hover:bg-blue-100/80 transition-all cursor-pointer shadow-xs"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                Mening Talabalarim
+              </span>
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+            </div>
+            <div className="text-xl font-extrabold text-blue-900 mt-1">
+              👨‍⚕️ {mySupervisorStudents.length} nafar talaba
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Faqat sizga biriktirilgan guruhlar talabalari ro'yxati →
+            </p>
+          </button>
+        </div>
+      )}
 
       {/* 9 Core Metric Cards required by Section 3 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">

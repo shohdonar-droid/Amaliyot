@@ -24,15 +24,30 @@ import {
 import { Practice, PracticeStatus, PracticeAssignment } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { useToast } from '../../../context/ToastContext';
+import { useAuth } from '../../../context/AuthContext';
 import { StatusBadge, StatusVariant } from '../../common/Badge';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
 import { PracticeFormModal } from './PracticeFormModal';
 import { PracticeWizardModal } from './PracticeWizardModal';
 import { PracticeDetailModal } from './PracticeDetailModal';
 import { EmptyState } from '../../common/EmptyState';
+import {
+  Hospital,
+  MapPin,
+  Calendar,
+  UserCheck,
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Split
+} from 'lucide-react';
 
 export function PracticesModule() {
   const { showToast } = useToast();
+  const { canonicalRole, currentUser } = useAuth();
+  const isStudent = canonicalRole === 'STUDENT';
+  const studentId = currentUser?.studentId || (isStudent ? 'std-1' : undefined);
+
   const [practices, setPractices] = useState<Practice[]>(() => storageService.getPractices());
   const faculties = storageService.getFaculties();
   const directions = storageService.getDirections();
@@ -40,6 +55,11 @@ export function PracticesModule() {
   const places = storageService.getPracticePlaces();
   const supervisors = storageService.getSupervisors();
   const allAssignments = storageService.getAssignments();
+
+  const studentDetails = useMemo(() => {
+    if (!isStudent || !studentId) return null;
+    return storageService.getStudentActivePracticeDetails(studentId);
+  }, [isStudent, studentId, practices, allAssignments]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -141,25 +161,134 @@ export function PracticesModule() {
 
   return (
     <div className="space-y-6">
+      {/* Student Dedicated "AMALIYOTIM" Section (Requirement 15) */}
+      {isStudent && (
+        <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 rounded-2xl p-6 text-white shadow-md border border-blue-900/50 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-800/60 pb-4">
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">
+                Talaba Shaxsiy Profili · Rasmiy Biriktiruv
+              </span>
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5">
+                AMALIYOTIM
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs px-2.5 py-1 bg-blue-900/80 text-blue-200 border border-blue-700/60 rounded-lg">
+                Taqsimot ID: {studentDetails?.distribution?.distributionCode || studentDetails?.assignment?.distributionCode || 'TAQ-2026-00125'}
+              </span>
+              <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500 text-white">
+                FAOL AMALIYOT
+              </span>
+            </div>
+          </div>
+
+          {studentDetails?.hasActivePractice ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+              {/* Amaliyot Nomi & Kurs */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-1">
+                <span className="text-[10px] font-semibold text-blue-300 uppercase tracking-wider block">
+                  Amaliyot va O'quv Rejasi
+                </span>
+                <div className="font-bold text-white text-sm">
+                  {studentDetails.practice?.name || '4-kurs Davolash amaliyoti'}
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  {studentDetails.practice?.courseLevel || 4}-kurs · {directions.find(d => d.id === studentDetails.practice?.directionId)?.name || 'Davolash ishi'}
+                </div>
+                <div className="text-[11px] text-blue-400 font-semibold">
+                  Guruh: {groups.find(g => g.id === studentDetails.assignment?.groupId)?.name || '401-guruh'}
+                </div>
+              </div>
+
+              {/* Tashkilot & Tashkilot ID */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-1">
+                <span className="text-[10px] font-semibold text-blue-300 uppercase tracking-wider block">
+                  Tashkilot (Klinik Baza)
+                </span>
+                <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                  <Hospital className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>{studentDetails.organization?.name || 'Chirchiq shahar tibbiyot birlashmasi'}</span>
+                </div>
+                <div className="font-mono text-xs text-blue-300 font-bold">
+                  Tashkilot ID: {studentDetails.organization?.organizationCode || 'TASH-000125'}
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  {studentDetails.organization?.address || 'Chirchiq shahri'}
+                </div>
+              </div>
+
+              {/* Amaliyot Rahbari & Bo'lim */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-1">
+                <span className="text-[10px] font-semibold text-blue-300 uppercase tracking-wider block">
+                  Rahbar va Biriktirilgan Bo'lim
+                </span>
+                <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{studentDetails.supervisor?.fullName || 'Prof. Sobirov Alisher'}</span>
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  {studentDetails.supervisor?.phone || '+998 90 811-22-33'}
+                </div>
+                <div className="pt-1">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Klinik Bo'lim:</span>
+                  <span className="inline-block px-2 py-0.5 rounded bg-blue-600/80 text-white font-semibold text-[11px]">
+                    {studentDetails.assignment?.department || 'Rahbar tomonidan taqsimlanmoqda'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Muddat, Kunlar, Ish Vaqti */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-1">
+                <span className="text-[10px] font-semibold text-blue-300 uppercase tracking-wider block">
+                  Muddat va Ish Vaqti
+                </span>
+                <div className="font-semibold text-white flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-purple-400 shrink-0" />
+                  <span>
+                    {studentDetails.assignment?.startDate || studentDetails.distribution?.startDate || '05.10.2026'} — {studentDetails.assignment?.endDate || studentDetails.distribution?.endDate || '30.10.2026'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-300 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>
+                    {studentDetails.assignment?.startTime || studentDetails.distribution?.startTime || '08:00'} — {studentDetails.assignment?.endTime || studentDetails.distribution?.endTime || '14:00'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-blue-300">
+                  Kunlar: {(studentDetails.assignment?.practiceDays || studentDetails.distribution?.practiceDays || ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma']).join(', ')}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 bg-white/5 rounded-xl text-center text-slate-300 text-xs">
+              Siz hozircha amaliyotga biriktirilmagansiz. Amaliyot bo'limi tomonidan taqsimot amalga oshirilganda bu yerda barcha ma'lumotlar ko'rinadi.
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">
-            Amaliyotlar boshqaruvi
+            {isStudent ? "Universitet amaliyotlari katalogi" : "Amaliyotlar boshqaruvi"}
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             O'quv-tanishuv, klinik ishlab chiqarish va malakaviy amaliyotlar monitoringi
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsWizardOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Yangi amaliyot (Wizard)</span>
-        </button>
+        {!isStudent && (
+          <button
+            type="button"
+            onClick={() => setIsWizardOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Yangi amaliyot (Wizard)</span>
+          </button>
+        )}
       </div>
 
       {/* Filter, search and view controls */}

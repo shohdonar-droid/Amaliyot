@@ -103,9 +103,9 @@ export function Sidebar({
     },
     {
       id: 'allocation',
-      label: 'Taqsimlash',
+      label: 'Taqsimot va bo\'limlar',
       icon: Split,
-      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'super_admin', 'dept_head', 'dept_staff']
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'PRACTICE_SUPERVISOR', 'super_admin', 'dept_head', 'dept_staff', 'supervisor']
     },
     {
       id: 'attendance',

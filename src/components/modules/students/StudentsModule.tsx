@@ -13,6 +13,7 @@ import {
   X
 } from 'lucide-react';
 import { Student } from '../../../types';
+import { studentService } from '../../../services/studentService';
 import { storageService } from '../../../services/storageService';
 import { useToast } from '../../../context/ToastContext';
 import { StatusBadge } from '../../common/Badge';
@@ -20,15 +21,26 @@ import { ConfirmDialog } from '../../common/ConfirmDialog';
 import { StudentDetailModal } from './StudentDetailModal';
 import { StudentFormModal } from './StudentFormModal';
 import { EmptyState } from '../../common/EmptyState';
+import { useAuth } from '../../../context/AuthContext';
+import { useEffect } from 'react';
 
 export function StudentsModule() {
   const { showToast } = useToast();
+  const { canonicalRole, currentUser } = useAuth();
+  const isSupervisor = canonicalRole === 'PRACTICE_SUPERVISOR';
+  const supervisorId = currentUser?.supervisorId || (isSupervisor ? 'sup-1' : undefined);
 
-  const [students, setStudents] = useState<Student[]>(() => storageService.getStudents());
+  const [students, setStudents] = useState<Student[]>([]);
+  
+  useEffect(() => {
+    studentService.getStudents().then(setStudents);
+  }, []);
   const faculties = storageService.getFaculties();
   const directions = storageService.getDirections();
   const courses = storageService.getCourses();
-  const groups = storageService.getGroups();
+  const groups = isSupervisor && supervisorId 
+    ? storageService.getGroupsForSupervisor(supervisorId)
+    : storageService.getGroups();
   const practices = storageService.getPractices();
   const places = storageService.getPracticePlaces();
 
@@ -48,8 +60,9 @@ export function StudentsModule() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
-  const refreshList = () => {
-    setStudents(storageService.getStudents());
+  const refreshList = async () => {
+    const data = await studentService.getStudents();
+    setStudents(data);
   };
 
   // Filtered Students
@@ -87,18 +100,30 @@ export function StudentsModule() {
     filterStatus
   ]);
 
-  const handleSaveStudent = (saved: Student) => {
-    storageService.saveStudent(saved);
-    refreshList();
-    showToast('success', 'Muvaffaqiyatli saqlandi', `${saved.fullName} ro'yxatda yangilandi.`);
+  const handleSaveStudent = async (saved: Student) => {
+    try {
+      if (saved.id && saved.id !== 'new') {
+        await studentService.updateStudent(saved.id, saved);
+      } else {
+        await studentService.createStudent(saved as Omit<Student, 'id'>);
+      }
+      refreshList();
+      showToast('success', 'Muvaffaqiyatli saqlandi', `${saved.fullName} ro'yxatda yangilandi.`);
+    } catch (e: any) {
+      showToast('error', 'Xatolik', e.message);
+    }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!studentToDelete) return;
-    storageService.deleteStudent(studentToDelete.id);
-    refreshList();
-    showToast('info', 'O\'chirildi', `${studentToDelete.fullName} ro'yxatdan olib tashlandi.`);
-    setStudentToDelete(null);
+    try {
+      await studentService.softDeleteStudent(studentToDelete.id);
+      refreshList();
+      showToast('info', 'O\'chirildi', `${studentToDelete.fullName} ro'yxatdan olib tashlandi.`);
+      setStudentToDelete(null);
+    } catch (e: any) {
+      showToast('error', 'Xatolik', e.message);
+    }
   };
 
   const resetFilters = () => {
@@ -123,26 +148,30 @@ export function StudentsModule() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">
-            Talabalar amaliyoti ro'yxati
+            {isSupervisor ? "Mening biriktirilgan talabalarim" : "Talabalar amaliyoti ro'yxati"}
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Jami: {students.length} nafar talaba · Filtrlangan: {filteredStudents.length} nafar
+            {isSupervisor 
+              ? `Sizga biriktirilgan guruhlar: ${groups.map(g => g.name).join(', ') || 'mavjud emas'} · Jami ${students.length} nafar talaba`
+              : `Jami: ${students.length} nafar talaba · Filtrlangan: ${filteredStudents.length} nafar`}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setStudentToEdit(null);
-              setIsFormModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Yangi talaba</span>
-          </button>
-        </div>
+        {!isSupervisor && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setStudentToEdit(null);
+                setIsFormModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Yangi talaba</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Filter and Search Panel */}
