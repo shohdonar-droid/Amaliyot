@@ -176,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const snap = await getDoc(userRef);
             if (snap.exists()) {
               const data = snap.data() as Partial<User>;
+              console.log('DEBUG: User profile loaded from Firestore:', { uid: fbUser.uid, data });
               userProfile = {
                 id: fbUser.uid,
                 uid: fbUser.uid,
