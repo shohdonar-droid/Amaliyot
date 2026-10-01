@@ -24,6 +24,7 @@ import { UserRole } from '../../types';
 
 export type ActiveModule = 
   | 'dashboard'
+  | 'users'
   | 'students'
   | 'academic'
   | 'practices'
@@ -63,13 +64,19 @@ export function Sidebar({
   onCloseMobile,
   unreadNotificationsCount = 0
 }: SidebarProps) {
-  const { role, canonicalRole, roleConfig, currentUser, logout } = useAuth();
+  const { role, canonicalRole, roleConfig, currentUser, logout, isSuperAdmin } = useAuth();
 
   const allNavItems: NavItem[] = [
     {
       id: 'dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard
+    },
+    {
+      id: 'users',
+      label: 'Foydalanuvchilar va rollar',
+      icon: Users,
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'super_admin', 'dept_head']
     },
     {
       id: 'students',
@@ -161,6 +168,7 @@ export function Sidebar({
 
   const visibleNavItems = allNavItems.filter(item => {
     if (!item.allowedRoles) return true;
+    if (isSuperAdmin) return true;
     return item.allowedRoles.includes(role) || item.allowedRoles.includes(canonicalRole);
   });
 

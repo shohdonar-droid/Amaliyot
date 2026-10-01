@@ -17,6 +17,7 @@ import { AllocationModule } from './components/modules/allocation/AllocationModu
 import { AttendanceModule } from './components/modules/attendance/AttendanceModule';
 import { DailyJournalModule } from './components/modules/dailyJournal/DailyJournalModule';
 import { SkillsModule } from './components/modules/skills/SkillsModule';
+import { UsersModule } from './components/modules/users/UsersModule';
 import { AssessmentsModule } from './components/modules/assessments/AssessmentsModule';
 import { DocumentsModule } from './components/modules/documents/DocumentsModule';
 import { ReportsModule } from './components/modules/reports/ReportsModule';
@@ -25,20 +26,21 @@ import { AuditLogsModule } from './components/modules/auditLogs/AuditLogsModule'
 import { SettingsModule } from './components/modules/settings/SettingsModule';
 
 const VALID_MODULES: ActiveModule[] = [
-  'dashboard', 'students', 'academic', 'practices', 'practice_places',
+  'dashboard', 'users', 'students', 'academic', 'practices', 'practice_places',
   'supervisors', 'allocation', 'attendance', 'daily_journal', 'skills',
   'assessments', 'documents', 'reports', 'notifications', 'audit_logs', 'settings'
 ];
 
 function getModuleFromUrl(): ActiveModule {
+  const path = window.location.pathname.replace(/^\//, '').split('/')[0].trim();
+  if (VALID_MODULES.includes(path as ActiveModule)) {
+    return path as ActiveModule;
+  }
+
+  // Backward compatibility fallback for old hash links
   const hash = window.location.hash.replace('#', '').trim();
   if (VALID_MODULES.includes(hash as ActiveModule)) {
     return hash as ActiveModule;
-  }
-  
-  const path = window.location.pathname.replace(/^\//, '').trim();
-  if (VALID_MODULES.includes(path as ActiveModule)) {
-    return path as ActiveModule;
   }
 
   return 'dashboard';
@@ -50,8 +52,9 @@ function AppContent() {
 
   const setActiveModule = (mod: ActiveModule) => {
     setActiveModuleState(mod);
-    if (window.location.hash !== `#${mod}`) {
-      window.location.hash = mod;
+    const targetPath = mod === 'dashboard' ? '/' : `/${mod}`;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({ module: mod }, '', targetPath);
     }
   };
 
@@ -61,11 +64,11 @@ function AppContent() {
       setActiveModuleState(mod);
     };
 
-    window.addEventListener('hashchange', handleLocationChange);
     window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
     return () => {
-      window.removeEventListener('hashchange', handleLocationChange);
       window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
     };
   }, []);
 
@@ -92,6 +95,8 @@ function AppContent() {
     switch (activeModule) {
       case 'dashboard':
         return <DashboardModule onNavigate={setActiveModule} />;
+      case 'users':
+        return <UsersModule />;
       case 'students':
         return <StudentsModule />;
       case 'academic':

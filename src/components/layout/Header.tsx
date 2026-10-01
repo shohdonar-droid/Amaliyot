@@ -32,6 +32,7 @@ export function Header({
 
   const moduleTitles: Record<ActiveModule, { title: string; subtitle: string }> = {
     dashboard: { title: 'Boshqaruv paneli', subtitle: 'Amaliyot jarayonining umumiy statistikasi va monitoringi' },
+    users: { title: 'Foydalanuvchilar va rollar', subtitle: 'Barcha rol foydalanuvchilarini yaratish, tahrirlash va boshqarish' },
     students: { title: 'Talabalar ro\'yxati', subtitle: 'Barcha talabalar, ularning guruhlari va amaliyot holati' },
     academic: { title: 'Akademik tuzilma', subtitle: 'Fakultetlar, yo\'nalishlar, kurslar va guruhlar boshqaruvi' },
     practices: { title: 'Amaliyotlar', subtitle: 'O\'quv, malakaviy va klinik amaliyotlar buyruqlari' },
