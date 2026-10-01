@@ -27,7 +27,7 @@ export function Header({
   unreadCount = 0,
   onOpenNotifications
 }: HeaderProps) {
-  const { currentUser, role, switchRole, logout } = useAuth();
+  const { currentUser, role, isSuperAdmin, switchRole, logout } = useAuth();
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
 
   const moduleTitles: Record<ActiveModule, { title: string; subtitle: string }> = {
@@ -92,57 +92,55 @@ export function Header({
       {/* Zone 3: Interactive Role Switcher & User Actions */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Quick Role Switcher Pill/Dropdown */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 transition-colors text-xs"
-            title="Rolni o'zgartirish (Sinov uchun 7 ta rol)"
-          >
-            <Shield className="w-3.5 h-3.5 text-blue-600" />
-            <span className="font-medium text-slate-700 hidden sm:inline">Rol:</span>
-            <span className="font-semibold text-blue-700 max-w-[130px] truncate">
-              {ROLE_CONFIGS[role]?.title || role}
-            </span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-          </button>
-
-          {isRoleDropdownOpen && (
-            <div 
-              className="absolute right-0 mt-1 w-64 rounded-xl border border-slate-200 bg-white shadow-xl py-1.5 z-50 text-xs"
-              onClick={e => e.stopPropagation()}
+        {isSuperAdmin && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 transition-colors text-xs"
+              title="Foydalanuvchi profiliga o'tish"
             >
-              <div className="px-3 py-2 border-b border-slate-100">
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-slate-900">Rolni ko'rish (Demo)</p>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-mono font-bold">RBAC TEST</span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">Real tizimda rol faqat administrator tomonidan beriladi.</p>
-              </div>
+              <Shield className="w-3.5 h-3.5 text-blue-600" />
+              <span className="font-medium text-slate-700 hidden sm:inline">Profil:</span>
+              <span className="font-semibold text-blue-700 max-w-[130px] truncate">
+                {currentUser?.fullName || role}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
 
-              {(['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'STUDENT'] as UserRole[]).map(rKey => {
-                const cfg = ROLE_CONFIGS[rKey];
-                const isSelected = role === rKey || (ROLE_CONFIGS[role]?.canonicalRole === rKey);
-                return (
-                  <button
-                    key={rKey}
-                    type="button"
-                    onClick={() => handleRoleSelect(rKey)}
-                    className={`w-full px-3 py-2 text-left flex items-start justify-between gap-2 hover:bg-slate-50 transition-colors ${
-                      isSelected ? 'bg-blue-50/70 text-blue-700 font-semibold' : 'text-slate-700'
-                    }`}
-                  >
-                    <div>
-                      <p className="font-medium">{cfg.title}</p>
-                      <p className="text-[10px] text-slate-400 line-clamp-1">{cfg.description}</p>
-                    </div>
-                    {isSelected && <CheckCircle className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+            {isRoleDropdownOpen && (
+              <div 
+                className="absolute right-0 mt-1 w-72 rounded-xl border border-slate-200 bg-white shadow-xl py-1.5 z-50 text-xs"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="px-3 py-2 border-b border-slate-100">
+                  <p className="font-semibold text-slate-900">Foydalanuvchi tanlash</p>
+                </div>
+
+                {storageService.getUsers().filter(u => u.role !== 'STUDENT').map(user => {
+                  const cfg = ROLE_CONFIGS[user.role] || ROLE_CONFIGS['PRACTICE_HEAD'];
+                  const isSelected = currentUser?.id === user.id;
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => { switchRole(user.id); setIsRoleDropdownOpen(false); }}
+                      className={`w-full px-3 py-2 text-left flex items-start justify-between gap-2 hover:bg-slate-50 transition-colors ${
+                        isSelected ? 'bg-blue-50/70 text-blue-700 font-semibold' : 'text-slate-700'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{user.fullName}</p>
+                        <p className="text-[10px] text-slate-400 truncate">{cfg.title}</p>
+                      </div>
+                      {isSelected && <CheckCircle className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Notifications button */}
         <button

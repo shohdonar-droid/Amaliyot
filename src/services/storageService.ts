@@ -5990,6 +5990,54 @@ class StorageServiceV2 {
   }
 
   // --- NOTIFICATIONS ---
+  public clearDatabase(): void {
+    const state: DatabaseStateV2 = {
+      mode: 'PRODUCTION',
+      users: [],
+      students: [],
+      faculties: [],
+      directions: [],
+      courses: [],
+      groups: [],
+      practicePlaces: [],
+      practiceDepartments: [],
+      supervisors: [],
+      clinicResponsibles: [],
+      practices: [],
+      practiceDistributions: [],
+      practiceAssignments: [],
+      attendance: [],
+      attendanceSessions: [],
+      dailyJournals: [],
+      skills: [],
+      studentSkills: [],
+      skillLogs: [],
+      skillCategories: [],
+      tasks: [],
+      assessments: [],
+      finalExams: [],
+      attestationCommissions: [],
+      assessmentSettings: {
+        id: 'default-settings',
+        attendanceMaxScore: 20,
+        journalMaxScore: 20,
+        skillsMaxScore: 30,
+        finalExamMaxScore: 30,
+        grade5Min: 86,
+        grade4Min: 71,
+        grade3Min: 56,
+        grade2Min: 0,
+        examCriteriaWeights: { theoryMax: 6, practicalMax: 8, clinicalCaseMax: 8, professionalismMax: 4, safetyMax: 4 }
+      },
+      vedomosts: [],
+      documents: [],
+      notifications: [],
+      auditLogs: []
+    };
+    this.saveState(state);
+    window.location.reload();
+  }
+
   public getNotifications(): AppNotification[] {
     return this.getState().notifications;
   }

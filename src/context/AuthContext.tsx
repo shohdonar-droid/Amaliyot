@@ -128,6 +128,7 @@ export interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   isFirebaseAuthenticated: boolean;
+  isSuperAdmin: boolean;
   login: (loginOrIdentifier: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   switchRole: (role: UserRole) => void;
@@ -387,31 +388,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(AUTH_TYPE_KEY);
   };
 
-  const switchRole = (newRole: UserRole) => {
-    const targetCanonical = toCanonicalRole(newRole);
+  const switchRole = (userId: string) => {
+    if (canonicalRole !== 'SUPER_ADMIN') return;
     const users = storageService.getUsers();
-    let matchingUser = users.find(u => toCanonicalRole(u.role) === targetCanonical);
-
-    if (!matchingUser) {
-      matchingUser = {
-        id: `user-${newRole.toLowerCase()}`,
-        uid: `uid-${newRole.toLowerCase()}`,
-        username: newRole.toLowerCase(),
-        login: newRole.toLowerCase(),
-        fullName: ROLE_CONFIGS[newRole].title,
-        role: newRole,
-        status: 'ACTIVE',
-        email: `${newRole.toLowerCase()}@aide.uz`,
-        phone: '+998 (71) 214-88-00',
-        createdAt: new Date().toISOString()
-      };
+    const userToSwitch = users.find(u => u.id === userId || u.uid === userId);
+    if (userToSwitch) {
+      setCurrentUser(userToSwitch);
     }
-    setCurrentUser(matchingUser);
   };
 
   const activeRole: UserRole = currentUser?.role || 'PRACTICE_HEAD';
   const canonicalRole = toCanonicalRole(activeRole);
   const roleConfig = ROLE_CONFIGS[activeRole] || ROLE_CONFIGS[canonicalRole];
+  const isSuperAdmin = canonicalRole === 'SUPER_ADMIN';
 
   return (
     <AuthContext.Provider
@@ -425,6 +414,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         switchRole,
+        isSuperAdmin,
         isAuthenticated: !!currentUser,
         isFirebaseAuthenticated
       }}
