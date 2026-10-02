@@ -18,11 +18,13 @@ export const organizationService = {
   },
 
   createOrganization: async (data: Omit<PracticePlace, 'id'>) => {
-    return await runTransaction(db, async (transaction) => {
-      const q = query(collection(db, COLLECTION), where('organizationId', '==', data.organizationId));
+    if (!db) throw new Error('Firestore is not initialized');
+    const firestoreDb = db;
+    return await runTransaction(firestoreDb, async (transaction) => {
+      const q = query(collection(firestoreDb, COLLECTION), where('organizationId', '==', data.organizationId));
       if (!(await getDocs(q)).empty) throw new Error('Bu organizationId allaqachon mavjud.');
 
-      const colRef = collection(db, COLLECTION);
+      const colRef = collection(firestoreDb, COLLECTION);
       const newDocRef = doc(colRef);
       transaction.set(newDocRef, {
         ...data,

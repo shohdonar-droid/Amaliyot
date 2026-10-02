@@ -51,7 +51,7 @@ export function StudentFormModal({
       setCourseId(studentToEdit.courseId);
       setGroupId(studentToEdit.groupId);
       setPhone(studentToEdit.phone);
-      setTelegram(studentToEdit.telegram);
+      setTelegram(studentToEdit.telegram || '');
       setEmail(studentToEdit.email);
       setStatus(studentToEdit.status);
     } else {
@@ -91,7 +91,7 @@ export function StudentFormModal({
     }
 
     const payload: Student = {
-      id: studentToEdit?.id || `std-${Date.now()}`,
+      id: studentToEdit?.id || 'new',
       userId: studentToEdit?.userId || `uid-std-${Date.now()}`,
       login: finalLogin,
       studentCode: finalLogin,
@@ -112,24 +112,6 @@ export function StudentFormModal({
     };
 
     onSave(payload);
-
-    // Auto-generate or update user account with standard 1-time password
-    storageService.saveUser({
-      id: payload.id,
-      uid: payload.userId,
-      fullName: payload.fullName,
-      login: finalLogin,
-      username: finalLogin,
-      password: 'password123',
-      role: 'STUDENT',
-      email: payload.email,
-      phone: payload.phone,
-      status: 'ACTIVE',
-      facultyId: payload.facultyId,
-      studentId: payload.id,
-      createdAt: studentToEdit?.createdAt || new Date().toISOString()
-    });
-
     setIsSubmitting(false);
     onClose();
   };

@@ -154,7 +154,7 @@ export function DailyJournalFormModal({
   // Load existing journal when editing or revision
   useEffect(() => {
     if (initialJournal) {
-      setSelectedDate(initialJournal.date);
+      setSelectedDate(initialJournal.date || initialJournal.journalDate || new Date().toISOString().split('T')[0]);
       setWorkSummary(initialJournal.workSummary || '');
       setPatientsCount(initialJournal.patientsExaminedCount || 0);
       setPatientDiagnoses(initialJournal.patientDiagnosesSummary || '');
@@ -190,11 +190,21 @@ export function DailyJournalFormModal({
         ]);
       }
 
-      setTopicsLearned(initialJournal.topicsLearned || initialJournal.questionsLearned || '');
+      const topics = initialJournal.topicsLearned || initialJournal.questionsLearned || '';
+      setTopicsLearned(
+        typeof topics === 'string' 
+          ? topics 
+          : (Array.isArray(topics) ? topics.join(', ') : String(topics))
+      );
       if (initialJournal.selfReflection) {
-        setWhatLearned(initialJournal.selfReflection.whatLearned || '');
-        setSkillsImproved(initialJournal.selfReflection.skillsImproved || '');
-        setTomorrowFocus(initialJournal.selfReflection.tomorrowFocus || '');
+        const ref = initialJournal.selfReflection;
+        if (typeof ref === 'object' && ref !== null) {
+          setWhatLearned((ref as any).whatLearned || '');
+          setSkillsImproved((ref as any).skillsImproved || '');
+          setTomorrowFocus((ref as any).tomorrowFocus || '');
+        } else {
+          setWhatLearned(String(ref));
+        }
       }
 
       setAttachments(initialJournal.attachments || []);

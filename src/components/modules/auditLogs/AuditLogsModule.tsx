@@ -22,7 +22,7 @@ export function AuditLogsModule() {
     setLogs(storageService.getAuditLogs());
   };
 
-  const actionLabels: Record<AuditAction, { label: string; variant: 'success' | 'info' | 'warning' | 'danger' | 'purple' | 'neutral' }> = {
+  const actionLabels: Record<string, { label: string; variant: 'success' | 'info' | 'warning' | 'danger' | 'purple' | 'neutral' }> = {
     login: { label: 'Tizimga kirish', variant: 'success' },
     logout: { label: 'Tizimdan chiqish', variant: 'neutral' },
     studentCreated: { label: 'Yangi talaba kiritildi', variant: 'info' },

@@ -25,6 +25,9 @@ import {
 import { User, UserRole, CanonicalUserRole } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { generateStaffLogin, getNextStudentLogin } from '../../../services/loginGeneratorService';
+import { userService } from '../../../services/userService';
+import { studentService } from '../../../services/studentService';
+import { supervisorService } from '../../../services/supervisorService';
 import { useAuth, ROLE_CONFIGS } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
 import { Modal } from '../../common/Modal';
@@ -44,6 +47,14 @@ export function UsersModule() {
   const [userToView, setUserToView] = useState<User | null>(null);
   const [userToEdit, setUserToEdit] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isClearStaffDialogOpen, setIsClearStaffDialogOpen] = useState(false);
+
+  const handleClearAllStaffConfirm = () => {
+    storageService.clearAllStaffUsers();
+    loadUsers();
+    setIsClearStaffDialogOpen(false);
+    showToast('info', 'Xodimlar tozalandi', 'Barcha xodimlar hisoblari tizimdan o\'chirildi.');
+  };
 
   // Form State
   const [formData, setFormData] = useState({
@@ -129,8 +140,7 @@ export function UsersModule() {
     const autoLogin = computeAutoLogin(formData.fullName.trim(), formData.role, currentUsers);
     const standardPassword = 'password123'; // Standard one-time initial password for all created accounts
 
-    const newUser: User = {
-      id: `user-${Date.now()}`,
+    const userData: Omit<User, 'id'> = {
       uid: `uid-${Date.now()}`,
       fullName: formData.fullName.trim(),
       login: autoLogin,
@@ -142,49 +152,68 @@ export function UsersModule() {
       status: formData.status,
       facultyId: formData.facultyId || undefined,
       practicePlaceId: formData.practicePlaceId || undefined,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
-    // If creating a STUDENT, also save to students table so they appear in student lists
-    if (formData.role === 'STUDENT' || formData.role === 'student') {
-      const faculties = storageService.getFaculties();
-      const directions = storageService.getDirections();
-      const courses = storageService.getCourses();
-      const groups = storageService.getGroups();
-      storageService.saveStudent({
-        id: newUser.id,
-        userId: newUser.uid,
-        studentId: `MED-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-        login: autoLogin,
-        studentCode: autoLogin,
-        hemisStudentId: String(Math.floor(10000000 + Math.random() * 90000000)),
-        pinfl: '3140' + String(Math.floor(1000000000 + Math.random() * 9000000000)),
-        fullName: newUser.fullName,
-        facultyId: formData.facultyId || faculties[0]?.id || '',
-        directionId: directions[0]?.id || '',
-        courseId: courses[0]?.id || '',
-        groupId: groups[0]?.id || '',
-        phone: newUser.phone,
-        telegram: '@',
-        email: newUser.email,
-        status: 'active',
-        createdAt: new Date().toISOString()
-      });
-    }
+    // Use userService to create user in Firestore
+    userService.createUser(userData).then(async (userId) => {
+        if (!userId) return;
 
-    storageService.saveUser(newUser);
-    storageService.recordAuditLog({
-      userId: currentUser?.uid || currentUser?.id || 'system',
-      userRole: activeUserRole,
-      action: 'createUser',
-      entity: 'users',
-      entityId: newUser.id,
-      metadata: JSON.stringify({ createdRole: newUser.role, fullName: newUser.fullName, login: autoLogin })
+        // If creating a STUDENT, also save to students table
+        if (formData.role === 'STUDENT' || formData.role === 'student') {
+            const faculties = storageService.getFaculties();
+            const directions = storageService.getDirections();
+            const courses = storageService.getCourses();
+            const groups = storageService.getGroups();
+            
+            await studentService.createStudent({
+                userId: userData.uid,
+                studentId: `MED-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+                login: autoLogin,
+                studentCode: autoLogin,
+                hemisStudentId: String(Math.floor(10000000 + Math.random() * 90000000)),
+                pinfl: '3140' + String(Math.floor(1000000000 + Math.random() * 9000000000)),
+                fullName: userData.fullName,
+                facultyId: formData.facultyId || faculties[0]?.id || '',
+                directionId: directions[0]?.id || '',
+                courseId: courses[0]?.id || '',
+                groupId: groups[0]?.id || '',
+                phone: userData.phone,
+                telegram: '@',
+                email: userData.email,
+                status: 'active'
+            }).catch(err => console.error("Error creating student document:", err));
+        }
+
+        // If creating a SUPERVISOR, also save to supervisors table
+        if (formData.role === 'PRACTICE_SUPERVISOR' || formData.role === 'supervisor') {
+            await supervisorService.createSupervisor({
+                userId: userData.uid,
+                fullName: userData.fullName,
+                phone: userData.phone,
+                email: userData.email,
+                type: 'university',
+                department: 'Kafedra',
+                academicDegree: 'Dotsent',
+                status: 'ACTIVE'
+            }).catch(err => console.error("Error creating supervisor document:", err));
+        }
+
+        storageService.recordAuditLog({
+            userId: currentUser?.uid || currentUser?.id || 'system',
+            userRole: activeUserRole,
+            action: 'userCreated',
+            entity: 'users',
+            entityId: userId,
+            metadata: JSON.stringify({ createdRole: formData.role, fullName: formData.fullName, login: autoLogin })
+        });
+
+        loadUsers();
+        setIsCreateModalOpen(false);
+        showToast('success', 'Foydalanuvchi yaratildi', `${userData.fullName} (${ROLE_CONFIGS[userData.role]?.title || userData.role}) yaratildi. Login: ${autoLogin}, Parol: ${standardPassword}`);
+    }).catch(err => {
+        showToast('error', 'Xatolik', err.message || "Foydalanuvchi yaratishda xatolik.");
     });
-
-    loadUsers();
-    setIsCreateModalOpen(false);
-    showToast('success', 'Foydalanuvchi yaratildi', `${newUser.fullName} (${ROLE_CONFIGS[newUser.role]?.title || newUser.role}) yaratildi. Login: ${autoLogin}, Parol: ${standardPassword}`);
   };
 
   const handleOpenEditModal = (u: User) => {
@@ -211,8 +240,7 @@ export function UsersModule() {
       return;
     }
 
-    const updated: User = {
-      ...userToEdit,
+    const updated: Partial<User> = {
       fullName: formData.fullName.trim(),
       login: formData.login.trim(),
       username: formData.login.trim(),
@@ -223,21 +251,22 @@ export function UsersModule() {
       status: formData.status,
       facultyId: formData.facultyId || undefined,
       practicePlaceId: formData.practicePlaceId || undefined,
-      updatedAt: new Date().toISOString()
     };
 
-    storageService.saveUser(updated);
-    loadUsers();
-    setUserToEdit(null);
-    showToast('info', 'Foydalanuvchi yangilandi', `${updated.fullName} ma'lumotlari saqlandi.`);
+    userService.updateUser(userToEdit.id, updated).then(() => {
+        loadUsers();
+        setUserToEdit(null);
+        showToast('info', 'Foydalanuvchi yangilandi', `${updated.fullName} ma'lumotlari saqlandi.`);
+    });
   };
 
   const handleDeleteConfirm = () => {
     if (!userToDelete) return;
-    storageService.deleteUser(userToDelete.id);
-    loadUsers();
-    showToast('info', 'O\'chirildi', `${userToDelete.fullName} foydalanuvchisi tizimdan o'chirildi.`);
-    setUserToDelete(null);
+    userService.deleteUser(userToDelete.id).then(() => {
+        loadUsers();
+        showToast('info', 'O\'chirildi', `${userToDelete.fullName} foydalanuvchisi tizimdan o'chirildi.`);
+        setUserToDelete(null);
+    });
   };
 
   const handleImpersonateUser = (u: User) => {
@@ -286,14 +315,26 @@ export function UsersModule() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleOpenCreateModal}
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 transition-all hover:scale-105"
-          >
-            <UserPlus className="w-5 h-5" />
-            <span>Yangi foydalanuvchi yaratish</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsClearStaffDialogOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-200 border border-rose-500/30 font-bold text-xs transition-all"
+              title="Barcha xodimlar hisobini tozalash"
+            >
+              <Trash2 className="w-4 h-4 text-rose-300" />
+              <span>Xodimlarni Tozalash</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenCreateModal}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 transition-all hover:scale-105"
+            >
+              <UserPlus className="w-5 h-5" />
+              <span>Yangi foydalanuvchi yaratish</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -812,6 +853,18 @@ export function UsersModule() {
         title="Foydalanuvchini o'chirish"
         message={`Haqiqatan ham "${userToDelete?.fullName}" foydalanuvchisini tizimdan o'chirmoqchimisiz?`}
         confirmText="O'chirish"
+        cancelText="Bekor qilish"
+        variant="danger"
+      />
+
+      {/* CONFIRM CLEAR ALL STAFF DIALOG */}
+      <ConfirmDialog
+        isOpen={isClearStaffDialogOpen}
+        onClose={() => setIsClearStaffDialogOpen(false)}
+        onConfirm={handleClearAllStaffConfirm}
+        title="Barcha xodimlarni o'chirish"
+        message="Haqiqatan ham tizimdagi barcha dekanlar, amaliyot rahbarlari va xodimlar hisoblarini tozalab (o'chirib) tashlamoqchimisiz? (Super Admin va Talabalar saqlanib qoladi)."
+        confirmText="Ha, barcha xodimlarni o'chirish"
         cancelText="Bekor qilish"
         variant="danger"
       />

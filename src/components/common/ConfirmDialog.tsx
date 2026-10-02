@@ -9,8 +9,11 @@ interface ConfirmDialogProps {
   title: string;
   message: string;
   confirmLabel?: string;
+  confirmText?: string;
   cancelLabel?: string;
+  cancelText?: string;
   isDestructive?: boolean;
+  variant?: string;
 }
 
 export function ConfirmDialog({
@@ -19,14 +22,20 @@ export function ConfirmDialog({
   onConfirm,
   title,
   message,
-  confirmLabel = "Tasdiqlash",
-  cancelLabel = "Bekor qilish",
-  isDestructive = true
+  confirmLabel,
+  confirmText,
+  cancelLabel,
+  cancelText,
+  isDestructive = true,
+  variant
 }: ConfirmDialogProps) {
+  const actualConfirmLabel = confirmLabel || confirmText || "Tasdiqlash";
+  const actualCancelLabel = cancelLabel || cancelText || "Bekor qilish";
+  const actualIsDestructive = variant === 'danger' || variant === 'destructive' || isDestructive;
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="md">
       <div className="flex items-start gap-4">
-        <div className={`p-3 rounded-full shrink-0 ${isDestructive ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+        <div className={`p-3 rounded-full shrink-0 ${actualIsDestructive ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
           <AlertTriangle className="w-6 h-6" />
         </div>
         <div className="flex-1">
@@ -42,7 +51,7 @@ export function ConfirmDialog({
           onClick={onClose}
           className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
         >
-          {cancelLabel}
+          {actualCancelLabel}
         </button>
         <button
           type="button"
@@ -51,12 +60,12 @@ export function ConfirmDialog({
             onClose();
           }}
           className={`px-4 py-2 text-xs font-semibold text-white rounded-lg transition-colors ${
-            isDestructive 
+            actualIsDestructive 
               ? 'bg-red-600 hover:bg-red-700 shadow-xs' 
               : 'bg-blue-600 hover:bg-blue-700 shadow-xs'
           }`}
         >
-          {confirmLabel}
+          {actualConfirmLabel}
         </button>
       </div>
     </Modal>

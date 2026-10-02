@@ -39,6 +39,7 @@ import {
   Direction,
   Course
 } from '../../../types';
+import { storageService } from '../../../services/storageService';
 import { practiceAssignmentService } from '../../../services/practiceAssignmentService';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -56,7 +57,7 @@ export function AllocationModule() {
   const [assignments, setAssignments] = useState<PracticeAssignment[]>([]);
   
   useEffect(() => {
-    practiceAssignmentService.getPracticeAssignments(canonicalRole, currentUser?.uid, supervisorId).then(setAssignments);
+    practiceAssignmentService.getPracticeAssignments().then(setAssignments);
   }, [canonicalRole, currentUser, supervisorId]);
 
   const practices = storageService.getPractices();
@@ -1208,7 +1209,7 @@ export function AllocationModule() {
         isOpen={isDistModalOpen}
         onClose={() => setIsDistModalOpen(false)}
         title="Yangi amaliyot taqsimoti yaratish (Guruh kesimida)"
-        maxWidth="max-w-2xl"
+        maxWidth="2xl"
       >
         <form onSubmit={handleCreateDistribution} className="space-y-4 text-xs">
           <div className="bg-blue-50/60 p-3 rounded-xl border border-blue-200 text-blue-900">

@@ -131,7 +131,7 @@ export interface AuthContextType {
   isSuperAdmin: boolean;
   login: (loginOrIdentifier: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  switchRole: (role: UserRole) => void;
+  switchRole: (identifier: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

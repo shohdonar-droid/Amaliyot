@@ -23,7 +23,7 @@ import { StudentFormModal } from './StudentFormModal';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
 import { EmptyState } from '../../common/EmptyState';
 import { useAuth } from '../../../context/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 export function StudentsModule() {
   const { showToast } = useToast();

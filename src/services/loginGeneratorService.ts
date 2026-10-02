@@ -156,9 +156,10 @@ export async function allocateNextStudentLoginAtomic(
 
   // 1. Try atomic Firestore transaction if db is available
   if (db) {
+    const firestoreDb = db;
     try {
-      const counterRef = doc(db, 'systemCounters', 'studentLogin');
-      const allocatedCode = await runTransaction(db, async (transaction) => {
+      const counterRef = doc(firestoreDb, 'systemCounters', 'studentLogin');
+      const allocatedCode = await runTransaction(firestoreDb, async (transaction) => {
         const counterSnap = await transaction.get(counterRef);
         let nextSeq: number;
 
@@ -237,9 +238,10 @@ export async function recordUsedStudentSequence(
 
   // 2. Update Firestore counter if higher
   if (db) {
+    const firestoreDb = db;
     try {
-      const counterRef = doc(db, 'systemCounters', 'studentLogin');
-      await runTransaction(db, async (transaction) => {
+      const counterRef = doc(firestoreDb, 'systemCounters', 'studentLogin');
+      await runTransaction(firestoreDb, async (transaction) => {
         const snap = await transaction.get(counterRef);
         if (!snap.exists()) {
           transaction.set(counterRef, {

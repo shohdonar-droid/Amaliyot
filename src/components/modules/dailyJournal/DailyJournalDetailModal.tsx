@@ -97,7 +97,7 @@ export function DailyJournalDetailModal({
                 {isApproved ? 'Tasdiqlangan' : isRevision ? 'Qayta ishlashga yuborilgan' : 'Tekshiruvda'}
               </span>
               <span className="text-xs text-slate-500 font-medium">
-                Topshirilgan: {new Date(journal.submittedAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}, {journal.date}
+                Topshirilgan: {new Date(journal.submittedAt || journal.createdAt || new Date()).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}, {journal.date || journal.journalDate || ''}
               </span>
               {journal.version && journal.version > 1 && (
                 <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-200 text-slate-700 rounded">
@@ -311,14 +311,20 @@ export function DailyJournalDetailModal({
             </h4>
             {journal.selfReflection ? (
               <div className="space-y-1 text-slate-700">
-                {journal.selfReflection.whatLearned && (
-                  <p><span className="font-medium text-slate-900">O'rgandim:</span> {journal.selfReflection.whatLearned}</p>
-                )}
-                {journal.selfReflection.skillsImproved && (
-                  <p><span className="font-medium text-slate-900">Ko'nikma:</span> {journal.selfReflection.skillsImproved}</p>
-                )}
-                {journal.selfReflection.tomorrowFocus && (
-                  <p><span className="font-medium text-slate-900">Ertaga:</span> {journal.selfReflection.tomorrowFocus}</p>
+                {typeof journal.selfReflection === 'object' ? (
+                  <>
+                    {(journal.selfReflection as any).whatLearned && (
+                      <p><span className="font-medium text-slate-900">O'rgandim:</span> {(journal.selfReflection as any).whatLearned}</p>
+                    )}
+                    {(journal.selfReflection as any).skillsImproved && (
+                      <p><span className="font-medium text-slate-900">Ko'nikma:</span> {(journal.selfReflection as any).skillsImproved}</p>
+                    )}
+                    {(journal.selfReflection as any).tomorrowFocus && (
+                      <p><span className="font-medium text-slate-900">Ertaga:</span> {(journal.selfReflection as any).tomorrowFocus}</p>
+                    )}
+                  </>
+                ) : (
+                  <p>{String(journal.selfReflection)}</p>
                 )}
               </div>
             ) : (

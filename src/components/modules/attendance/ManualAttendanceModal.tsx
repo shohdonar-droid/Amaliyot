@@ -52,9 +52,9 @@ export function ManualAttendanceModal({
 
   useEffect(() => {
     if (attendanceRecord) {
-      setSelectedStudentId(attendanceRecord.studentId);
-      setSelectedPracticeId(attendanceRecord.practiceId);
-      setSelectedDate(attendanceRecord.date);
+      setSelectedStudentId(attendanceRecord.studentId || '');
+      setSelectedPracticeId(attendanceRecord.practiceId || '');
+      setSelectedDate(attendanceRecord.date || '2026-09-28');
       setStatus(attendanceRecord.status.toUpperCase() as AttendanceStatus);
       setCheckInTime(attendanceRecord.checkInTime || '08:30');
       setCheckOutTime(attendanceRecord.checkOutTime || '14:30');

@@ -59,20 +59,21 @@ export const dailyJournalService = {
     }
 
     try {
-      return await runTransaction(db, async (transaction) => {
+      const firestoreDb = db!;
+      return await runTransaction(firestoreDb, async (transaction) => {
         // 1. Assignment Binding & Schedule Validation
-        const assignmentRef = doc(db, 'practiceAssignments', data.assignmentId);
+        const assignmentRef = doc(firestoreDb, 'practiceAssignments', data.assignmentId);
         const assignmentSnap = await transaction.get(assignmentRef);
         if (assignmentSnap.exists()) {
           const assignment = assignmentSnap.data() as PracticeAssignment;
-          const journalDate = new Date(data.journalDate);
+          const journalDate = new Date(data.journalDate || new Date());
           if (journalDate < new Date(assignment.startDate) || journalDate > new Date(assignment.endDate)) {
             throw new Error('Sana amaliyot muddatidan tashqarida.');
           }
         }
 
         // 2. Create
-        const newDocRef = doc(collection(db, COLLECTION));
+        const newDocRef = doc(collection(firestoreDb, COLLECTION));
         transaction.set(newDocRef, {
           ...data,
           status: 'OPEN',
@@ -110,8 +111,10 @@ export const dailyJournalService = {
     }
 
     try {
-      return await runTransaction(db, async (transaction) => {
-        const journalRef = doc(db, COLLECTION, journalId);
+      const firestoreDb = db;
+      if (!firestoreDb) throw new Error('Firebase ulanmagan');
+      return await runTransaction(firestoreDb, async (transaction) => {
+        const journalRef = doc(firestoreDb, COLLECTION, journalId);
         const journal = (await transaction.get(journalRef)).data() as DailyJournal;
         if (!journal) return;
         
@@ -146,8 +149,9 @@ export const dailyJournalService = {
     }
 
     try {
-      return await runTransaction(db, async (transaction) => {
-        const journalRef = doc(db, COLLECTION, journalId);
+      const firestoreDb = db!;
+      return await runTransaction(firestoreDb, async (transaction) => {
+        const journalRef = doc(firestoreDb, COLLECTION, journalId);
         const journal = (await transaction.get(journalRef)).data() as DailyJournal;
         if (!journal) return;
 
@@ -182,8 +186,9 @@ export const dailyJournalService = {
     }
 
     try {
-      return await runTransaction(db, async (transaction) => {
-        const journalRef = doc(db, COLLECTION, journalId);
+      const firestoreDb = db!;
+      return await runTransaction(firestoreDb, async (transaction) => {
+        const journalRef = doc(firestoreDb, COLLECTION, journalId);
         transaction.update(journalRef, { status: 'RETURNED_FOR_EDIT', reviewComment: comment, updatedAt: Timestamp.now().toDate().toISOString() });
         await createAuditLog(transaction, actorUserId, 'JOURNAL_RETURNED', 'DailyJournal', journalId);
       });
@@ -208,8 +213,9 @@ export const dailyJournalService = {
     }
 
     try {
-      return await runTransaction(db, async (transaction) => {
-        const journalRef = doc(db, COLLECTION, journalId);
+      const firestoreDb = db!;
+      return await runTransaction(firestoreDb, async (transaction) => {
+        const journalRef = doc(firestoreDb, COLLECTION, journalId);
         const status = role === 'SUPER_ADMIN' ? 'REOPENED_BY_SUPER_ADMIN' : 'REOPENED_BY_DEPARTMENT_HEAD';
         transaction.update(journalRef, { status, reopenReason: reason, reopenedBy: actorUserId, reopenedAt: Timestamp.now().toDate().toISOString(), updatedAt: Timestamp.now().toDate().toISOString() });
         await createAuditLog(transaction, actorUserId, 'JOURNAL_REOPENED', 'DailyJournal', journalId);
@@ -222,14 +228,15 @@ export const dailyJournalService = {
   closeExpiredJournals: async () => {
     if (!db) return;
     try {
-      const q = query(collection(db, COLLECTION), where('status', 'in', ['OPEN', 'RETURNED_FOR_EDIT']));
+      const firestoreDb = db!;
+      const q = query(collection(firestoreDb, COLLECTION), where('status', 'in', ['OPEN', 'RETURNED_FOR_EDIT']));
       const snapshot = await getDocs(q);
       const now = new Date();
       
-      const batch = [];
+      const batch: any[] = [];
       snapshot.forEach(docSnap => {
           const journal = docSnap.data() as DailyJournal;
-          const journalDate = new Date(journal.journalDate);
+          const journalDate = new Date(journal.journalDate || new Date());
           const diffTime = Math.abs(now.getTime() - journalDate.getTime());
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           

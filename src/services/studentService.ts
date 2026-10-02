@@ -66,12 +66,37 @@ export const studentService = {
 
       const colRef = collection(firestoreDb, COLLECTION);
       const newDocRef = doc(colRef);
+      const studentId = newDocRef.id;
+      
+      const timestamp = Timestamp.now().toDate().toISOString();
+      
       transaction.set(newDocRef, {
         ...data,
-        createdAt: Timestamp.now().toDate().toISOString(),
-        updatedAt: Timestamp.now().toDate().toISOString()
+        id: studentId,
+        createdAt: timestamp,
+        updatedAt: timestamp
       });
-      return newDocRef.id;
+
+      // Also create a user document for this student
+      const userDocRef = data.userId ? doc(firestoreDb, 'users', data.userId) : doc(collection(firestoreDb, 'users'));
+      transaction.set(userDocRef, {
+        id: userDocRef.id,
+        uid: data.userId || userDocRef.id,
+        fullName: data.fullName,
+        login: data.login || data.studentCode || 'T00001',
+        username: data.login || data.studentCode || 'T00001',
+        password: 'password123',
+        role: 'STUDENT',
+        email: data.email || `${data.studentCode}@student.uz`,
+        phone: data.phone || '',
+        status: 'ACTIVE',
+        facultyId: data.facultyId,
+        studentId: studentId,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      });
+
+      return studentId;
     });
   },
 

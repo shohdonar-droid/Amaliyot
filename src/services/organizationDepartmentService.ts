@@ -19,8 +19,10 @@ export const organizationDepartmentService = {
   },
 
   createDepartment: async (data: Omit<PracticeDepartment, 'id'>) => {
-    return await runTransaction(db, async (transaction) => {
-      const colRef = collection(db, COLLECTION);
+    if (!db) throw new Error('Firestore is not initialized');
+    const firestoreDb = db;
+    return await runTransaction(firestoreDb, async (transaction) => {
+      const colRef = collection(firestoreDb, COLLECTION);
       const newDocRef = doc(colRef);
       transaction.set(newDocRef, {
         ...data,

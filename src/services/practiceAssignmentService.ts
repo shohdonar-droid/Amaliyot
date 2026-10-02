@@ -39,10 +39,12 @@ export const practiceAssignmentService = {
   },
 
   createPracticeAssignment: async (data: Omit<PracticeAssignment, 'id'>) => {
-    return await runTransaction(db, async (transaction) => {
+    if (!db) throw new Error('Firestore is not initialized');
+    const firestoreDb = db;
+    return await runTransaction(firestoreDb, async (transaction) => {
       // Duplicate check: practiceId + groupId + status ACTIVE
       const q = query(
-        collection(db, COLLECTION),
+        collection(firestoreDb, COLLECTION),
         where('practiceId', '==', data.practiceId),
         where('groupId', '==', data.groupId),
         where('status', '==', 'in_progress') // Assuming 'in_progress' is the ACTIVE status
@@ -53,7 +55,7 @@ export const practiceAssignmentService = {
         throw new Error('Bu guruh uchun ushbu amaliyot bo‘yicha faol taqsimot allaqachon mavjud.');
       }
 
-      const colRef = collection(db, COLLECTION);
+      const colRef = collection(firestoreDb, COLLECTION);
       const newDocRef = doc(colRef);
       transaction.set(newDocRef, {
         ...data,

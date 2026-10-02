@@ -1,5 +1,6 @@
 import {
   User,
+  AcademicYear,
   Faculty,
   Direction,
   Course,
@@ -52,6 +53,7 @@ export type AppEnvironmentMode = 'DEVELOPMENT' | 'PRODUCTION';
 export interface DatabaseStateV2 {
   mode: AppEnvironmentMode;
   users: User[];
+  academicYears: AcademicYear[];
   students: Student[];
   faculties: Faculty[];
   directions: Direction[];
@@ -98,81 +100,6 @@ const DEFAULT_USERS_V2: User[] = [
     photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
     createdAt: '2026-08-01T08:00:00Z',
     lastLoginAt: '2026-09-28T06:00:00Z'
-  },
-  {
-    id: 'user-head',
-    uid: 'uid-head-002',
-    login: 'Ergashev_Odil',
-    username: 'amaliyot_boshliq',
-    password: 'password123',
-    fullName: 'Ergashev Odil Mirzayevich',
-    role: 'PRACTICE_HEAD',
-    email: 'Ergashev_Odil@practice.uz',
-    phone: '+998 (90) 900-11-22',
-    status: 'ACTIVE',
-    photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
-    createdAt: '2026-08-01T08:00:00Z',
-    lastLoginAt: '2026-09-28T07:10:00Z'
-  },
-  {
-    id: 'user-staff',
-    uid: 'uid-staff-003',
-    login: 'Ortiqov_Elyorbek',
-    username: 'xodim',
-    password: 'password123',
-    fullName: 'Ortiqov Elyorbek Anvarovich',
-    role: 'PRACTICE_STAFF',
-    email: 'Ortiqov_Elyorbek@practice.uz',
-    phone: '+998 (91) 321-45-67',
-    status: 'ACTIVE',
-    createdAt: '2026-08-01T08:00:00Z',
-    lastLoginAt: '2026-09-28T06:30:00Z'
-  },
-  {
-    id: 'user-dean',
-    uid: 'uid-dean-004',
-    login: 'Karimov_Bahodir',
-    username: 'dekan_davolash',
-    password: 'password123',
-    fullName: 'Karimov Bahodir Karimboyevich',
-    role: 'FACULTY_DEAN',
-    email: 'Karimov_Bahodir@dean.uz',
-    phone: '+998 (71) 214-89-01',
-    status: 'ACTIVE',
-    facultyId: 'fac-1',
-    createdAt: '2026-08-01T08:00:00Z',
-    lastLoginAt: '2026-09-28T05:40:00Z'
-  },
-  {
-    id: 'user-sup',
-    uid: 'uid-sup-005',
-    login: 'Aliyev_Anvar',
-    username: 'rahbar_sobirov',
-    password: 'password123',
-    fullName: 'Aliyev Anvar Tolipovich',
-    role: 'PRACTICE_SUPERVISOR',
-    email: 'Aliyev_Anvar@supervisor.uz',
-    phone: '+998 (90) 811-22-33',
-    status: 'ACTIVE',
-    supervisorId: 'sup-1',
-    createdAt: '2026-08-01T08:00:00Z',
-    lastLoginAt: '2026-09-28T06:45:00Z'
-  },
-  {
-    id: 'user-clinic',
-    uid: 'uid-clinic-006',
-    login: 'Rasulova_Madina',
-    username: 'klinik_karimov',
-    password: 'password123',
-    fullName: 'Rasulova Madina Baxtiyorovna',
-    role: 'CLINIC_RESPONSIBLE',
-    email: 'Rasulova_Madina@clinic.uz',
-    phone: '+998 (90) 123-45-67',
-    status: 'ACTIVE',
-    practicePlaceId: 'place-1',
-    clinicResponsibleId: 'cresp-1',
-    createdAt: '2026-08-01T08:00:00Z',
-    lastLoginAt: '2026-09-28T07:00:00Z'
   },
   {
     id: 'user-std',
@@ -2219,13 +2146,16 @@ class StorageServiceV2 {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.students)) {
+        if (parsed && Array.isArray(parsed.users)) {
           // Ensure all array fields exist without forcing mock data defaults if empty
-          parsed.users = parsed.users || DEFAULT_USERS_V2;
-          parsed.faculties = parsed.faculties || DEFAULT_FACULTIES;
-          parsed.directions = parsed.directions || DEFAULT_DIRECTIONS;
+          parsed.users = (parsed.users || DEFAULT_USERS_V2).filter((u: any) => 
+            u.role === 'SUPER_ADMIN' || u.role === 'super_admin' || u.role === 'STUDENT' || u.role === 'student'
+          );
+          parsed.academicYears = parsed.academicYears || [];
+          parsed.faculties = parsed.faculties || [];
+          parsed.directions = parsed.directions || [];
           parsed.courses = parsed.courses || DEFAULT_COURSES;
-          parsed.groups = parsed.groups || DEFAULT_GROUPS;
+          parsed.groups = parsed.groups || [];
           parsed.students = parsed.students || [];
           parsed.practicePlaces = parsed.practicePlaces || [];
           parsed.practiceDepartments = parsed.practiceDepartments || [];
@@ -2259,35 +2189,36 @@ class StorageServiceV2 {
 
     const defaultState: DatabaseStateV2 = {
       mode: 'DEVELOPMENT',
-      users: DEFAULT_USERS_V2,
-      faculties: DEFAULT_FACULTIES,
-      directions: DEFAULT_DIRECTIONS,
+      users: DEFAULT_USERS_V2.filter(u => u.role === 'SUPER_ADMIN' || u.role === 'super_admin'),
+      academicYears: [],
+      faculties: [],
+      directions: [],
       courses: DEFAULT_COURSES,
-      groups: DEFAULT_GROUPS,
-      students: DEFAULT_STUDENTS_V2,
-      practicePlaces: DEFAULT_PRACTICE_PLACES,
-      practiceDepartments: DEFAULT_PRACTICE_DEPARTMENTS,
-      supervisors: DEFAULT_SUPERVISORS,
-      clinicResponsibles: DEFAULT_CLINIC_RESPONSIBLES,
-      practices: DEFAULT_PRACTICES_V2,
-      practiceDistributions: DEFAULT_DISTRIBUTIONS_V2,
-      practiceAssignments: DEFAULT_ASSIGNMENTS_V2,
-      attendance: DEFAULT_ATTENDANCE_V2,
-      attendanceSessions: DEFAULT_ATTENDANCE_SESSIONS_V2,
-      dailyJournals: DEFAULT_DAILY_JOURNALS_V2,
+      groups: [],
+      students: [],
+      practicePlaces: [],
+      practiceDepartments: [],
+      supervisors: [],
+      clinicResponsibles: [],
+      practices: [],
+      practiceDistributions: [],
+      practiceAssignments: [],
+      attendance: [],
+      attendanceSessions: [],
+      dailyJournals: [],
       skills: DEFAULT_SKILLS_V2,
-      studentSkills: DEFAULT_STUDENT_SKILLS_V2,
-      skillLogs: DEFAULT_SKILL_LOGS_V2,
+      studentSkills: [],
+      skillLogs: [],
       skillCategories: DEFAULT_SKILL_CATEGORIES_V2,
-      tasks: DEFAULT_TASKS_V2,
-      assessments: DEFAULT_ASSESSMENTS_V2,
-      finalExams: DEFAULT_FINAL_EXAMS_V2,
+      tasks: [],
+      assessments: [],
+      finalExams: [],
       attestationCommissions: DEFAULT_COMMISSIONS_V2,
       assessmentSettings: DEFAULT_ASSESSMENT_SETTINGS_V2,
-      vedomosts: DEFAULT_VEDOMOSTS_V2,
-      documents: DEFAULT_DOCUMENTS_V2,
-      notifications: DEFAULT_NOTIFICATIONS_V2,
-      auditLogs: DEFAULT_AUDIT_LOGS_V2
+      vedomosts: [],
+      documents: [],
+      notifications: [],
+      auditLogs: []
     };
 
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(defaultState));
@@ -2376,6 +2307,41 @@ class StorageServiceV2 {
     } else {
       state.users.unshift(user);
     }
+    this.saveState(state);
+  }
+
+  public deleteUser(id: string): void {
+    const state = this.getState();
+    state.users = state.users.filter(u => u.id !== id && u.uid !== id);
+    this.saveState(state);
+  }
+
+  public clearAllStaffUsers(): void {
+    const state = this.getState();
+    // Keep Super Admin and Students, remove demo/staff accounts
+    state.users = state.users.filter(u => u.role === 'SUPER_ADMIN' || u.role === 'super_admin' || u.role === 'STUDENT' || u.role === 'student');
+    this.saveState(state);
+  }
+
+  // --- ACADEMIC YEARS ---
+  public getAcademicYears(): AcademicYear[] {
+    return this.getState().academicYears || [];
+  }
+
+  public saveAcademicYear(ay: AcademicYear): void {
+    const state = this.getState();
+    const idx = state.academicYears.findIndex(a => a.id === ay.id);
+    if (idx >= 0) {
+      state.academicYears[idx] = ay;
+    } else {
+      state.academicYears.push(ay);
+    }
+    this.saveState(state);
+  }
+
+  public deleteAcademicYear(id: string): void {
+    const state = this.getState();
+    state.academicYears = state.academicYears.filter(a => a.id !== id);
     this.saveState(state);
   }
 
@@ -3844,10 +3810,10 @@ class StorageServiceV2 {
       id: existing?.id || `att-man-${Date.now()}-${params.studentId}`,
       practiceId: params.practiceId,
       studentId: params.studentId,
-      assignmentId: assignment?.id,
-      practicePlaceId: assignment?.practicePlaceId,
-      departmentId: assignment?.departmentId,
-      supervisorId: assignment?.supervisorId,
+      assignmentId: assignment?.id || '',
+      practicePlaceId: assignment?.practicePlaceId || '',
+      departmentId: assignment?.departmentId || '',
+      supervisorId: assignment?.supervisorId || '',
       date: params.date,
       status: params.status,
       checkInTime: params.checkInTime || (params.status === 'PRESENT' || params.status === 'present' ? '08:30' : params.status === 'LATE' || params.status === 'late' ? '09:15' : undefined),
@@ -5986,9 +5952,10 @@ class StorageServiceV2 {
     const state: DatabaseStateV2 = {
       mode: 'PRODUCTION',
       users: adminUsers,
+      academicYears: [],
       students: [],
-      faculties: DEFAULT_FACULTIES,
-      directions: DEFAULT_DIRECTIONS,
+      faculties: [],
+      directions: [],
       courses: DEFAULT_COURSES,
       groups: [],
       practicePlaces: [],

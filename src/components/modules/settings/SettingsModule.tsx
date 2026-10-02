@@ -153,7 +153,7 @@ export function SettingsModule() {
   const filteredUsers = usersList.filter(u => {
     if (!userSearchQuery.trim()) return true;
     const q = userSearchQuery.toLowerCase();
-    return u.fullName.toLowerCase().includes(q) || u.login.toLowerCase().includes(q) || u.role.toLowerCase().includes(q);
+    return u.fullName.toLowerCase().includes(q) || (u.login || u.username || '').toLowerCase().includes(q) || u.role.toLowerCase().includes(q);
   });
 
   return (

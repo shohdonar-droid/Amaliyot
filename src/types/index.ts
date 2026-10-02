@@ -51,6 +51,14 @@ export interface User {
   lastLoginAt?: string;
 }
 
+export interface AcademicYear {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isCurrent?: boolean;
+}
+
 export interface Faculty {
   id: string;
   name: string;
@@ -58,6 +66,7 @@ export interface Faculty {
   deanName: string;
   phone: string;
   email: string;
+  academicYearId?: string;
   directionsCount?: number;
   createdAt?: string;
 }
@@ -67,6 +76,7 @@ export interface Direction {
   name: string;
   code: string;
   facultyId: string;
+  academicYearId?: string;
   degree: 'Bakalavr' | 'Magistratura' | 'Klinik ordinatura';
   durationYears: number;
   createdAt?: string;
@@ -77,6 +87,7 @@ export interface Course {
   level: number;
   name: string;
   academicYear: string;
+  academicYearId?: string;
 }
 
 export interface Group {
@@ -85,6 +96,7 @@ export interface Group {
   directionId: string;
   courseId: string;
   facultyId: string;
+  academicYearId?: string;
   language: "O'zbek" | "Rus" | "Ingliz";
   studentCount?: number;
 }
@@ -111,7 +123,7 @@ export interface Student {
   faculty?: string;
   direction?: string;
   phone: string;
-  telegram: string;
+  telegram?: string;
   email: string;
   photoURL?: string;
   avatarUrl?: string;
@@ -126,7 +138,7 @@ export type PracticePlaceType = 'Shifoxona' | 'Klinika' | 'Poliklinika' | 'Ilmiy
 
 export interface PracticePlace {
   id: string;
-  organizationId: string; // e.g. TASH-000125
+  organizationId?: string; // e.g. TASH-000125
   organizationCode?: string;
   name: string;
   type: PracticePlaceType;
@@ -388,6 +400,7 @@ export interface JournalReflection {
   whatLearned: string;
   skillsImproved: string;
   tomorrowFocus: string;
+  [key: string]: any;
 }
 
 export interface JournalAttachment {
@@ -430,7 +443,7 @@ export interface DailyJournal {
   supervisorId?: string;
   organizationId?: string;
   departmentId?: string;
-  journalDate: string; // YYYY-MM-DD
+  journalDate?: string; // YYYY-MM-DD
   status: JournalStatus;
   content?: string; // Aggregate of all previous fields
   submittedAt?: string; // Timestamp ISO
@@ -441,8 +454,9 @@ export interface DailyJournal {
   reopenedBy?: string;
   reopenReason?: string;
   supervisorReviewDeadline?: string; // Timestamp ISO
-  createdAt: string; // Timestamp ISO
-  updatedAt: string; // Timestamp ISO
+  createdAt?: string; // Timestamp ISO
+  updatedAt?: string; // Timestamp ISO
+  attendanceSnapshot?: any;
   // Universal & Compatibility fields
   templateId?: string;
   practiceTypeId?: string;
@@ -455,17 +469,18 @@ export interface DailyJournal {
   patientDiagnosesSummary?: string;
   clinicalCasesSummary?: string;
   proceduresDone?: string[];
+  photoURLs?: string[];
+  version?: number;
   procedures?: JournalProcedure[];
   clinicalCases?: ClinicalCaseItem[];
   reflection?: JournalReflection;
   attachments?: JournalAttachment[];
-  version?: number;
   supervisorRating?: number;
   supervisorFeedback?: string;
   revisionReason?: string;
-  topicsLearned?: string[];
-  questionsLearned?: string[];
-  selfReflection?: string;
+  topicsLearned?: string[] | string;
+  questionsLearned?: string[] | string;
+  selfReflection?: string | JournalReflection;
   reviewerId?: string;
   attendanceId?: string;
   patientsExaminedCount?: number;
@@ -816,6 +831,7 @@ export interface AppNotification {
 export type AuditAction = 
   | 'login'
   | 'logout'
+  | 'userCreated'
   | 'studentCreated'
   | 'studentUpdated'
   | 'studentDeleted'

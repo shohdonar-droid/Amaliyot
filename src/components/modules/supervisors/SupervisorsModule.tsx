@@ -84,7 +84,7 @@ export function SupervisorsModule() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchName = s.fullName.toLowerCase().includes(q);
-      const matchDept = s.department.toLowerCase().includes(q);
+      const matchDept = s.department?.toLowerCase().includes(q) || false;
       if (!matchName && !matchDept) return false;
     }
     return true;

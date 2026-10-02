@@ -207,7 +207,9 @@ export function DailyJournalPrintView({
           <div>
             <h5 className="font-bold text-[11px] uppercase text-slate-800 mb-1">Talabaning o'z-o'zini baholashi:</h5>
             <p className="text-slate-700 font-serif leading-relaxed">
-              {journal.selfReflection?.whatLearned || journal.selfReflection?.skillsImproved || 'Amaliy ko\'nikmalar mustahkamlandi.'}
+              {typeof journal.selfReflection === 'object' && journal.selfReflection !== null
+                ? ((journal.selfReflection as any).whatLearned || (journal.selfReflection as any).skillsImproved || 'Amaliy ko\'nikmalar mustahkamlandi.')
+                : (journal.selfReflection || 'Amaliy ko\'nikmalar mustahkamlandi.')}
             </p>
           </div>
         </div>

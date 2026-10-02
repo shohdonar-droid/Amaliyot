@@ -307,7 +307,7 @@ export function StudentDetailModal({
                   <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                     <p className="font-semibold text-slate-800 mb-1">Bajarilgan muolajalar:</p>
                     <ul className="list-disc list-inside space-y-0.5 text-[11px]">
-                      {journal.proceduresDone.map((proc, i) => (
+                      {(journal.proceduresDone || []).map((proc, i) => (
                         <li key={i}>{proc}</li>
                       ))}
                     </ul>

@@ -55,9 +55,11 @@ export const attendanceService = {
   },
 
   createAttendance: async (data: Omit<Attendance, 'id'>, studentLat: number, studentLon: number) => {
-    return await runTransaction(db, async (transaction) => {
+    const firestoreDb = db;
+    if (!firestoreDb) throw new Error('Firebase ulanmagan');
+    return await runTransaction(firestoreDb, async (transaction) => {
       // 1. Validate Assignment
-      const assignmentRef = doc(db, 'practiceAssignments', data.assignmentId);
+      const assignmentRef = doc(firestoreDb, 'practiceAssignments', data.assignmentId);
       const assignmentSnap = await transaction.get(assignmentRef);
       if (!assignmentSnap.exists()) throw new Error('Amaliyot biriktirilishi topilmadi.');
       
@@ -80,7 +82,7 @@ export const attendanceService = {
       if (assignment.practiceDays && !assignment.practiceDays.includes(dayName)) throw new Error('Bu kunda amaliyot yo\'q.');
 
       // 4. Geofence Validation
-      const orgRef = doc(db, 'organizations', data.organizationId);
+      const orgRef = doc(firestoreDb, 'organizations', data.organizationId);
       const orgSnap = await transaction.get(orgRef);
       if (!orgSnap.exists()) throw new Error('Tashkilot topilmadi.');
       const org = orgSnap.data() as PracticePlace;
@@ -100,7 +102,7 @@ export const attendanceService = {
 
         if (d > org.allowedRadius) {
           // Record failed attendance
-          const colRef = collection(db, COLLECTION);
+          const colRef = collection(firestoreDb, COLLECTION);
           const newDocRef = doc(colRef);
           transaction.set(newDocRef, {
             ...data,
@@ -117,7 +119,7 @@ export const attendanceService = {
 
       // 5. Duplicate check
       const q = query(
-        collection(db, COLLECTION),
+        collection(firestoreDb, COLLECTION),
         where('studentId', '==', data.studentId),
         where('assignmentId', '==', data.assignmentId),
         where('date', '==', data.date)
@@ -126,7 +128,7 @@ export const attendanceService = {
       if (!querySnapshot.empty) throw new Error('Bu sana uchun davomat allaqachon kiritilgan.');
 
       // 6. Create Attendance
-      const colRef = collection(db, COLLECTION);
+      const colRef = collection(firestoreDb, COLLECTION);
       const newDocRef = doc(colRef);
       transaction.set(newDocRef, {
         ...data,

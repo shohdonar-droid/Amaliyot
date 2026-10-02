@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuth, ROLE_CONFIGS } from '../../context/AuthContext';
 import { UserRole } from '../../types';
+import { storageService } from '../../services/storageService';
 import { ActiveModule } from './Sidebar';
 
 interface HeaderProps {

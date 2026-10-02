@@ -1,8 +1,12 @@
 {
   "projectId": "probable-wall-007pf",
   "appId": "1:615086558119:web:531fa6b354cfcabdae8482",
+  "apiKey": "AIzaSyAR7ZEfKdaO93GUbOwsgJrqiCpIntlmpHU",
   "authDomain": "probable-wall-007pf.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-talabalaramaliyo-13099d67-5f42-451f-8875-b7d86cea3d27",
   "storageBucket": "probable-wall-007pf.firebasestorage.app",
   "messagingSenderId": "615086558119",
-  "databaseId": "ai-studio-28f73ea3-9fe0-4130-90c7-40ef0040d868"
+  "measurementId": "",
+  "oAuthClientId": "615086558119-u1squdt3av2g4nkjf7efiaojq162ncda.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
 }

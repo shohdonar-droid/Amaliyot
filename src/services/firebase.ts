@@ -52,7 +52,7 @@ let db: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
 
 try {
-  if (envConfig && isFirebaseCloudConfigured()) {
+  if (envConfig) {
     if (!getApps().length) {
       app = initializeApp(envConfig);
     } else {
@@ -63,9 +63,9 @@ try {
       ? getFirestore(app, envConfig.firestoreDatabaseId)
       : getFirestore(app);
     storage = getStorage(app);
-    console.log('Firebase: Initializing live cloud project:', envConfig.projectId, 'AuthDomain:', envConfig.authDomain);
+    console.log('Firebase: Initializing project:', envConfig.projectId, 'AuthDomain:', envConfig.authDomain);
   } else {
-    console.info('Firebase: Cloud API key not set or using local environment. Running in local persistence mode.');
+    console.info('Firebase: No config found. Running in local persistence mode.');
   }
 } catch (err) {
   console.warn('Firebase initialized in fallback mode:', err);
@@ -144,8 +144,8 @@ export function getFirebaseConfigStatus(): {
   if (!metaEnv.VITE_FIREBASE_STORAGE_BUCKET) missing.push('VITE_FIREBASE_STORAGE_BUCKET');
   if (!metaEnv.VITE_FIREBASE_APP_ID) missing.push('VITE_FIREBASE_APP_ID');
 
-  const projectId = metaEnv.VITE_FIREBASE_PROJECT_ID || envConfig.projectId;
-  const authDomain = metaEnv.VITE_FIREBASE_AUTH_DOMAIN || envConfig.authDomain;
+  const projectId = metaEnv.VITE_FIREBASE_PROJECT_ID || envConfig?.projectId;
+  const authDomain = metaEnv.VITE_FIREBASE_AUTH_DOMAIN || envConfig?.authDomain;
 
   return {
     isConfigured: missing.length === 0,

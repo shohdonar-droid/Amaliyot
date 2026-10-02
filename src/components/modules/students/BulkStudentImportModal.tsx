@@ -160,8 +160,8 @@ export function BulkStudentImportModal({
 
       for (const row of validRows) {
         const studentCode = getNextStudentLogin(storageService.getStudents(), storageService.getUsers());
-        const newStudent: Student = {
-          id: `std-bulk-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        
+        await studentService.createStudent({
           userId: `uid-std-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           studentId: row.studentId,
           studentCode,
@@ -175,28 +175,8 @@ export function BulkStudentImportModal({
           groupId: targetGroup?.id || selectedGroupId,
           phone: row.phone,
           email: row.email,
-          status: 'registered',
-          createdAt: new Date().toISOString()
-        };
-
-        // Save student to storage
-        storageService.saveStudent(newStudent);
-
-        // Also create a user account for login
-        storageService.saveUser({
-          id: newStudent.id,
-          uid: newStudent.userId,
-          fullName: newStudent.fullName,
-          login: studentCode,
-          username: studentCode,
-          password: 'password123',
-          role: 'STUDENT',
-          email: newStudent.email,
-          phone: newStudent.phone,
-          status: 'ACTIVE',
-          studentCode,
-          createdAt: new Date().toISOString()
-        });
+          status: 'active'
+        }).catch(err => console.error("Error creating student in bulk import:", err));
 
         importedCount++;
       }
