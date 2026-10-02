@@ -123,14 +123,13 @@ export function UsersModule() {
     return generateStaffLogin(fullName, existingLogins);
   };
 
-  const handleCreateUser = (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.fullName.trim()) {
       showToast('warning', 'Ma\'lumotlar yetarli emas', 'F.I.SH (Familiya Ism Sharif) kiritilishi shart');
       return;
     }
 
-    // Check permissions
     if (!isSuperAdmin && (formData.role === 'SUPER_ADMIN' || formData.role === 'PRACTICE_HEAD')) {
       showToast('error', 'Ruxsat etilmagan', 'Amaliyot bo\'lim boshlig\'i Super Admin va Amaliyot bo\'limi boshlig\'i rolini yarata olmaydi.');
       return;
@@ -138,7 +137,7 @@ export function UsersModule() {
 
     const currentUsers = storageService.getUsers();
     const autoLogin = computeAutoLogin(formData.fullName.trim(), formData.role, currentUsers);
-    const standardPassword = 'password123'; // Standard one-time initial password for all created accounts
+    const standardPassword = 'password123';
 
     const userData: Omit<User, 'id'> = {
       uid: `uid-${Date.now()}`,
@@ -147,7 +146,7 @@ export function UsersModule() {
       username: autoLogin,
       password: standardPassword,
       role: formData.role,
-      email: formData.email.trim() || `${autoLogin}@med.uz`,
+      email: `${autoLogin}@tma.uz`,
       phone: formData.phone.trim() || '+998 (90) 000-00-00',
       status: formData.status,
       facultyId: formData.facultyId || undefined,
@@ -155,65 +154,66 @@ export function UsersModule() {
       createdAt: new Date().toISOString(),
     };
 
-    // Use userService to create user in Firestore
-    userService.createUser(userData).then(async (userId) => {
-        if (!userId) return;
+    try {
+      const userId = await userService.createUser(userData);
+      if (!userId) {
+          throw new Error('Foydalanuvchi yaratilmadi');
+      }
 
-        // If creating a STUDENT, also save to students table
-        if (formData.role === 'STUDENT' || formData.role === 'student') {
-            const faculties = storageService.getFaculties();
-            const directions = storageService.getDirections();
-            const courses = storageService.getCourses();
-            const groups = storageService.getGroups();
-            
-            await studentService.createStudent({
-                userId: userData.uid,
-                studentId: `MED-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-                login: autoLogin,
-                studentCode: autoLogin,
-                hemisStudentId: String(Math.floor(10000000 + Math.random() * 90000000)),
-                pinfl: '3140' + String(Math.floor(1000000000 + Math.random() * 9000000000)),
-                fullName: userData.fullName,
-                facultyId: formData.facultyId || faculties[0]?.id || '',
-                directionId: directions[0]?.id || '',
-                courseId: courses[0]?.id || '',
-                groupId: groups[0]?.id || '',
-                phone: userData.phone,
-                telegram: '@',
-                email: userData.email,
-                status: 'active'
-            }).catch(err => console.error("Error creating student document:", err));
-        }
-
-        // If creating a SUPERVISOR, also save to supervisors table
-        if (formData.role === 'PRACTICE_SUPERVISOR' || formData.role === 'supervisor') {
-            await supervisorService.createSupervisor({
-                userId: userData.uid,
-                fullName: userData.fullName,
-                phone: userData.phone,
-                email: userData.email,
-                type: 'university',
-                department: 'Kafedra',
-                academicDegree: 'Dotsent',
-                status: 'ACTIVE'
-            }).catch(err => console.error("Error creating supervisor document:", err));
-        }
-
-        storageService.recordAuditLog({
-            userId: currentUser?.uid || currentUser?.id || 'system',
-            userRole: activeUserRole,
-            action: 'userCreated',
-            entity: 'users',
-            entityId: userId,
-            metadata: JSON.stringify({ createdRole: formData.role, fullName: formData.fullName, login: autoLogin })
+      if (formData.role === 'STUDENT' || formData.role === 'student') {
+        const faculties = storageService.getFaculties();
+        const directions = storageService.getDirections();
+        const courses = storageService.getCourses();
+        const groups = storageService.getGroups();
+        
+        await studentService.createStudent({
+            userId: userData.uid,
+            studentId: `MED-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+            login: autoLogin,
+            studentCode: autoLogin,
+            hemisStudentId: String(Math.floor(10000000 + Math.random() * 90000000)),
+            pinfl: '3140' + String(Math.floor(1000000000 + Math.random() * 9000000000)),
+            fullName: userData.fullName,
+            facultyId: formData.facultyId || faculties[0]?.id || '',
+            directionId: directions[0]?.id || '',
+            courseId: courses[0]?.id || '',
+            groupId: groups[0]?.id || '',
+            phone: userData.phone,
+            telegram: '@',
+            email: userData.email,
+            status: 'active'
         });
+      }
 
-        loadUsers();
-        setIsCreateModalOpen(false);
-        showToast('success', 'Foydalanuvchi yaratildi', `${userData.fullName} (${ROLE_CONFIGS[userData.role]?.title || userData.role}) yaratildi. Login: ${autoLogin}, Parol: ${standardPassword}`);
-    }).catch(err => {
-        showToast('error', 'Xatolik', err.message || "Foydalanuvchi yaratishda xatolik.");
-    });
+      if (formData.role === 'PRACTICE_SUPERVISOR' || formData.role === 'supervisor') {
+        await supervisorService.createSupervisor({
+            userId: userData.uid,
+            fullName: userData.fullName,
+            phone: userData.phone,
+            email: userData.email,
+            type: 'university',
+            department: 'Kafedra',
+            academicDegree: 'Dotsent',
+            status: 'ACTIVE'
+        });
+      }
+
+      storageService.recordAuditLog({
+          userId: currentUser?.uid || currentUser?.id || 'system',
+          userRole: activeUserRole,
+          action: 'userCreated',
+          entity: 'users',
+          entityId: userId,
+          metadata: JSON.stringify({ createdRole: formData.role, fullName: formData.fullName, login: autoLogin })
+      });
+
+      showToast('success', 'Muvaffaqiyatli', 'Foydalanuvchi yaratildi');
+      setIsCreateModalOpen(false);
+      loadUsers();
+    } catch (error) {
+      console.error("Error creating user:", error);
+      showToast('error', 'Xatolik', 'Foydalanuvchi yaratishda xatolik yuz berdi: ' + (error instanceof Error ? error.message : 'Noma\'lum xato'));
+    }
   };
 
   const handleOpenEditModal = (u: User) => {

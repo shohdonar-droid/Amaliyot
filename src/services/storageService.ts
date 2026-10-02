@@ -4053,9 +4053,9 @@ class StorageServiceV2 {
 
     // Check eligibility
     const check = this.validateJournalEligibility(
-      journalData.studentId,
-      journalData.practiceId,
-      journalData.date,
+      journalData.studentId || '',
+      journalData.practiceId || '',
+      journalData.date || journalData.journalDate || '',
       journalData.id
     );
 
@@ -4114,7 +4114,7 @@ class StorageServiceV2 {
         tomorrowFocus: ''
       },
       attachments: journalData.attachments || [],
-      status: 'PENDING',
+      status: 'SUBMITTED',
       submittedAt: new Date().toISOString(),
       version: (existing?.version || 0) + (isResubmit ? 1 : 1),
       updatedAt: new Date().toISOString()
@@ -4150,9 +4150,9 @@ class StorageServiceV2 {
           const skillLog: SkillRecord = {
             id: recordId,
             studentId: linkedJournal.studentId,
-            practiceId: linkedJournal.practiceId,
+            practiceId: linkedJournal.practiceId || '',
             skillId: matchingSkill.id,
-            date: linkedJournal.date,
+            date: linkedJournal.date || linkedJournal.journalDate || '',
             participationType: partType,
             performanceType: partType,
             count: proc.count || 1,
@@ -4312,9 +4312,9 @@ class StorageServiceV2 {
               state.skillLogs.unshift({
                 id: logId,
                 studentId: journal.studentId,
-                practiceId: journal.practiceId,
+                practiceId: journal.practiceId || '',
                 skillId: matchingSkill.id,
-                date: journal.date,
+                date: journal.date || journal.journalDate || '',
                 participationType: partType,
                 performanceType: partType,
                 count: proc.count,
@@ -4357,10 +4357,11 @@ class StorageServiceV2 {
                 lastPerformedDate: journal.date,
                 lastPerformedAt: journal.date,
                 lastApprovedAt: now
-              };
+              } as StudentSkill;
               state.studentSkills.push(ssk);
             }
-
+            
+            // Add safety check
             const currentApproved = (ssk.approvedCount || 0) + proc.count;
             ssk.approvedCount = currentApproved;
             ssk.verifiedCount = currentApproved;

@@ -118,7 +118,7 @@ export const dailyJournalService = {
         const journal = (await transaction.get(journalRef)).data() as DailyJournal;
         if (!journal) return;
         
-        transaction.update(journalRef, { status: 'SUBMITTED_TO_SUPERVISOR', submittedAt: Timestamp.now().toDate().toISOString(), updatedAt: Timestamp.now().toDate().toISOString() });
+        transaction.update(journalRef, { status: 'SUBMITTED', submittedAt: Timestamp.now().toDate().toISOString(), updatedAt: Timestamp.now().toDate().toISOString() });
         await createAuditLog(transaction, actorUserId, 'JOURNAL_SUBMITTED', 'DailyJournal', journalId);
       });
     } catch (e) {
@@ -126,7 +126,7 @@ export const dailyJournalService = {
       const journals = storageService.getDailyJournals();
       const journal = journals.find(j => j.id === journalId);
       if (journal) {
-        journal.status = 'SUBMITTED_TO_SUPERVISOR';
+        journal.status = 'SUBMITTED';
         journal.submittedAt = new Date().toISOString();
         journal.updatedAt = new Date().toISOString();
         storageService.saveDailyJournal(journal);
@@ -134,14 +134,15 @@ export const dailyJournalService = {
     }
   },
 
-  approveJournal: async (journalId: string, actorUserId: string) => {
+  approveJournal: async (journalId: string, actorUserId: string, feedback?: string) => {
     if (!db) {
       const journals = storageService.getDailyJournals();
       const journal = journals.find(j => j.id === journalId);
       if (journal) {
-        journal.status = 'APPROVED_BY_SUPERVISOR';
+        journal.status = 'SUPERVISOR_APPROVED';
         journal.reviewedAt = new Date().toISOString();
         journal.reviewedBy = actorUserId;
+        journal.supervisorFeedback = feedback;
         journal.updatedAt = new Date().toISOString();
         storageService.saveDailyJournal(journal);
       }
@@ -155,7 +156,13 @@ export const dailyJournalService = {
         const journal = (await transaction.get(journalRef)).data() as DailyJournal;
         if (!journal) return;
 
-        transaction.update(journalRef, { status: 'APPROVED_BY_SUPERVISOR', reviewedAt: Timestamp.now().toDate().toISOString(), reviewedBy: actorUserId, updatedAt: Timestamp.now().toDate().toISOString() });
+        transaction.update(journalRef, { 
+          status: 'SUPERVISOR_APPROVED', 
+          reviewedAt: Timestamp.now().toDate().toISOString(), 
+          reviewedBy: actorUserId,
+          supervisorFeedback: feedback,
+          updatedAt: Timestamp.now().toDate().toISOString() 
+        });
         await createAuditLog(transaction, actorUserId, 'JOURNAL_APPROVED', 'DailyJournal', journalId);
       });
     } catch (e) {
@@ -177,8 +184,8 @@ export const dailyJournalService = {
       const journals = storageService.getDailyJournals();
       const journal = journals.find(j => j.id === journalId);
       if (journal) {
-        journal.status = 'RETURNED_FOR_EDIT';
-        journal.reviewComment = comment;
+        journal.status = 'REVISION';
+        journal.revisionReason = comment;
         journal.updatedAt = new Date().toISOString();
         storageService.saveDailyJournal(journal);
       }
@@ -189,23 +196,22 @@ export const dailyJournalService = {
       const firestoreDb = db!;
       return await runTransaction(firestoreDb, async (transaction) => {
         const journalRef = doc(firestoreDb, COLLECTION, journalId);
-        transaction.update(journalRef, { status: 'RETURNED_FOR_EDIT', reviewComment: comment, updatedAt: Timestamp.now().toDate().toISOString() });
-        await createAuditLog(transaction, actorUserId, 'JOURNAL_RETURNED', 'DailyJournal', journalId);
+        transaction.update(journalRef, { status: 'REVISION', revisionReason: comment, updatedAt: Timestamp.now().toDate().toISOString() });
+        await createAuditLog(transaction, actorUserId, 'JOURNAL_REVISION_REQUESTED', 'DailyJournal', journalId);
       });
     } catch (e) {
       console.warn('Firestore returnJournal error:', e);
     }
   },
   
-  reopenJournal: async (journalId: string, actorUserId: string, reason: string, role: string) => {
+  reopenJournal: async (journalId: string, actorUserId: string, reason: string) => {
     if (!db) {
       const journals = storageService.getDailyJournals();
       const journal = journals.find(j => j.id === journalId);
       if (journal) {
-        journal.status = role === 'SUPER_ADMIN' ? 'REOPENED_BY_SUPER_ADMIN' : 'REOPENED_BY_DEPARTMENT_HEAD';
+        journal.status = 'SUBMITTED';
+        journal.isLocked = false;
         journal.reopenReason = reason;
-        journal.reopenedBy = actorUserId;
-        journal.reopenedAt = new Date().toISOString();
         journal.updatedAt = new Date().toISOString();
         storageService.saveDailyJournal(journal);
       }
@@ -216,8 +222,7 @@ export const dailyJournalService = {
       const firestoreDb = db!;
       return await runTransaction(firestoreDb, async (transaction) => {
         const journalRef = doc(firestoreDb, COLLECTION, journalId);
-        const status = role === 'SUPER_ADMIN' ? 'REOPENED_BY_SUPER_ADMIN' : 'REOPENED_BY_DEPARTMENT_HEAD';
-        transaction.update(journalRef, { status, reopenReason: reason, reopenedBy: actorUserId, reopenedAt: Timestamp.now().toDate().toISOString(), updatedAt: Timestamp.now().toDate().toISOString() });
+        transaction.update(journalRef, { status: 'SUBMITTED', isLocked: false, reopenReason: reason, updatedAt: Timestamp.now().toDate().toISOString() });
         await createAuditLog(transaction, actorUserId, 'JOURNAL_REOPENED', 'DailyJournal', journalId);
       });
     } catch (e) {
@@ -250,6 +255,34 @@ export const dailyJournalService = {
       }
     } catch (e) {
       console.warn('closeExpiredJournals error:', e);
+    }
+  } ,
+  finalApproveJournal: async (journalId: string, actorUserId: string) => {
+    try {
+      const firestoreDb = db!;
+      return await runTransaction(firestoreDb, async (transaction) => {
+        const journalRef = doc(firestoreDb, COLLECTION, journalId);
+        transaction.update(journalRef, { 
+          status: 'FINAL_APPROVED',
+          isLocked: true,
+          finalApprovedAt: Timestamp.now().toDate().toISOString(), 
+          finalApprovedBy: actorUserId,
+          updatedAt: Timestamp.now().toDate().toISOString() 
+        });
+        await createAuditLog(transaction, actorUserId, 'JOURNAL_FINAL_APPROVED', 'DailyJournal', journalId);
+      });
+    } catch (e) {
+      console.warn('Firestore finalApproveJournal error:', e);
+      const journals = storageService.getDailyJournals();
+      const journal = journals.find(j => j.id === journalId);
+      if (journal) {
+        journal.status = 'FINAL_APPROVED';
+        journal.isLocked = true;
+        journal.finalApprovedAt = new Date().toISOString();
+        journal.finalApprovedBy = actorUserId;
+        journal.updatedAt = new Date().toISOString();
+        storageService.saveDailyJournal(journal);
+      }
     }
   }
 };

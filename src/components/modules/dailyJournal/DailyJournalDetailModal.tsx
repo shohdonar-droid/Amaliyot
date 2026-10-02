@@ -64,8 +64,10 @@ export function DailyJournalDetailModal({
   if (!journal) return null;
 
   const statusUpper = journal.status.toUpperCase();
-  const isApproved = statusUpper === 'APPROVED';
-  const isRevision = statusUpper === 'REVISION' || statusUpper === 'REJECTED';
+  const isSubmitted = statusUpper === 'SUBMITTED';
+  const isSupervisorApproved = statusUpper === 'SUPERVISOR_APPROVED';
+  const isFinalApproved = statusUpper === 'FINAL_APPROVED' || statusUpper === 'LOCKED';
+  const isRevision = statusUpper === 'REVISION';
   const isPending = statusUpper === 'PENDING';
 
   return (

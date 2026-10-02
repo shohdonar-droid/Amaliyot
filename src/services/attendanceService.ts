@@ -59,6 +59,7 @@ export const attendanceService = {
     if (!firestoreDb) throw new Error('Firebase ulanmagan');
     return await runTransaction(firestoreDb, async (transaction) => {
       // 1. Validate Assignment
+      if (!data.assignmentId) throw new Error('Amaliyot biriktirilishi belgilanmagan.');
       const assignmentRef = doc(firestoreDb, 'practiceAssignments', data.assignmentId);
       const assignmentSnap = await transaction.get(assignmentRef);
       if (!assignmentSnap.exists()) throw new Error('Amaliyot biriktirilishi topilmadi.');

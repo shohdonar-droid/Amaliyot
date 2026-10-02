@@ -339,8 +339,8 @@ export interface AttendanceSession {
 export interface Attendance {
   id: string; // attendanceId
   studentId: string;
-  assignmentId: string;
-  supervisorId: string;
+  assignmentId?: string;
+  supervisorId?: string;
   organizationId?: string; // practicePlaceId
   departmentId?: string;
   groupId?: string; // needed for getAttendanceByGroup
@@ -417,6 +417,11 @@ export type JournalStatus =
     | "OPEN"
     | "SUBMITTED_TO_SUPERVISOR"
     | "RETURNED_FOR_EDIT"
+    | "SUBMITTED"
+    | "SUPERVISOR_APPROVED"
+    | "FINAL_PENDING"
+    | "FINAL_APPROVED"
+    | "LOCKED"
     | "APPROVED_BY_SUPERVISOR"
     | "CLOSED_BY_3_DAY_TIMEOUT"
     | "REOPENED_BY_DEPARTMENT_HEAD"
@@ -475,9 +480,14 @@ export interface DailyJournal {
   clinicalCases?: ClinicalCaseItem[];
   reflection?: JournalReflection;
   attachments?: JournalAttachment[];
-  supervisorRating?: number;
   supervisorFeedback?: string;
+  supervisorRating?: number;
   revisionReason?: string;
+  finalApprovedAt?: string;
+  finalApprovedBy?: string;
+  finalApprovedByName?: string;
+  finalApprovedByRole?: string;
+  isLocked?: boolean;
   topicsLearned?: string[] | string;
   questionsLearned?: string[] | string;
   selfReflection?: string | JournalReflection;
