@@ -67,8 +67,9 @@ export function DailyJournalDetailModal({
   const isSubmitted = statusUpper === 'SUBMITTED';
   const isSupervisorApproved = statusUpper === 'SUPERVISOR_APPROVED';
   const isFinalApproved = statusUpper === 'FINAL_APPROVED' || statusUpper === 'LOCKED';
-  const isRevision = statusUpper === 'REVISION';
-  const isPending = statusUpper === 'PENDING';
+  const isApproved = isSupervisorApproved || isFinalApproved || statusUpper === 'APPROVED';
+  const isRevision = statusUpper === 'REVISION' || statusUpper === 'REJECTED';
+  const isPending = statusUpper === 'PENDING' || statusUpper === 'SUBMITTED' || statusUpper === 'FINAL_PENDING';
 
   return (
     <Modal

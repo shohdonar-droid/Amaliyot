@@ -414,6 +414,8 @@ export interface JournalAttachment {
 }
 
 export type JournalStatus = 
+    | "DRAFT"
+    | "draft"
     | "OPEN"
     | "SUBMITTED_TO_SUPERVISOR"
     | "RETURNED_FOR_EDIT"
@@ -863,6 +865,7 @@ export type AuditAction =
   | 'attendanceDeleted'
   | 'journalSubmitted'
   | 'journalReviewed'
+  | 'journalFinalApproved'
   | 'journalUpdated'
   | 'journalResubmitted'
   | 'journalRevisionRequested'

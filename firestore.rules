@@ -221,20 +221,42 @@ service cloud.firestore {
         (isSupervisor() && resource.data.supervisorId == get(/databases/$(database)/documents/supervisors/$(request.auth.uid)).data.id) ||
         resource.data.studentId == getUserData().studentId
       );
+      // Student can create new journal in DRAFT or SUBMITTED status
       allow create: if isSignedIn() && (
         isPracticeStaff() ||
-        (getUserRole() == 'STUDENT' && request.resource.data.studentId == getUserData().studentId)
-      );
-      allow update: if isSignedIn() && (
-        isPracticeStaff() ||
-        (isSupervisor() && request.resource.data.status in ['APPROVED_BY_SUPERVISOR', 'RETURNED_FOR_EDIT']) ||
         (
           getUserRole() == 'STUDENT' &&
-          resource.data.studentId == getUserData().studentId &&
-          request.resource.data.studentId == resource.data.studentId &&
-          resource.data.status in ['OPEN', 'RETURNED_FOR_EDIT']
-        ) ||
-        (isPracticeHead() && request.resource.data.status in ['REOPENED_BY_DEPARTMENT_HEAD', 'REOPENED_BY_SUPER_ADMIN'])
+          request.resource.data.studentId == getUserData().studentId &&
+          request.resource.data.status in ['DRAFT', 'SUBMITTED', 'OPEN', 'PENDING']
+        )
+      );
+      // Strict State-Machine Transitions:
+      // 1. Practice Head / Super Admin can Final Approve, Lock, or Emergency Reopen
+      // 2. If already LOCKED or FINAL_APPROVED: All non-admin/head updates are BLOCKED!
+      // 3. Supervisor can ONLY transition SUBMITTED -> SUPERVISOR_APPROVED, FINAL_PENDING, or REVISION
+      // 4. Student can ONLY update when in DRAFT, OPEN, or REVISION, transitioning to DRAFT or SUBMITTED
+      allow update: if isSignedIn() && (
+        (isPracticeHead() && (
+          request.resource.data.status in ['FINAL_APPROVED', 'LOCKED', 'SUBMITTED', 'REOPENED_BY_DEPARTMENT_HEAD', 'REOPENED_BY_SUPER_ADMIN']
+        )) ||
+        (!(resource.data.status in ['LOCKED', 'FINAL_APPROVED']) && (
+          isPracticeStaff() ||
+          (
+            isSupervisor() &&
+            resource.data.supervisorId == get(/databases/$(database)/documents/supervisors/$(request.auth.uid)).data.id &&
+            resource.data.status in ['SUBMITTED', 'SUBMITTED_TO_SUPERVISOR', 'PENDING', 'OPEN'] &&
+            request.resource.data.status in ['SUPERVISOR_APPROVED', 'APPROVED_BY_SUPERVISOR', 'FINAL_PENDING', 'REVISION', 'RETURNED_FOR_EDIT'] &&
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['studentId', 'practiceId', 'assignmentId', 'date', 'attendanceId'])
+          ) ||
+          (
+            getUserRole() == 'STUDENT' &&
+            resource.data.studentId == getUserData().studentId &&
+            request.resource.data.studentId == resource.data.studentId &&
+            resource.data.status in ['DRAFT', 'OPEN', 'REVISION', 'RETURNED_FOR_EDIT'] &&
+            request.resource.data.status in ['DRAFT', 'SUBMITTED'] &&
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['studentId', 'practiceId', 'assignmentId', 'supervisorId', 'attendanceId', 'isLocked', 'finalApprovedAt', 'finalApprovedBy'])
+          )
+        ))
       );
       allow delete: if isPracticeHead();
     }

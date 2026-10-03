@@ -19,6 +19,18 @@ export const generateJournalPDF = (journal: DailyJournal, student: Student, prac
 
 export const exportToExcel = (data: any[], fileName: string) => {
     const ws = XLSX.utils.json_to_sheet(data);
+    if (data.length > 0) {
+      const keys = Object.keys(data[0]);
+      ws['!cols'] = keys.map(k => {
+        let maxLen = k.length;
+        for (const row of data) {
+          const val = row[k];
+          const str = val !== null && val !== undefined ? String(val) : '';
+          if (str.length > maxLen) maxLen = str.length;
+        }
+        return { wch: Math.min(Math.max(maxLen + 3, 10), 60) };
+      });
+    }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Hisobot");
     XLSX.writeFile(wb, `${fileName}.xlsx`);

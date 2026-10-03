@@ -25,11 +25,14 @@ import {
   Download,
   Stethoscope,
   HeartPulse,
-  CheckCircle2
+  CheckCircle2,
+  Lock,
+  FileSpreadsheet
 } from 'lucide-react';
 import { DailyJournal, Student, Practice, PracticePlace, Supervisor, Faculty, Direction, Group, Course, PracticeAssignment } from '../../../types';
 import { dailyJournalService } from '../../../services/dailyJournalService';
 import { storageService } from '../../../services/storageService';
+import { journalExportService } from '../../../services/journalExportService';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
 import { StatusBadge } from '../../common/Badge';
@@ -37,6 +40,8 @@ import { DailyJournalFormModal } from './DailyJournalFormModal';
 import { DailyJournalDetailModal } from './DailyJournalDetailModal';
 import { DailyJournalReviewModal } from './DailyJournalReviewModal';
 import { DailyJournalPrintView } from './DailyJournalPrintView';
+import { FinalApprovalModule } from './FinalApprovalModule';
+import { JournalArchiveModule } from './JournalArchiveModule';
 
 export function DailyJournalModule() {
   const { showToast } = useToast();
@@ -59,11 +64,15 @@ export function DailyJournalModule() {
 
   // Role detection
   const isStudent = canonicalRole === 'STUDENT' || role === 'student';
-  const isSupervisorOrStaff = canonicalRole === 'PRACTICE_SUPERVISOR' || canonicalRole === 'CLINIC_RESPONSIBLE' || canonicalRole === 'PRACTICE_HEAD' || canonicalRole === 'SUPER_ADMIN' || canonicalRole === 'PRACTICE_STAFF' || canonicalRole === 'FACULTY_DEAN';
+  const isSupervisor = canonicalRole === 'PRACTICE_SUPERVISOR' || role === 'supervisor';
+  const isSupervisorOnly = isSupervisor && canonicalRole !== 'SUPER_ADMIN' && canonicalRole !== 'PRACTICE_HEAD' && canonicalRole !== 'PRACTICE_STAFF';
+  const isPracticeHeadOrAdmin = canonicalRole === 'PRACTICE_HEAD' || canonicalRole === 'SUPER_ADMIN' || canonicalRole === 'PRACTICE_STAFF';
+  const isDean = canonicalRole === 'FACULTY_DEAN';
+  const isSupervisorOrStaff = isSupervisor || isPracticeHeadOrAdmin || isDean || canonicalRole === 'CLINIC_RESPONSIBLE';
 
-  // Active view tab (allow switching to view student perspective if supervisor/admin)
-  const [viewTab, setViewTab] = useState<'student_cabinet' | 'all_journals'>(
-    isStudent ? 'student_cabinet' : 'all_journals'
+  // Active view tab
+  const [viewTab, setViewTab] = useState<'student_cabinet' | 'all_journals' | 'final_approval' | 'archive'>(
+    isStudent ? 'student_cabinet' : (isSupervisorOnly ? 'all_journals' : (isPracticeHeadOrAdmin ? 'final_approval' : 'all_journals'))
   );
 
   // Filters for management view
@@ -88,12 +97,13 @@ export function DailyJournalModule() {
 
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [journalToReview, setJournalToReview] = useState<DailyJournal | null>(null);
+  const [reviewInitialDecision, setReviewInitialDecision] = useState<'APPROVED' | 'REVISION'>('APPROVED');
 
   const [isPrintViewOpen, setIsPrintViewOpen] = useState(false);
   const [journalToPrint, setJournalToPrint] = useState<DailyJournal | null>(null);
 
   const refreshJournals = async () => {
-    const data = await dailyJournalService.getAllJournals(); // Need to add this to service
+    const data = await dailyJournalService.getAllJournals();
     setJournals(data);
   };
 
@@ -174,8 +184,27 @@ export function DailyJournalModule() {
   const filteredJournals = useMemo(() => {
     return journals.filter(journal => {
       // Status filter
-      if (filterStatus !== 'all' && journal.status.toUpperCase() !== filterStatus.toUpperCase()) {
-        return false;
+      if (filterStatus !== 'all') {
+        const jStatus = (journal.status || '').toUpperCase();
+        const fStatus = filterStatus.toUpperCase();
+        if (fStatus === 'APPROVED' || fStatus === 'SUPERVISOR_APPROVED') {
+          if (!jStatus.includes('APPROV') && jStatus !== 'SUPERVISOR_APPROVED') return false;
+        } else if (fStatus === 'SUBMITTED' || fStatus === 'PENDING') {
+          if (jStatus !== 'SUBMITTED' && jStatus !== 'PENDING' && jStatus !== 'SUBMITTED_TO_SUPERVISOR' && jStatus !== 'OPEN') return false;
+        } else if (fStatus === 'REVISION') {
+          if (jStatus !== 'REVISION' && jStatus !== 'REJECTED' && jStatus !== 'RETURNED_FOR_EDIT') return false;
+        } else if (jStatus !== fStatus) {
+          return false;
+        }
+      }
+
+      // Supervisor isolation:
+      // If logged-in user is a supervisor (and not head/admin), strictly allow ONLY their assigned students' journals!
+      const loggedInSupervisor = supervisors.find(s => s.userId === currentUser?.uid || s.id === currentUser?.id);
+      if (isSupervisorOnly && loggedInSupervisor) {
+        if (journal.supervisorId !== loggedInSupervisor.id) {
+          return false;
+        }
       }
 
       // Practice filter
@@ -267,8 +296,9 @@ export function DailyJournalModule() {
   };
 
   // Helper to open review modal
-  const handleOpenReview = (journal: DailyJournal) => {
+  const handleOpenReview = (journal: DailyJournal, decision: 'APPROVED' | 'REVISION' = 'APPROVED') => {
     setJournalToReview(journal);
+    setReviewInitialDecision(decision);
     setIsReviewModalOpen(true);
   };
 
@@ -282,6 +312,57 @@ export function DailyJournalModule() {
   const handleOpenEdit = (journal: DailyJournal) => {
     setJournalToEdit(journal);
     setIsSubmitModalOpen(true);
+  };
+
+  // Real Excel (.xlsx) export for filtered journals table
+  const handleDownloadJournalsExcel = () => {
+    if (filteredJournals.length === 0) {
+      showToast('warning', 'Kundaliklar topilmadi', 'Eksport qilish uchun kundaliklar mavjud emas.');
+      return;
+    }
+    const { wb, filename } = journalExportService.generateJournalsListExcel({
+      journals: filteredJournals,
+      students,
+      practices,
+      practicePlaces,
+      supervisors,
+      faculties,
+      groups,
+      directions,
+      allAttendance
+    });
+    journalExportService.downloadExcel(wb, filename);
+    showToast('success', 'Excel (.xlsx) yuklab olindi', `${filteredJournals.length} ta kundalik barcha ustunlari bilan Excel fayliga yuklandi.`);
+  };
+
+  // Real Excel (.xlsx) export for single student's complete daily journal
+  const handleDownloadStudentExcel = (journal: DailyJournal) => {
+    const student = students.find(s => s.id === journal.studentId);
+    if (!student) {
+      showToast('error', 'Xatolik', 'Talaba ma\'lumotlari topilmadi.');
+      return;
+    }
+    const studentJournals = journals.filter(j => j.studentId === student.id);
+    const practice = practices.find(p => p.id === journal.practiceId);
+    const place = practicePlaces.find(p => p.id === journal.practicePlaceId);
+    const sup = supervisors.find(s => s.id === journal.supervisorId);
+    const fac = faculties.find(f => f.id === student.facultyId);
+    const grp = groups.find(g => g.id === student.groupId);
+    const dir = directions.find(d => d.id === student.directionId);
+
+    const { wb, filename } = journalExportService.generateExcel({
+      student,
+      practice,
+      journals: studentJournals,
+      attendances: allAttendance.filter(a => a.studentId === student.id),
+      supervisor: sup,
+      practicePlace: place,
+      faculty: fac,
+      group: grp,
+      direction: dir
+    });
+    journalExportService.downloadExcel(wb, filename);
+    showToast('success', 'Excel (.xlsx) yuklab olindi', `${student.fullName} elektron kundaligi yuklandi.`);
   };
 
   return (
@@ -306,8 +387,8 @@ export function DailyJournalModule() {
 
         {/* Header Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Switch tabs between Student view & All journals view */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+          {/* Switch tabs between Student view, Management view, Final Approval, and Archive */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold flex-wrap gap-1">
             <button
               type="button"
               onClick={() => setViewTab('student_cabinet')}
@@ -319,6 +400,7 @@ export function DailyJournalModule() {
             >
               Mening kundaligim (Talaba)
             </button>
+
             <button
               type="button"
               onClick={() => setViewTab('all_journals')}
@@ -328,8 +410,36 @@ export function DailyJournalModule() {
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Barcha kundaliklar (Tekshiruv)
+              {isSupervisorOnly ? "Mening talabalarim (Supervisor)" : "Kundaliklar nazorati (Tekshiruv)"}
             </button>
+
+            {isPracticeHeadOrAdmin && (
+              <button
+                type="button"
+                onClick={() => setViewTab('final_approval')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  viewTab === 'final_approval'
+                    ? 'bg-white text-blue-700 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Yakuniy tasdiqlash (Final Approval)
+              </button>
+            )}
+
+            {(isPracticeHeadOrAdmin || isDean) && (
+              <button
+                type="button"
+                onClick={() => setViewTab('archive')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  viewTab === 'archive'
+                    ? 'bg-white text-blue-700 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Elektron Arxiv & Eksport
+              </button>
+            )}
           </div>
 
           <button
@@ -452,19 +562,23 @@ export function DailyJournalModule() {
               </div>
 
               {/* Status Switcher */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-lg">
+              <div className="flex items-center bg-slate-100 p-1 rounded-lg flex-wrap gap-1">
                 {[
                   { id: 'all', label: 'Barchasi' },
-                  { id: 'PENDING', label: 'Tekshiruvda' },
-                  { id: 'APPROVED', label: 'Tasdiqlangan' },
+                  { id: 'DRAFT', label: 'Qoralama' },
+                  { id: 'SUBMITTED', label: 'Tekshiruvda' },
+                  { id: 'SUPERVISOR_APPROVED', label: 'Rahbar tasdiqlagan' },
+                  { id: 'FINAL_PENDING', label: 'Final Pending' },
+                  { id: 'FINAL_APPROVED', label: 'Final Tasdiq' },
+                  { id: 'LOCKED', label: 'Qulflangan' },
                   { id: 'REVISION', label: 'Qayta ishlash' }
                 ].map(s => (
                   <button
                     key={s.id}
                     onClick={() => setFilterStatus(s.id)}
-                    className={`flex-1 py-1.5 text-center text-xs font-semibold rounded-md transition-all ${
+                    className={`px-2.5 py-1 text-center text-[11px] font-semibold rounded-md transition-all ${
                       filterStatus === s.id
-                        ? 'bg-white text-slate-900 shadow-2xs'
+                        ? 'bg-white text-slate-900 shadow-2xs font-bold'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -589,13 +703,12 @@ export function DailyJournalModule() {
               </span>
               <button
                 type="button"
-                onClick={() => {
-                  showToast('info', 'Eksport qilindi', 'Kundaliklar ro\'yxati tayyorlandi.');
-                }}
-                className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-medium"
+                onClick={handleDownloadJournalsExcel}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg font-semibold transition-colors shadow-2xs"
+                title="Barcha filtrlangan kundaliklarni Excel (.xlsx) formatida yuklab olish"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>Excel / Hisobot</span>
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Excel (.xlsx) yuklash</span>
               </button>
             </div>
 
@@ -637,7 +750,16 @@ export function DailyJournalModule() {
                         <tr key={journal.id} className="hover:bg-slate-50/70 transition-colors">
                           <td className="p-3">
                             <span className="font-bold text-slate-900 block">{student?.fullName || 'Noma\'lum talaba'}</span>
-                            <span className="text-[11px] text-slate-400 font-mono">{student?.studentId}</span>
+                            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-mono mt-0.5">
+                              <span className="text-blue-700 font-bold">{student?.login || 'T00001'}</span>
+                              <span>•</span>
+                              <span>ID: {student?.studentId || student?.id}</span>
+                            </div>
+                            {journal.submittedAt && (
+                              <span className="text-[10px] text-slate-400 block mt-0.5">
+                                Topshirilgan: {new Date(journal.submittedAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}, {new Date(journal.submittedAt).toLocaleDateString('uz-UZ')}
+                              </span>
+                            )}
                           </td>
 
                           <td className="p-3 text-slate-700">
@@ -669,19 +791,45 @@ export function DailyJournalModule() {
                           </td>
 
                           <td className="p-3 text-center">
-                            <span className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-md ${
-                              isApproved
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : isRevision
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-blue-100 text-blue-800'
-                            }`}>
-                              {isApproved ? 'Tasdiqlangan' : isRevision ? 'Qayta ishlash' : 'Tekshiruvda'}
-                            </span>
+                            {statusUpper === 'LOCKED' ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-slate-900 text-white">
+                                <Lock className="w-3 h-3 text-amber-400" />
+                                <span>LOCKED</span>
+                              </span>
+                            ) : statusUpper === 'FINAL_APPROVED' ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-emerald-600 text-white">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>FINAL_APPROVED</span>
+                              </span>
+                            ) : statusUpper === 'FINAL_PENDING' ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-amber-100 text-amber-900 border border-amber-300">
+                                <Clock className="w-3 h-3 text-amber-600" />
+                                <span>FINAL_PENDING</span>
+                              </span>
+                            ) : (statusUpper === 'SUPERVISOR_APPROVED' || statusUpper === 'APPROVED') ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-teal-100 text-teal-800">
+                                <CheckCircle className="w-3 h-3 text-teal-600" />
+                                <span>SUPERVISOR_APPROVED</span>
+                              </span>
+                            ) : (statusUpper === 'REVISION' || statusUpper === 'REJECTED') ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-rose-100 text-rose-800">
+                                <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                <span>REVISION</span>
+                              </span>
+                            ) : statusUpper === 'DRAFT' ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-slate-100 text-slate-700">
+                                <span>DRAFT</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md bg-blue-100 text-blue-800">
+                                <Clock className="w-3 h-3 text-blue-600" />
+                                <span>SUBMITTED</span>
+                              </span>
+                            )}
                           </td>
 
                           <td className="p-3 text-center">
-                            {isApproved && journal.supervisorRating ? (
+                            {(statusUpper.includes('APPROV') || statusUpper === 'LOCKED') && journal.supervisorRating ? (
                               <div className="inline-flex items-center gap-0.5 font-black text-amber-500 text-xs">
                                 <Star className="w-3.5 h-3.5 fill-amber-400" />
                                 <span>{journal.supervisorRating}</span>
@@ -692,7 +840,29 @@ export function DailyJournalModule() {
                           </td>
 
                           <td className="p-3 text-right">
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Direct Supervisor Approve & Revision buttons if in SUBMITTED state */}
+                              {isSupervisorOrStaff && (statusUpper === 'SUBMITTED' || statusUpper === 'PENDING' || statusUpper === 'OPEN') && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenReview(journal, 'APPROVED')}
+                                    className="px-2.5 py-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors shadow-2xs"
+                                    title="Tasdiqlash"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenReview(journal, 'REVISION')}
+                                    className="px-2.5 py-1 text-[11px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors shadow-2xs"
+                                    title="Qayta ishlashga yuborish"
+                                  >
+                                    Revision
+                                  </button>
+                                </>
+                              )}
+
                               <button
                                 type="button"
                                 onClick={() => handleOpenDetail(journal)}
@@ -713,12 +883,23 @@ export function DailyJournalModule() {
 
                               <button
                                 type="button"
-                                onClick={() => handleOpenReview(journal)}
-                                className="px-2.5 py-1 text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-2xs"
-                                title="Baholash"
+                                onClick={() => handleDownloadStudentExcel(journal)}
+                                className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                                title="Talaba kundaligini Excel (.xlsx) da yuklab olish"
                               >
-                                {isApproved ? 'Bahoni ko\'rish' : 'Tekshirish'}
+                                <FileSpreadsheet className="w-4 h-4" />
                               </button>
+
+                              {!(statusUpper === 'SUBMITTED' || statusUpper === 'PENDING' || statusUpper === 'OPEN') && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenReview(journal, 'APPROVED')}
+                                  className="px-2 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors shadow-2xs"
+                                  title="Ko'rib chiqish"
+                                >
+                                  {statusUpper.includes('APPROV') ? 'Bahoni ko\'rish' : 'Ko\'rish'}
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1010,6 +1191,16 @@ export function DailyJournalModule() {
         </div>
       )}
 
+      {/* 3. FINAL APPROVAL VIEW */}
+      {viewTab === 'final_approval' && (
+        <FinalApprovalModule />
+      )}
+
+      {/* 4. ARCHIVE VIEW */}
+      {viewTab === 'archive' && (
+        <JournalArchiveModule />
+      )}
+
       {/* MODAL 1: Form Modal for Filling / Editing Journal */}
       <DailyJournalFormModal
         isOpen={isSubmitModalOpen}
@@ -1063,6 +1254,7 @@ export function DailyJournalModule() {
         }}
         journal={journalToReview}
         student={students.find(s => s.id === journalToReview?.studentId)}
+        initialDecision={reviewInitialDecision}
       />
 
       {/* MODAL 4: Printable View */}

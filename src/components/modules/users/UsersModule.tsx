@@ -149,8 +149,8 @@ export function UsersModule() {
       email: `${autoLogin}@tma.uz`,
       phone: formData.phone.trim() || '+998 (90) 000-00-00',
       status: formData.status,
-      facultyId: formData.facultyId || undefined,
-      practicePlaceId: formData.practicePlaceId || undefined,
+      ...(formData.facultyId ? { facultyId: formData.facultyId } : {}),
+      ...(formData.practicePlaceId ? { practicePlaceId: formData.practicePlaceId } : {}),
       createdAt: new Date().toISOString(),
     };
 
@@ -249,8 +249,8 @@ export function UsersModule() {
       email: formData.email.trim(),
       phone: formData.phone.trim(),
       status: formData.status,
-      facultyId: formData.facultyId || undefined,
-      practicePlaceId: formData.practicePlaceId || undefined,
+      ...(formData.facultyId ? { facultyId: formData.facultyId } : {}),
+      ...(formData.practicePlaceId ? { practicePlaceId: formData.practicePlaceId } : {}),
     };
 
     userService.updateUser(userToEdit.id, updated).then(() => {

@@ -18,6 +18,7 @@ import {
   AttendanceStatus,
   AttendanceSession,
   DailyJournal,
+  JournalStatus,
   Skill,
   StudentSkill,
   SkillRecord,
@@ -4072,11 +4073,29 @@ class StorageServiceV2 {
     const supervisor = state.supervisors.find(s => s.id === (assignment?.supervisorId || journalData.supervisorId));
     const student = state.students.find(s => s.id === journalData.studentId);
 
-    // Prepare robust linked journal object
     const existingIdx = state.dailyJournals.findIndex(j => j.id === journalData.id);
     const isNew = existingIdx < 0;
     const existing = existingIdx >= 0 ? state.dailyJournals[existingIdx] : null;
+
+    // LOCKED / FINAL_APPROVED restriction: cannot be modified by standard client update!
+    if (existing && (existing.isLocked || existing.status === 'LOCKED' || existing.status === 'FINAL_APPROVED')) {
+      return {
+        success: false,
+        error: 'Ushbu amaliyot kundaligi yakuniy tasdiqlangan va qulflangan (LOCKED). Tahrirlash mutlaqo taqiqlanadi.'
+      };
+    }
+
+    // If already SUBMITTED or pending review, student cannot edit until supervisor requests REVISION
+    if (existing && actorRole === 'STUDENT' && (existing.status === 'SUBMITTED' || existing.status === 'SUPERVISOR_APPROVED' || existing.status === 'FINAL_PENDING')) {
+      return {
+        success: false,
+        error: 'Kundalik allaqachon topshirilgan va ko\'rib chiqish jarayonida. Qayta ishlashga (REVISION) yuborilmaguncha tahrirlash yopiq.'
+      };
+    }
+
     const isResubmit = existing && (existing.status === 'REVISION' || existing.status === 'revision');
+    const isDraft = journalData.status === 'DRAFT' || journalData.status === 'draft';
+    const targetStatus: JournalStatus = isDraft ? 'DRAFT' : 'SUBMITTED';
 
     const linkedJournal: DailyJournal = {
       ...journalData,
@@ -4114,8 +4133,8 @@ class StorageServiceV2 {
         tomorrowFocus: ''
       },
       attachments: journalData.attachments || [],
-      status: 'SUBMITTED',
-      submittedAt: new Date().toISOString(),
+      status: targetStatus,
+      submittedAt: isDraft ? undefined : (existing?.submittedAt || new Date().toISOString()),
       version: (existing?.version || 0) + (isResubmit ? 1 : 1),
       updatedAt: new Date().toISOString()
     };
@@ -4239,7 +4258,7 @@ class StorageServiceV2 {
    */
   public reviewDailyJournal(params: {
     journalId: string;
-    status: 'APPROVED' | 'REVISION' | 'REJECTED';
+    status: 'SUPERVISOR_APPROVED' | 'APPROVED' | 'REVISION' | 'REJECTED';
     rating?: number; // 1 to 5
     feedback: string;
     revisionReason?: string;
@@ -4254,11 +4273,19 @@ class StorageServiceV2 {
       return { success: false, error: 'Kundalik topilmadi.' };
     }
 
+    if (journal.isLocked || journal.status === 'LOCKED' || journal.status === 'FINAL_APPROVED') {
+      return {
+        success: false,
+        error: 'Ushbu kundalik yakuniy tasdiqlangan va qulflangan (LOCKED). Rahbar tomonidan baholash/tahrirlash taqiqlanadi.'
+      };
+    }
+
     const now = new Date().toISOString();
-    journal.status = params.status;
-    journal.supervisorRating = params.status === 'APPROVED' ? (params.rating || 5) : undefined;
+    const isApproval = params.status === 'APPROVED' || params.status === 'SUPERVISOR_APPROVED';
+    journal.status = isApproval ? 'SUPERVISOR_APPROVED' : 'REVISION';
+    journal.supervisorRating = isApproval ? (params.rating || 5) : undefined;
     journal.supervisorFeedback = params.feedback;
-    if (params.status === 'REVISION' || params.status === 'REJECTED') {
+    if (!isApproval) {
       journal.revisionReason = params.revisionReason || params.feedback;
     } else {
       journal.revisionReason = undefined;
@@ -4270,12 +4297,37 @@ class StorageServiceV2 {
 
     // Send notification to the student
     const student = state.students.find(s => s.id === journal.studentId);
-    if (params.status === 'APPROVED') {
+    if (isApproval) {
+      // Check if all student journals for this practice are now supervisor-approved
+      const studentPracticeJournals = state.dailyJournals.filter(
+        j => j.studentId === journal.studentId && j.practiceId === journal.practiceId
+      );
+      const allDone = studentPracticeJournals.length > 0 && studentPracticeJournals.every(
+        j => j.id === journal.id || j.status === 'SUPERVISOR_APPROVED' || j.status === 'FINAL_PENDING' || j.status === 'FINAL_APPROVED' || j.status === 'LOCKED'
+      );
+      if (allDone) {
+        studentPracticeJournals.forEach(j => {
+          if (j.id === journal.id || j.status === 'SUPERVISOR_APPROVED') {
+            j.status = 'FINAL_PENDING';
+            j.updatedAt = now;
+          }
+        });
+        journal.status = 'FINAL_PENDING';
+
+        this.addNotification({
+          recipientRoles: ['PRACTICE_HEAD', 'PRACTICE_STAFF', 'SUPER_ADMIN'],
+          title: '🟡 Barcha kunlar tasdiqlandi (FINAL_PENDING)',
+          message: `${student?.fullName || 'Talaba'} barcha amaliyot kunlari kundaliklari rahbar tomonidan tasdiqlandi va Amaliyot bo'limining yakuniy tasdig'ini (Final Approval) kutmoqda.`,
+          type: 'warning',
+          linkModule: 'daily_journal'
+        });
+      }
+
       this.addNotification({
         recipientUserId: student?.userId,
         recipientRoles: ['STUDENT'],
-        title: 'Kundaligingiz tasdiqlandi',
-        message: `Sizning ${journal.date} kungi amaliyot kundaligingiz tasdiqlandi. Baho: ${params.rating || 5}/5. Taqriz: "${params.feedback || 'A\'lo darajada'}"`,
+        title: 'Kundaligingiz tasdiqlandi (SUPERVISOR_APPROVED)',
+        message: `Sizning ${journal.date} kungi amaliyot kundaligingiz rahbar tomonidan tasdiqlandi. Baho: ${params.rating || 5}/5. Taqriz: "${params.feedback || 'A\'lo darajada'}"`,
         type: 'success',
         linkModule: 'daily_journal'
       });
@@ -4518,6 +4570,41 @@ class StorageServiceV2 {
       });
       this.saveState(state);
     }
+  }
+
+  public finalApproveStudentJournals(studentId: string, actorUserId: string, actorName: string, note?: string): void {
+    const state = this.getState();
+    const now = new Date().toISOString();
+    state.dailyJournals.forEach(j => {
+      if (j.studentId === studentId) {
+        j.status = 'FINAL_APPROVED';
+        j.isLocked = true;
+        j.finalApprovedAt = now;
+        j.finalApprovedBy = actorName;
+        j.updatedAt = now;
+      }
+    });
+
+    const student = state.students.find(s => s.id === studentId);
+    this.addNotification({
+      recipientUserId: student?.userId,
+      recipientRoles: ['STUDENT'],
+      title: 'Amaliyot kundaligingiz yakuniy tasdiqlandi (FINAL_APPROVED)',
+      message: `Barcha amaliyot kundaliklaringiz Amaliyot bo'limi boshlig'i tomonidan yakuniy tasdiqlandi va arxiv fondiga joylandi.`,
+      type: 'success',
+      linkModule: 'daily_journal'
+    });
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: 'PRACTICE_HEAD',
+      action: 'journalFinalApproved',
+      entity: 'dailyJournals',
+      entityId: studentId,
+      metadata: JSON.stringify({ studentId, studentName: student?.fullName, note: note || 'Final Approved' })
+    });
+
+    this.saveState(state);
   }
 
   // Backward compatibility alias

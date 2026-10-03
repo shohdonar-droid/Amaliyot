@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { DailyJournal, JournalProcedure, ClinicalCaseItem, JournalAttachment, ProcedureParticipationType, Attendance, PracticeAssignment, JournalTemplate } from '../../../types';
 import { storageService } from '../../../services/storageService';
+import { dailyJournalService } from '../../../services/dailyJournalService';
 import { journalTemplateService } from '../../../services/journalTemplateService';
 import { PsychologyJournalForm } from './PsychologyJournalForm';
 import { useAuth } from '../../../context/AuthContext';
@@ -340,19 +341,34 @@ export function DailyJournalFormModal({
     }, 600);
   };
 
-  // Handler: Submit Form
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const isLocked = Boolean(
+    initialJournal && (
+      initialJournal.isLocked ||
+      initialJournal.status === 'LOCKED' ||
+      initialJournal.status === 'FINAL_APPROVED' ||
+      initialJournal.status === 'SUPERVISOR_APPROVED' ||
+      initialJournal.status === 'FINAL_PENDING'
+    )
+  );
 
-    if (!eligibility.eligible && !(initialJournal && (initialJournal.status === 'REVISION' || initialJournal.status === 'revision'))) {
+  // Handler: Save Draft or Submit
+  const handleSave = async (isDraft: boolean) => {
+    if (isLocked) {
+      showToast('error', 'Qulflangan', 'Ushbu kundalik tasdiqlangan va qulflangan, tahrirlash mumkin emas.');
+      return;
+    }
+
+    if (!isDraft && !eligibility.eligible && !(initialJournal && (initialJournal.status === 'REVISION' || initialJournal.status === 'revision'))) {
       showToast('error', 'Kundalik to\'ldirish taqiqlangan', eligibility.reason || 'Talablar bajarilmadi.');
       return;
     }
 
-    if (workSummary.trim().length < 25) {
+    if (!isDraft && workSummary.trim().length < 25) {
       showToast('error', 'Matn juda qisqa', 'Bugun bajargan ishlaringiz kamida 25 ta belgidan iborat bo\'lishi shart ("Amaliyot o\'tadim" kabi qisqa soxta yozuv qabul qilinmaydi).');
       return;
     }
+
+    const targetStatus = isDraft ? 'DRAFT' : 'SUBMITTED';
 
     const payload: DailyJournal = {
       id: initialJournal?.id || `dj-${Date.now()}-${currentStudent.id}`,
@@ -381,13 +397,23 @@ export function DailyJournalFormModal({
       },
       attachments: attachments,
       photoURLs: attachments.filter(a => a.type === 'image').map(a => a.url),
-      status: 'PENDING',
-      submittedAt: new Date().toISOString(),
+      status: targetStatus,
+      submittedAt: isDraft ? undefined : new Date().toISOString(),
       version: (initialJournal?.version || 0) + 1,
       templateId: template?.id,
       activityData: template?.id === 'PSYCHOLOGY_DAILY' ? activityData : undefined
     };
 
+    // 1. Sync to dailyJournalService (Firestore / Cloud)
+    try {
+      if (!isDraft && initialJournal?.id) {
+        await dailyJournalService.submitJournal(initialJournal.id, currentUser?.uid || currentStudent.id);
+      }
+    } catch (fsErr) {
+      console.warn('Firestore journal submit error:', fsErr);
+    }
+
+    // 2. Sync to storageService
     const res = storageService.submitDailyJournal(
       payload,
       currentUser?.id || currentStudent.id,
@@ -399,9 +425,19 @@ export function DailyJournalFormModal({
       return;
     }
 
-    showToast('success', 'Kundalik topshirildi', 'Amaliyot kundaligi muvaffaqiyatli topshirildi va rahbar tekshiruviga yuborildi.');
+    if (isDraft) {
+      showToast('info', 'Qoralama saqlandi', 'Kundalik qoralama (DRAFT) sifatida saqlandi. Xohlagan vaqtda davom ettirishingiz mumkin.');
+    } else {
+      showToast('success', 'Kundalik topshirildi', 'Amaliyot kundaligi muvaffaqiyatli topshirildi va rahbar tekshiruviga yuborildi.');
+    }
+
     onSuccess();
     onClose();
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSave(false);
   };
 
   // Student's available attendances for quick date picking
@@ -418,6 +454,21 @@ export function DailyJournalFormModal({
       maxWidth="3xl"
     >
       <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+        {/* Locked alert if already supervisor approved or locked */}
+        {isLocked && (
+          <div className="p-4 bg-slate-900 border border-slate-800 text-white rounded-xl flex items-center gap-3">
+            <Lock className="w-5 h-5 text-amber-400 shrink-0" />
+            <div className="text-xs">
+              <strong className="block text-amber-300 font-bold mb-0.5">
+                Kundalik tasdiqlangan va qulflangan ({initialJournal?.status})
+              </strong>
+              <p className="text-slate-300">
+                Ushbu kundalik allaqachon rahbar yoki amaliyot bo'limi tomonidan tasdiqlangan. Undagi ma'lumotlarni o'zgartirish taqiqlanadi.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Revision Alert if Resubmitting */}
         {(initialJournal?.status === 'REVISION' || initialJournal?.status === 'revision') && (
           <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
@@ -970,21 +1021,37 @@ export function DailyJournalFormModal({
             onClick={onClose}
             className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           >
-            Bekor qilish
+            {isLocked ? "Yopish" : "Bekor qilish"}
           </button>
 
-          <button
-            type="submit"
-            disabled={!eligibility.eligible && !(initialJournal && (initialJournal.status === 'REVISION' || initialJournal.status === 'revision'))}
-            className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>
-              {initialJournal?.status === 'REVISION' || initialJournal?.status === 'revision'
-                ? "Tahrirlab qayta topshirish (Resubmit)"
-                : "Kundalikni topshirish"}
-            </span>
-          </button>
+          {!isLocked && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSave(true);
+                }}
+                disabled={!eligibility.eligible && !(initialJournal && (initialJournal.status === 'REVISION' || initialJournal.status === 'revision'))}
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition-colors"
+              >
+                Qoralama sifatida saqlash (DRAFT)
+              </button>
+
+              <button
+                type="submit"
+                disabled={!eligibility.eligible && !(initialJournal && (initialJournal.status === 'REVISION' || initialJournal.status === 'revision'))}
+                className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>
+                  {initialJournal?.status === 'REVISION' || initialJournal?.status === 'revision'
+                    ? "Tahrirlab qayta topshirish (SUBMIT)"
+                    : "Rahbarga topshirish (SUBMIT)"}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       </form>
     </Modal>

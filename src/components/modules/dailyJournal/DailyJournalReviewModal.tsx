@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CheckCircle,
   AlertTriangle,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { DailyJournal, Student } from '../../../types';
 import { storageService } from '../../../services/storageService';
+import { dailyJournalService } from '../../../services/dailyJournalService';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
 import { Modal } from '../../common/Modal';
@@ -22,6 +23,7 @@ interface DailyJournalReviewModalProps {
   onSuccess: () => void;
   journal: DailyJournal | null;
   student?: Student;
+  initialDecision?: 'APPROVED' | 'REVISION';
 }
 
 export function DailyJournalReviewModal({
@@ -29,27 +31,54 @@ export function DailyJournalReviewModal({
   onClose,
   onSuccess,
   journal,
-  student
+  student,
+  initialDecision = 'APPROVED'
 }: DailyJournalReviewModalProps) {
   const { currentUser, role } = useAuth();
   const { showToast } = useToast();
 
-  const [decision, setDecision] = useState<'APPROVED' | 'REVISION'>('APPROVED');
+  const [decision, setDecision] = useState<'APPROVED' | 'REVISION'>(initialDecision);
   const [rating, setRating] = useState<number>(5);
   const [feedback, setFeedback] = useState<string>('Klinik tahlil to\'g\'ri yozilgan. Bemorlar bilan muloqot va amaliy ko\'nikmalar hisobga olindi.');
   const [revisionReason, setRevisionReason] = useState<string>('');
   const [hoverRating, setHoverRating] = useState<number>(0);
 
+  useEffect(() => {
+    if (initialDecision) {
+      setDecision(initialDecision);
+    }
+  }, [initialDecision, isOpen]);
+
   if (!journal) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (decision === 'REVISION' && !revisionReason.trim()) {
-      showToast('error', 'Sabab kiritilmadi', 'Qayta ishlashga yuborish uchun talabaga kamchiliklar sababini tushuntiring.');
+      showToast('error', 'Sabab kiritilmadi', 'Qayta ishlashga yuborish uchun talabaga kamchiliklar sababini tushuntiring (Majburiy).');
       return;
     }
 
+    // 1. Sync to dailyJournalService (Firestore / Cloud)
+    try {
+      if (decision === 'APPROVED') {
+        await dailyJournalService.approveJournal(
+          journal.id,
+          currentUser?.uid || currentUser?.id || 'supervisor',
+          feedback.trim()
+        );
+      } else {
+        await dailyJournalService.returnJournal(
+          journal.id,
+          currentUser?.uid || currentUser?.id || 'supervisor',
+          revisionReason.trim()
+        );
+      }
+    } catch (fsErr) {
+      console.warn('Firestore review sync error:', fsErr);
+    }
+
+    // 2. Sync to storageService (Local state & notifications & skills credit)
     const res = storageService.reviewDailyJournal({
       journalId: journal.id,
       status: decision,
