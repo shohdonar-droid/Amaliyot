@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Printer, Download, X, CheckCircle, FileSpreadsheet, Stethoscope } from 'lucide-react';
 import { storageService } from '../../../services/storageService';
+import { exportToExcel } from '../../../utils/reportGenerators';
 
 interface SkillPassportPrintModalProps {
   isOpen: boolean;
@@ -30,53 +31,22 @@ export function SkillPassportPrintModal({
     window.print();
   };
 
-  const handleExportCSV = () => {
-    const headers = [
-      '№',
-      'Ko‘nikma nomi',
-      'Kategoriya',
-      'Minimal me‘yor',
-      'Jami bajarilgan',
-      'Mustaqil',
-      'Rahbar nazoratida',
-      'Kuzatuv',
-      'Tasdiqlangan',
-      'Progress %',
-      'Holat'
-    ];
+  const handleExportExcel = () => {
+    const data = passport.detailedSkills.map(s => ({
+      '№': s.number,
+      'Ko‘nikma nomi': s.skill.name,
+      'Kategoriya': s.skill.category,
+      'Minimal me‘yor': s.requiredCount,
+      'Jami bajarilgan': s.performedCount,
+      'Mustaqil': s.independentCount,
+      'Rahbar nazoratida': s.supervisedCount,
+      'Kuzatuv': s.observedCount,
+      'Tasdiqlangan': s.approvedCount,
+      'Progress (%)': s.progressPct,
+      'Holat': s.status
+    }));
 
-    const rows = passport.detailedSkills.map(s => [
-      s.number,
-      `"${s.skill.name.replace(/"/g, '""')}"`,
-      `"${s.skill.category}"`,
-      s.requiredCount,
-      s.performedCount,
-      s.independentCount,
-      s.supervisedCount,
-      s.observedCount,
-      s.approvedCount,
-      `${s.progressPct}%`,
-      s.status
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' +
-      [
-        `"TOSHKENT TIBBIYOT AKADEMIYASI - AMALIY KO'NIKMALAR PASPORTI"`,
-        `"Talaba:","${student?.fullName || ''}","ID:","${student?.studentId || ''}"`,
-        `"Amaliyot:","${practice?.name || ''}","Baza:","${practicePlace?.name || ''}"`,
-        `"Umumiy progress:","${passport.overallProgressPct}%","Minimal me'yor bajarilishi:","${passport.minimalQuotaMetPct}%"`,
-        '',
-        headers.join(','),
-        ...rows.map(r => r.join(','))
-      ].join('\n');
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Amaliy_Konikmalar_Pasporti_${student?.studentId || 'talaba'}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportToExcel(data, `Amaliy_Konikmalar_Pasporti_${student?.studentId || 'talaba'}`);
   };
 
   const todayStr = new Date().toLocaleDateString('uz-UZ', {
@@ -99,11 +69,12 @@ export function SkillPassportPrintModal({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleExportCSV}
+              onClick={handleExportExcel}
               className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-700"
+              title="Ko'nikmalar pasportini Excel (.xlsx) formatida yuklab olish"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Excel (CSV)</span>
+              <span>Excel (.xlsx)</span>
             </button>
             <button
               onClick={handlePrint}

@@ -28,6 +28,7 @@ import { storageService } from '../../../services/storageService';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
 import { Student } from '../../../types';
+import { exportToExcel } from '../../../utils/reportGenerators';
 
 // Subviews
 import { OverallMonitoringView } from './OverallMonitoringView';
@@ -148,47 +149,90 @@ export function ReportsModule() {
     }
   };
 
-  // CSV Export for Overall Table or Subviews
-  const handleExportCSV = () => {
+  // Excel (.xlsx) Export for Overall Table or Subviews
+  const handleExportExcel = () => {
     let filename = `Amaliyot_Yakuniy_Hisoboti_${activeTab}`;
-    let csvHeader = '';
-    let csvRows: string[] = [];
+    let excelData: any[] = [];
 
     if (activeTab === 'monitoring') {
       filename = 'Talaba_Amaliyot_Holati_Monitoring';
-      csvHeader = '№,Talaba F.I.Sh.,Talaba ID,Fakultet,Yo‘nalish,Guruh,Kurs,Amaliyot,Klinik Baza,Rahbar,Davomat %,Kundalik %,Ko‘nikmalar %,Imtihon,Jami Ball,Baho,Status,Muammo,Oxirgi Yangilanish';
-      csvRows = monitoringRows.map((r, i) =>
-        `${i + 1},"${r.student.fullName}",${r.student.studentId},"${r.facultyName}","${r.directionName}","${r.groupName}",${r.courseLevel},"${r.practice?.name || ''}","${r.practicePlace?.name || ''}","${r.supervisor?.fullName || ''}",${r.attendancePercentage},${r.journalCompletionPct},${r.skillsProgressPct},${r.examScore},${r.totalScore},${r.grade},"${r.status}","${r.problem || ''}","${r.lastUpdated}"`
-      );
+      excelData = monitoringRows.map((r, i) => ({
+        "№": i + 1,
+        "Talaba F.I.Sh.": r.student.fullName,
+        "Talaba ID": r.student.studentId,
+        "Fakultet": r.facultyName,
+        "Yo'nalish": r.directionName,
+        "Guruh": r.groupName,
+        "Kurs": r.courseLevel,
+        "Amaliyot": r.practice?.name || '',
+        "Klinik Baza": r.practicePlace?.name || '',
+        "Rahbar": r.supervisor?.fullName || '',
+        "Davomat (%)": r.attendancePercentage,
+        "Kundalik (%)": r.journalCompletionPct,
+        "Ko'nikmalar (%)": r.skillsProgressPct,
+        "Imtihon bali": r.examScore,
+        "Jami Ball": r.totalScore,
+        "Baho": r.grade,
+        "Holat": r.status,
+        "Muammo": r.problem || 'Mavjud emas',
+        "Oxirgi Yangilanish": r.lastUpdated
+      }));
     } else if (activeTab === 'problems') {
       filename = 'Muammoli_Talabalar_Nazorati';
-      csvHeader = '№,Talaba F.I.Sh.,Guruh,Fakultet,Amaliyot,Muammo Turi,Tavsif,Daraja,Mas‘ul,Status,Sana';
-      csvRows = problemStudents.map((p, i) =>
-        `${i + 1},"${p.studentName}","${p.group}","${p.faculty}","${p.practiceName}","${p.problemType}","${p.problemLabel}","${p.severity}","${p.responsiblePerson}","${p.status}","${p.detectedDate}"`
-      );
+      excelData = problemStudents.map((p, i) => ({
+        "№": i + 1,
+        "Talaba F.I.Sh.": p.studentName,
+        "Guruh": p.group,
+        "Fakultet": p.faculty,
+        "Amaliyot": p.practiceName,
+        "Muammo Turi": p.problemType,
+        "Tavsif": p.problemLabel,
+        "Daraja": p.severity,
+        "Mas'ul": p.responsiblePerson,
+        "Holat": p.status,
+        "Sana": p.detectedDate
+      }));
     } else if (activeTab === 'groups') {
       filename = 'Guruhlar_Kesimida_Hisobot';
-      csvHeader = '№,Guruh,Fakultet,Jami Talabalar,Amaliyotda,Yakunlagan,Davomat %,Kundalik %,Ko‘nikma %,O‘rtacha Ball,A‘lo (5),Yaxshi (4),Qoniqarli (3),Qoniqarsiz (2),O‘zlashtirish %,Sifat %';
       const gData = storageService.getGroupSummaryReports(selectedPracticeId);
-      csvRows = gData.map((g, i) =>
-        `${i + 1},"${g.groupName}","${g.facultyName}",${g.totalStudents},${g.inPractice},${g.completed},${g.avgAttendance},${g.avgJournal},${g.avgSkills},${g.avgScore},${g.grade5Count},${g.grade4Count},${g.grade3Count},${g.grade2Count},${g.masteryPercentage},${g.qualityPercentage}`
-      );
+      excelData = gData.map((g, i) => ({
+        "№": i + 1,
+        "Guruh": g.groupName,
+        "Fakultet": g.facultyName,
+        "Jami Talabalar": g.totalStudents,
+        "Amaliyotda": g.inPractice,
+        "Yakunlagan": g.completed,
+        "Davomat (%)": g.avgAttendance,
+        "Kundalik (%)": g.avgJournal,
+        "Ko'nikma (%)": g.avgSkills,
+        "O'rtacha Ball": g.avgScore,
+        "A'lo (5)": g.grade5Count,
+        "Yaxshi (4)": g.grade4Count,
+        "Qoniqarli (3)": g.grade3Count,
+        "Qoniqarsiz (2)": g.grade2Count,
+        "O'zlashtirish (%)": g.masteryPercentage,
+        "Sifat (%)": g.qualityPercentage
+      }));
     } else {
       filename = 'Umumiy_Hisobot';
-      csvHeader = '№,Talaba F.I.Sh.,ID,Guruh,Jami Ball,Baho,Status';
-      csvRows = monitoringRows.map((r, i) => `${i + 1},"${r.student.fullName}",${r.student.studentId},"${r.groupName}",${r.totalScore},${r.grade},"${r.status}"`);
+      excelData = monitoringRows.map((r, i) => ({
+        "№": i + 1,
+        "Talaba F.I.Sh.": r.student.fullName,
+        "Talaba ID": r.student.studentId,
+        "Guruh": r.groupName,
+        "Jami Ball": r.totalScore,
+        "Baho": r.grade,
+        "Holat": r.status
+      }));
     }
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [csvHeader, ...csvRows].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${filename}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (excelData.length === 0) {
+      showToast('warning', 'Ma\'lumot topilmadi', 'Eksport qilish uchun jadvalda ma\'lumot yo\'q.');
+      return;
+    }
 
-    showToast('success', 'Eksport qilindi', `"${filename}.csv" muvaffaqiyatli yuklab olindi.`);
+    exportToExcel(excelData, filename);
+    showToast('success', 'Excel (.xlsx) yuklandi', `"${filename}.xlsx" muvaffaqiyatli yuklab olindi.`);
   };
 
   return (
@@ -243,14 +287,15 @@ export function ReportsModule() {
             <span>QA Testlar (25)</span>
           </button>
 
-          {/* Export CSV */}
+          {/* Export Excel (.xlsx) */}
           <button
             type="button"
-            onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-2xs transition-colors"
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 rounded-lg shadow-2xs transition-colors"
+            title="Hisobotni barcha ustun va satrlari bilan Excel (.xlsx) formatida yuklab olish"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Excel / CSV</span>
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Excel (.xlsx)</span>
           </button>
 
           {/* Print */}

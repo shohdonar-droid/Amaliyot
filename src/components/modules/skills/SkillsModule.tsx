@@ -30,6 +30,7 @@ import { Skill, StudentSkill, SkillLogEntry, Student, UserRole } from '../../../
 import { storageService } from '../../../services/storageService';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
+import { exportToExcel } from '../../../utils/reportGenerators';
 import { StatusBadge } from '../../common/Badge';
 import { SkillLogModal } from './SkillLogModal';
 import { SkillCreateModal } from './SkillCreateModal';
@@ -276,55 +277,29 @@ export function SkillsModule() {
 
           <button
             onClick={() => {
-              const headers = [
-                '№',
-                'Ko‘nikma nomi',
-                'Kategoriya',
-                'Minimal me‘yor',
-                'Bajarilgan',
-                'Mustaqil',
-                'Rahbar nazoratida',
-                'Kuzatuv',
-                'Tasdiqlangan',
-                'Progress %',
-                'Holat'
-              ];
-              const rows = studentPassport.detailedSkills.map(s => [
-                s.number,
-                `"${s.skill.name.replace(/"/g, '""')}"`,
-                `"${s.skill.category}"`,
-                s.requiredCount,
-                s.performedCount,
-                s.independentCount,
-                s.supervisedCount,
-                s.observedCount,
-                s.approvedCount,
-                `${s.progressPct}%`,
-                s.isMastered ? 'Bajarildi' : s.performedCount > 0 ? 'Jarayonda' : 'Boshlanmagan'
-              ]);
-              const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' +
-                [
-                  `"TOSHKENT TIBBIYOT AKADEMIYASI - AMALIY KO'NIKMALAR PASPORTI"`,
-                  `"Talaba:","${studentPassport.student?.fullName || ''}","ID:","${studentPassport.student?.studentId || ''}"`,
-                  `"Guruh:","${studentPassport.student?.groupId || ''}","Klinik baza:","${studentPassport.practicePlace?.name || ''}"`,
-                  `"Umumiy me'yor bajarilishi:","${studentPassport.minimalQuotaMetPct}%"`,
-                  '',
-                  headers.join(','),
-                  ...rows.map(r => r.join(','))
-                ].join('\n');
-              const encodedUri = encodeURI(csvContent);
-              const link = document.createElement('a');
-              link.setAttribute('href', encodedUri);
-              link.setAttribute('download', `Konikmalar_Pasporti_${studentPassport.student?.studentId || 'talaba'}.csv`);
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              showToast('success', 'Eksport qilindi', 'Amaliy ko\'nikmalar pasporti CSV formatida yuklab olindi.');
+              if (!studentPassport) return;
+              const data = studentPassport.detailedSkills.map(s => ({
+                '№': s.number,
+                'Ko‘nikma nomi': s.skill.name,
+                'Kategoriya': s.skill.category,
+                'Minimal me‘yor': s.requiredCount,
+                'Jami bajarilgan': s.performedCount,
+                'Mustaqil': s.independentCount,
+                'Rahbar nazoratida': s.supervisedCount,
+                'Kuzatuv': s.observedCount,
+                'Tasdiqlangan': s.approvedCount,
+                'Progress (%)': s.progressPct,
+                'Holat': s.isMastered ? 'Bajarildi' : s.performedCount > 0 ? 'Jarayonda' : 'Boshlanmagan'
+              }));
+              const fileName = `Konikmalar_Pasporti_${studentPassport.student?.studentId || 'talaba'}`;
+              exportToExcel(data, fileName);
+              showToast('success', 'Excel (.xlsx) yuklandi', 'Amaliy ko\'nikmalar pasporti barcha ustunlari bilan Excel fayliga yuklab olindi.');
             }}
-            className="px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+            className="px-3 py-2 bg-white hover:bg-emerald-50 border border-slate-200 text-slate-700 hover:text-emerald-700 hover:border-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+            title="Ko'nikmalar pasportini Excel (.xlsx) formatida yuklab olish"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Excel (CSV)</span>
+            <span>Excel (.xlsx)</span>
           </button>
 
           <button

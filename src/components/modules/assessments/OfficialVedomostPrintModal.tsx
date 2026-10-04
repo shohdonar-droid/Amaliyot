@@ -11,6 +11,7 @@ import {
 import { Practice, Student, Assessment, AttestationCommission } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { useToast } from '../../../context/ToastContext';
+import { exportToExcel } from '../../../utils/reportGenerators';
 
 interface OfficialVedomostPrintModalProps {
   isOpen: boolean;
@@ -93,49 +94,25 @@ export const OfficialVedomostPrintModal: React.FC<OfficialVedomostPrintModalProp
     window.print();
   };
 
-  const handleExportCSV = () => {
-    const headers = [
-      '№',
-      'Talaba F.I.Sh.',
-      'Talaba ID',
-      'Guruh',
-      `Davomat (${settings.attendanceMaxScore})`,
-      `Kundalik (${settings.journalMaxScore})`,
-      `Ko'nikmalar (${settings.skillsMaxScore})`,
-      `Imtihon (${settings.finalExamMaxScore})`,
-      'Jami (100)',
-      'Baho (Raqam)',
-      'Baho (So\'z)',
-      'Holat'
-    ];
+  const handleExportExcel = () => {
+    const data = studentRows.map(r => ({
+      '№': r.number,
+      'Talaba F.I.Sh.': r.student.fullName,
+      'Talaba ID': r.student.studentId,
+      'Guruh': r.student.group,
+      [`Davomat (${settings.attendanceMaxScore})`]: r.attendanceScore,
+      [`Kundalik (${settings.journalMaxScore})`]: r.journalScore,
+      [`Ko'nikmalar (${settings.skillsMaxScore})`]: r.skillsScore,
+      [`Imtihon (${settings.finalExamMaxScore})`]: r.finalExamScore,
+      'Jami (100)': r.totalScore,
+      'Baho (Raqam)': r.grade,
+      'Baho (So\'z)': r.gradeWord,
+      'Holat': r.status
+    }));
 
-    const rows = studentRows.map(r => [
-      r.number,
-      `"${r.student.fullName}"`,
-      r.student.studentId,
-      r.student.group,
-      r.attendanceScore,
-      r.journalScore,
-      r.skillsScore,
-      r.finalExamScore,
-      r.totalScore,
-      r.grade,
-      `"${r.gradeWord}"`,
-      r.status
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + 
-      [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Attestatsiya_Vedomosti_${practice?.code || 'amaliyot'}_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    showToast('success', 'Eksport qilindi', 'Attestatsiya vedomosti CSV formatida yuklab olindi.');
+    const fileName = `Attestatsiya_Vedomosti_${practice?.code || 'amaliyot'}_${new Date().toISOString().split('T')[0]}`;
+    exportToExcel(data, fileName);
+    showToast('success', 'Excel (.xlsx) yuklandi', 'Attestatsiya vedomosti barcha ustunlari bilan Excel formatida yuklab olindi.');
   };
 
   return (
@@ -153,11 +130,12 @@ export const OfficialVedomostPrintModal: React.FC<OfficialVedomostPrintModalProp
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleExportCSV}
+              onClick={handleExportExcel}
               className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+              title="Attestatsiya vedomostini Excel (.xlsx) formatida yuklab olish"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Excel (CSV)</span>
+              <span>Excel (.xlsx)</span>
             </button>
             <button
               onClick={handlePrint}

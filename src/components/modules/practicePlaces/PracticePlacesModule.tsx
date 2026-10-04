@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   Plus,
@@ -9,15 +9,18 @@ import {
   MapPin,
   Users,
   Search,
-  FileCheck
+  FileCheck,
+  Crosshair,
+  Compass,
+  ShieldCheck,
+  Navigation
 } from 'lucide-react';
 import { PracticePlace, PracticePlaceType } from '../../../types';
-import { organizationService } from '../../../services/organizationService';
+import { organizationService, getNextOrganizationId } from '../../../services/organizationService';
 import { useToast } from '../../../context/ToastContext';
 import { Modal } from '../../common/Modal';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
 import { EmptyState } from '../../common/EmptyState';
-import { useEffect } from 'react';
 
 export function PracticePlacesModule() {
   const { showToast } = useToast();
@@ -33,9 +36,57 @@ export function PracticePlacesModule() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [placeToDelete, setPlaceToDelete] = useState<PracticePlace | null>(null);
 
+  // Form states for Sequential ID and GPS
+  const [assignedOrgId, setAssignedOrgId] = useState<string>('');
+  const [modalLat, setModalLat] = useState<string>('41.2995');
+  const [modalLng, setModalLng] = useState<string>('69.2401');
+  const [modalRadius, setModalRadius] = useState<number>(200);
+  const [isLocating, setIsLocating] = useState<boolean>(false);
+
   const refreshList = async () => {
     const data = await organizationService.getOrganizations();
     setPlaces(data);
+  };
+
+  const handleOpenAddModal = () => {
+    const nextId = getNextOrganizationId(places);
+    setPlaceToEdit(null);
+    setAssignedOrgId(nextId);
+    setModalLat('41.2995');
+    setModalLng('69.2401');
+    setModalRadius(200);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (p: PracticePlace) => {
+    setPlaceToEdit(p);
+    setAssignedOrgId(p.organizationId || p.organizationCode || p.id);
+    setModalLat(String(p.latitude ?? 41.2995));
+    setModalLng(String(p.longitude ?? 69.2401));
+    setModalRadius(p.allowedRadius ?? 200);
+    setIsModalOpen(true);
+  };
+
+  const handleDetectGPS = () => {
+    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          setModalLat(pos.coords.latitude.toFixed(6));
+          setModalLng(pos.coords.longitude.toFixed(6));
+          setIsLocating(false);
+          showToast('success', 'GPS aniqlandi', `Kenglik: ${pos.coords.latitude.toFixed(5)}, Uzunlik: ${pos.coords.longitude.toFixed(5)}`);
+        },
+        err => {
+          console.warn('Geolocation lookup failed:', err);
+          setIsLocating(false);
+          showToast('warning', 'GPS xatoligi', 'Brauzerdan geolokatsiyani olish imkoni bo\'lmadi. Koordinatalarni qo\'lda kiritishingiz mumkin.');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      showToast('error', 'GPS mavjud emas', 'Qurilmada geolokatsiya qo\'llab-quvvatlanmaydi');
+    }
   };
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -44,9 +95,16 @@ export function PracticePlacesModule() {
     const deptsRaw = (formData.get('departments') as string) || '';
     const departments = deptsRaw.split(',').map(s => s.trim()).filter(Boolean);
 
+    const latVal = parseFloat(modalLat);
+    const lngVal = parseFloat(modalLng);
+    const radiusVal = Number(formData.get('allowedRadius')) || modalRadius || 200;
+
+    const finalOrgId = assignedOrgId || (formData.get('organizationId') as string) || getNextOrganizationId(places);
+
     const place = {
       id: placeToEdit?.id || 'new',
-      organizationId: formData.get('organizationId') as string || `place-${Date.now()}`,
+      organizationId: finalOrgId,
+      organizationCode: finalOrgId,
       name: formData.get('name') as string,
       type: formData.get('type') as PracticePlaceType,
       city: formData.get('city') as string,
@@ -60,7 +118,10 @@ export function PracticePlacesModule() {
       departments: departments,
       contractNumber: formData.get('contractNumber') as string,
       contractDate: (formData.get('contractDate') as string) || '2025-01-10',
-      contractExpiryDate: (formData.get('contractExpiryDate') as string) || '2026-12-31'
+      contractExpiryDate: (formData.get('contractExpiryDate') as string) || '2026-12-31',
+      latitude: !isNaN(latVal) ? latVal : 41.2995,
+      longitude: !isNaN(lngVal) ? lngVal : 69.2401,
+      allowedRadius: radiusVal
     };
 
     if (placeToEdit) {
@@ -70,7 +131,7 @@ export function PracticePlacesModule() {
     }
     refreshList();
     setIsModalOpen(false);
-    showToast('success', 'Amaliyot joyi saqlandi', place.name);
+    showToast('success', 'Amaliyot joyi saqlandi', `${place.name} (${finalOrgId})`);
   };
 
   const handleDeleteConfirm = async () => {

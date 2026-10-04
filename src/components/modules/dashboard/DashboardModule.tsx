@@ -21,6 +21,16 @@ import { storageService } from '../../../services/storageService';
 import { StatCard } from '../../common/StatCard';
 import { StatusBadge } from '../../common/Badge';
 import { ActiveModule } from '../../layout/Sidebar';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Cell
+} from 'recharts';
 
 interface DashboardModuleProps {
   onNavigate: (module: ActiveModule) => void;
@@ -103,6 +113,34 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
 
   // Group-level attendance breakdown
   const groups = storageService.getGroups();
+
+  // Recharts quick overview data
+  const summaryChartData = [
+    {
+      name: "Jami talabalar",
+      shortName: "Talabalar",
+      count: totalStudents,
+      color: "#2563eb",
+      badge: "Ta'lim oluvchilar",
+      desc: "Tizimda ro'yxatga olingan umumiy talabalar kontingenti"
+    },
+    {
+      name: "Faol amaliyot joylari",
+      shortName: "Klinik bazalar",
+      count: totalPlaces,
+      color: "#059669",
+      badge: "Klinikalar va markazlar",
+      desc: "Biriktirilgan shifoxonalar, ilmiy markazlar va oilaviy poliklinikalar"
+    },
+    {
+      name: "Davom etayotgan amaliyotlar",
+      shortName: "Amaliyotlar",
+      count: activePractices.length,
+      color: "#7c3aed",
+      badge: "Faol davrlar",
+      desc: "Rektorat buyrug'i asosida o'tkazilayotgan faol amaliyotlar"
+    }
+  ];
 
   return (
     <div className="space-y-6">
@@ -292,6 +330,141 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           icon={<Award className="w-5 h-5 text-slate-600" />}
           onClick={() => onNavigate('assessments')}
         />
+      </div>
+
+      {/* Recharts Summary Card Component for Quick Overview */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                <TrendingUp className="w-4 h-4" />
+              </span>
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                Umumiy Ko'rsatkichlar Qisqacha Sharhi (Quick Overview)
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Jami talabalar, faol amaliyot joylari va davom etayotgan amaliyotlarning grafik vizualizatsiyasi
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Jonli statistika
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          {/* Quick Metrics Badges / Cards */}
+          <div className="lg:col-span-4 space-y-3">
+            <div
+              onClick={() => onNavigate('students')}
+              className="p-3.5 rounded-xl border border-blue-100 bg-blue-50/60 hover:bg-blue-100/60 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wide">
+                  Jami Talabalar
+                </span>
+                <Users className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="text-2xl font-black text-blue-950 mt-1">
+                {totalStudents} <span className="text-xs font-semibold text-blue-700">nafar</span>
+              </div>
+              <p className="text-[11px] text-blue-700/80 mt-1">
+                Tizimda qayd etilgan talabalar kontingenti
+              </p>
+            </div>
+
+            <div
+              onClick={() => onNavigate('practice_places')}
+              className="p-3.5 rounded-xl border border-emerald-100 bg-emerald-50/60 hover:bg-emerald-100/60 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wide">
+                  Faol Amaliyot Joylari
+                </span>
+                <Building2 className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="text-2xl font-black text-emerald-950 mt-1">
+                {totalPlaces} <span className="text-xs font-semibold text-emerald-700">ta baza</span>
+              </div>
+              <p className="text-[11px] text-emerald-700/80 mt-1">
+                Klinik shifoxonalar, poliklinika va markazlar
+              </p>
+            </div>
+
+            <div
+              onClick={() => onNavigate('practices')}
+              className="p-3.5 rounded-xl border border-purple-100 bg-purple-50/60 hover:bg-purple-100/60 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-purple-800 uppercase tracking-wide">
+                  Davom Etayotgan Amaliyotlar
+                </span>
+                <CalendarRange className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="text-2xl font-black text-purple-950 mt-1">
+                {activePractices.length} <span className="text-xs font-semibold text-purple-700">ta faol</span>
+              </div>
+              <p className="text-[11px] text-purple-700/80 mt-1">
+                Rektorat buyrug'i asosida o'tkazilayotgan amaliyotlar
+              </p>
+            </div>
+          </div>
+
+          {/* Recharts Bar Visualization */}
+          <div className="lg:col-span-8 h-64 sm:h-72 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={summaryChartData}
+                margin={{ top: 10, right: 20, left: 0, bottom: 25 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="shortName"
+                  tick={{ fontSize: 12, fill: '#475569', fontWeight: 600 }}
+                  tickLine={false}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  cursor={{ fill: '#f8fafc' }}
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl text-xs space-y-1 border border-slate-800">
+                          <p className="font-bold text-slate-200">{data.name}</p>
+                          <p className="text-lg font-black" style={{ color: data.color }}>
+                            {data.count} <span className="text-xs font-normal text-slate-300">birlik</span>
+                          </p>
+                          <p className="text-[11px] text-slate-400">{data.desc}</p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Bar
+                  dataKey="count"
+                  radius={[8, 8, 0, 0]}
+                  barSize={55}
+                >
+                  {summaryChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
       {/* Row: Hospital Capacity Distribution & Attendance by Groups */}

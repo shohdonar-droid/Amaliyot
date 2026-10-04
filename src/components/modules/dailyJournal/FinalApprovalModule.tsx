@@ -15,7 +15,8 @@ import {
   Award,
   Sparkles,
   Lock,
-  ArrowRight
+  ArrowRight,
+  FileSpreadsheet
 } from 'lucide-react';
 import { DailyJournal, Student, Practice, PracticePlace, Supervisor, Faculty, Direction, Group, Course } from '../../../types';
 import { dailyJournalService } from '../../../services/dailyJournalService';
@@ -54,6 +55,7 @@ export function FinalApprovalModule() {
   const faculties = storageService.getFaculties();
   const courses = storageService.getCourses();
   const groups = storageService.getGroups();
+  const directions = storageService.getDirections();
   const allAttendance = storageService.getAttendance();
 
   const loadJournals = async () => {
@@ -242,10 +244,21 @@ export function FinalApprovalModule() {
       supervisor: item.supervisor,
       practicePlace: item.place,
       faculty: item.faculty,
-      group: item.group
+      group: item.group,
+      direction: directions.find(d => d.id === item.student.directionId)
     });
     journalExportService.downloadExcel(wb, filename);
-    showToast('success', 'Excel yuklab olindi', filename);
+    showToast('success', 'Excel (.xlsx) yuklab olindi', `${item.student.fullName} elektron kundaligi Excel fayliga yuklandi.`);
+  };
+
+  const handleDownloadAllPendingExcel = () => {
+    if (filteredQueue.length === 0) {
+      showToast('warning', 'Talabalar topilmadi', 'Eksport qilish uchun talabalar mavjud emas.');
+      return;
+    }
+    const { wb, filename } = journalExportService.generateFinalApprovalListExcel(filteredQueue);
+    journalExportService.downloadExcel(wb, filename);
+    showToast('success', 'Excel (.xlsx) yuklab olindi', `${filteredQueue.length} nafar kutilayotgan talabalar ro'yxati Excel fayliga yuklandi.`);
   };
 
   const handleDownloadZip = async (item: typeof pendingQueues[0]) => {
@@ -344,13 +357,25 @@ export function FinalApprovalModule() {
 
       {/* Main Table */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-          <span className="text-xs font-bold text-slate-700">
-            Yakuniy tasdiq kutayotgan talabalar: {filteredQueue.length} nafar
-          </span>
-          <span className="text-[11px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-            Faqat barcha kunlari to'liq tasdiqlangan kundaliklar
-          </span>
+        <div className="px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700">
+              Yakuniy tasdiq kutayotgan talabalar: {filteredQueue.length} nafar
+            </span>
+            <span className="text-[11px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+              Barcha kunlari tasdiqlangan
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleDownloadAllPendingExcel}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg font-semibold transition-colors shadow-2xs self-start sm:self-auto"
+            title="Barcha yakuniy tasdiq kutayotgan talabalar ro'yxatini Excel (.xlsx) da yuklab olish"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Kutilayotganlarni Excel (.xlsx) yuklash</span>
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -453,6 +478,15 @@ export function FinalApprovalModule() {
                           title="PDF eksport"
                         >
                           <Download className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadExcel(item)}
+                          className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Talaba kundaligini Excel (.xlsx) da yuklab olish"
+                        >
+                          <FileSpreadsheet className="w-4 h-4" />
                         </button>
 
                         <button

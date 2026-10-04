@@ -49,9 +49,12 @@ export interface FinalApprovalExportItem {
   faculty?: Faculty;
   group?: Group;
   direction?: Direction;
-  attendanceRate: number;
-  averageGrade: string;
-  expectedDays: number;
+  attendanceRate?: number;
+  attendancePercent?: number;
+  averageGrade?: string;
+  averageRating?: string;
+  expectedDays?: number;
+  totalDays?: number;
   status: string;
   lastSubmittedAt?: string;
 }
@@ -844,9 +847,9 @@ export const journalExportService = {
       it.place?.name || 'Klinika',
       it.supervisor?.fullName || 'Mas\'ul rahbar',
       it.journals.length,
-      it.expectedDays,
-      `${it.attendanceRate}%`,
-      it.averageGrade,
+      it.expectedDays || it.totalDays || it.journals.length,
+      `${it.attendanceRate ?? it.attendancePercent ?? 100}%`,
+      it.averageGrade || it.averageRating || 'A\'lo (5)',
       formatJournalStatusUz(it.status),
       it.lastSubmittedAt || new Date().toISOString().split('T')[0]
     ]);

@@ -6,42 +6,107 @@ import { storageService } from './storageService';
 
 const COLLECTION = 'organizations';
 
+export function getNextOrganizationId(existingPlaces?: PracticePlace[]): string {
+  const places = existingPlaces || storageService.getPracticePlaces();
+  let maxNum = 124; // Default baseline (default places are TASH-000125, TASH-000126, etc.)
+
+  places.forEach(p => {
+    const candidates = [p.organizationId, p.organizationCode, p.id];
+    candidates.forEach(cand => {
+      if (!cand) return;
+      const match = cand.match(/(?:TASH|ORG)[-_]?(\d+)/i) || cand.match(/(\d+)/);
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum && num < 1000000) {
+          maxNum = num;
+        }
+      }
+    });
+  });
+
+  const nextNum = maxNum + 1;
+  return `TASH-${String(nextNum).padStart(6, '0')}`;
+}
+
 export const organizationService = {
   getOrganizations: async () => {
-    const fsData = await firestoreService.queryDocuments(COLLECTION, []) as PracticePlace[];
-    const lsData = storageService.getPracticePlaces();
-    return mergeData(fsData, lsData, 'id');
+    try {
+      const fsData = await firestoreService.queryDocuments(COLLECTION, []) as PracticePlace[];
+      const lsData = storageService.getPracticePlaces();
+      return mergeData(fsData, lsData, 'id');
+    } catch {
+      return storageService.getPracticePlaces();
+    }
   },
 
   getOrganization: async (id: string) => {
-    return await firestoreService.getDocumentById(COLLECTION, id) as PracticePlace | null;
+    try {
+      const doc = await firestoreService.getDocumentById(COLLECTION, id) as PracticePlace | null;
+      if (doc) return doc;
+    } catch {
+      // ignore
+    }
+    return storageService.getPracticePlaces().find(p => p.id === id || p.organizationId === id) || null;
   },
 
   createOrganization: async (data: Omit<PracticePlace, 'id'>) => {
-    if (!db) throw new Error('Firestore is not initialized');
-    const firestoreDb = db;
-    return await runTransaction(firestoreDb, async (transaction) => {
-      const q = query(collection(firestoreDb, COLLECTION), where('organizationId', '==', data.organizationId));
-      if (!(await getDocs(q)).empty) throw new Error('Bu organizationId allaqachon mavjud.');
+    const orgId = data.organizationId || getNextOrganizationId();
+    const id = `place-${Date.now()}`;
+    const newPlace: PracticePlace = {
+      ...data,
+      id,
+      organizationId: orgId,
+      organizationCode: orgId,
+      createdAt: new Date().toISOString()
+    };
 
-      const colRef = collection(firestoreDb, COLLECTION);
-      const newDocRef = doc(colRef);
-      transaction.set(newDocRef, {
-        ...data,
-        createdAt: Timestamp.now().toDate().toISOString(),
-        updatedAt: Timestamp.now().toDate().toISOString(),
-        status: 'ACTIVE'
-      });
-      return newDocRef.id;
-    });
+    // Save to local storage service
+    storageService.savePracticePlace(newPlace);
+
+    if (db) {
+      try {
+        const firestoreDb = db;
+        await runTransaction(firestoreDb, async (transaction) => {
+          const colRef = collection(firestoreDb, COLLECTION);
+          const newDocRef = doc(colRef, id);
+          transaction.set(newDocRef, {
+            ...newPlace,
+            createdAt: Timestamp.now().toDate().toISOString(),
+            updatedAt: Timestamp.now().toDate().toISOString(),
+            status: 'ACTIVE'
+          });
+        });
+      } catch (err) {
+        console.warn('Firestore createOrganization warning:', err);
+      }
+    }
+
+    return id;
   },
 
   updateOrganization: async (id: string, data: Partial<PracticePlace>) => {
-    await firestoreService.updateDocument(COLLECTION, id, { ...data, updatedAt: Timestamp.now().toDate().toISOString() });
+    const existing = storageService.getPracticePlaces().find(p => p.id === id);
+    if (existing) {
+      storageService.savePracticePlace({ ...existing, ...data });
+    }
+    if (db) {
+      try {
+        await firestoreService.updateDocument(COLLECTION, id, { ...data, updatedAt: Timestamp.now().toDate().toISOString() });
+      } catch (err) {
+        console.warn('Firestore updateOrganization warning:', err);
+      }
+    }
   },
 
   softDeleteOrganization: async (id: string) => {
-    await firestoreService.updateDocument(COLLECTION, id, { status: 'INACTIVE', updatedAt: Timestamp.now().toDate().toISOString() });
+    storageService.deletePracticePlace(id);
+    if (db) {
+      try {
+        await firestoreService.updateDocument(COLLECTION, id, { status: 'INACTIVE', updatedAt: Timestamp.now().toDate().toISOString() });
+      } catch (err) {
+        console.warn('Firestore softDeleteOrganization warning:', err);
+      }
+    }
   }
 };
 

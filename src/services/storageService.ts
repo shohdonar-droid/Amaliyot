@@ -3640,7 +3640,9 @@ class StorageServiceV2 {
 
     // 7. Check Geolocation if available
     let locationVerified = false;
-    const place = state.practicePlaces.find(p => p.id === session.practicePlaceId);
+    const place = state.practicePlaces.find(
+      p => p.id === session.practicePlaceId || p.organizationId === session.practicePlaceId || p.organizationCode === session.practicePlaceId
+    );
     const targetLat = session.latitude ?? place?.latitude;
     const targetLng = session.longitude ?? place?.longitude;
     const allowedRadius = session.allowedRadius ?? place?.allowedRadius ?? 200;
@@ -3650,7 +3652,7 @@ class StorageServiceV2 {
       if (distance > allowedRadius) {
         return {
           success: false,
-          error: 'Siz belgilangan amaliyot hududidan tashqaridasiz.',
+          error: `Siz belgilangan amaliyot tashkiloti (${place?.name || 'Klinika'}) hududidan tashqaridasiz (${Math.round(distance)} metr). Ruxsat etilgan radius: ${allowedRadius} metr.`,
           details: { distanceMeters: Math.round(distance), allowedRadius }
         };
       }
@@ -3744,6 +3746,157 @@ class StorageServiceV2 {
       success: true,
       message: 'BUGUNGI DAVOMATINGIZ MUVAFFAQIYATLI QAYD ETILDI',
       attendance: newRecord
+    };
+  }
+
+  /**
+   * Direct Geolocation (GPS) Attendance Check-In
+   * Verifies that the student is physically within the organization's allowed radius
+   */
+  public recordGPSAttendance(params: {
+    studentId: string;
+    latitude: number;
+    longitude: number;
+    deviceInfo?: string;
+  }): {
+    success: boolean;
+    error?: string;
+    alreadyRecorded?: boolean;
+    attendance?: Attendance;
+    details?: { distanceMeters: number; allowedRadius: number; placeName?: string };
+  } {
+    const state = this.getState();
+    const now = new Date();
+    const todayStr = '2026-09-28';
+    const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    // 1. Find student assignment
+    const assignment = state.practiceAssignments.find(
+      a => a.studentId === params.studentId && (String(a.status).toUpperCase() === 'IN_PROGRESS' || String(a.status).toUpperCase() === 'ASSIGNED')
+    ) || state.practiceAssignments.find(a => a.studentId === params.studentId);
+
+    if (!assignment) {
+      return { success: false, error: 'Sizga amaliyot bazasi biriktirilmagan.' };
+    }
+
+    // 2. Find practice place / organization
+    const place = state.practicePlaces.find(
+      p => p.id === assignment.practicePlaceId || p.organizationId === assignment.practicePlaceId || p.organizationCode === assignment.practicePlaceId
+    );
+
+    if (!place) {
+      return { success: false, error: 'Amaliyot tashkiloti topilmadi.' };
+    }
+
+    if (place.latitude === undefined || place.longitude === undefined) {
+      return {
+        success: false,
+        error: `Tashkilot (${place.name}) uchun GPS koordinatalari kiritilmagan. Iltimos tashkilot ma'muriyatiga murojaat qiling.`
+      };
+    }
+
+    // 3. Calculate distance to organization
+    const allowedRadius = place.allowedRadius || 200;
+    const distance = this.calculateDistanceMeters(params.latitude, params.longitude, place.latitude, place.longitude);
+
+    if (distance > allowedRadius) {
+      return {
+        success: false,
+        error: `Siz amaliyot tashkiloti (${place.name}) hududidan tashqaridasiz. Masofa: ${Math.round(distance)} metr (Ruxsat etilgan radius: ${allowedRadius} metr).`,
+        details: { distanceMeters: Math.round(distance), allowedRadius, placeName: place.name }
+      };
+    }
+
+    // 4. Check Duplicate Check-in Today
+    const existing = state.attendance.find(
+      a => a.studentId === params.studentId && a.date === todayStr
+    );
+
+    if (existing && existing.checkInTime) {
+      return {
+        success: false,
+        error: 'Bugungi davomat allaqachon qayd etilgan.',
+        alreadyRecorded: true,
+        attendance: existing
+      };
+    }
+
+    // 5. Determine status (PRESENT vs LATE)
+    const cutoffMinutes = 8 * 60 + 15; // 08:15 cutoff
+    const [currentHour, currentMin] = nowHHMM.split(':').map(Number);
+    const currentTotalMin = (currentHour || 0) * 60 + (currentMin || 0);
+    const calculatedStatus: AttendanceStatus = currentTotalMin > cutoffMinutes ? 'LATE' : 'PRESENT';
+
+    const newRecord: Attendance = {
+      id: existing?.id || `att-gps-${Date.now()}-${params.studentId}`,
+      practiceId: assignment.practiceId,
+      studentId: params.studentId,
+      assignmentId: assignment.id,
+      distributionId: assignment.distributionId,
+      practicePlaceId: place.id,
+      departmentId: assignment.departmentId || '',
+      supervisorId: assignment.supervisorId,
+      date: todayStr,
+      checkInTime: nowHHMM,
+      checkOutTime: undefined,
+      status: calculatedStatus,
+      attendanceMethod: 'GPS',
+      latitude: params.latitude,
+      longitude: params.longitude,
+      locationVerified: true,
+      deviceInfo: params.deviceInfo || (typeof navigator !== 'undefined' ? navigator.userAgent : 'Mobile App Web'),
+      note: `GPS koordinata orqali tasdiqlandi (Masofa: ${Math.round(distance)} m / ${place.name})`,
+      verifiedBy: 'GPS Geolokatsiya tizimi',
+      verifiedAt: now.toISOString(),
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+
+    if (existing) {
+      const idx = state.attendance.findIndex(a => a.id === existing.id);
+      if (idx >= 0) state.attendance[idx] = newRecord;
+    } else {
+      state.attendance.unshift(newRecord);
+    }
+
+    // Supervisor notification
+    if (assignment.supervisorId) {
+      const supervisor = state.supervisors.find(s => s.id === assignment.supervisorId);
+      const student = state.students.find(s => s.id === params.studentId);
+      if (supervisor && student) {
+        state.notifications.unshift({
+          id: `notif-att-gps-${Date.now()}-${student.id}`,
+          recipientUserId: supervisor.userId || supervisor.id,
+          recipientRoles: ['PRACTICE_SUPERVISOR'],
+          title: '📍 GPS Davomat qayd etildi',
+          message: `${student.fullName} tashkilot hududidan (${place.name}, masofa: ${Math.round(distance)}m) davomatdan o'tdi.`,
+          type: 'success',
+          createdAt: now.toISOString(),
+          isRead: false,
+          linkModule: 'attendance'
+        });
+      }
+    }
+
+    this.recordAuditLog({
+      userId: params.studentId,
+      userRole: 'STUDENT',
+      action: 'attendanceCheckIn',
+      entity: 'attendance',
+      entityId: newRecord.id,
+      metadata: JSON.stringify({
+        method: 'GPS',
+        distanceMeters: Math.round(distance),
+        placeId: place.id,
+        placeName: place.name
+      })
+    });
+
+    this.saveState(state);
+    return {
+      success: true,
+      attendance: newRecord,
+      details: { distanceMeters: Math.round(distance), allowedRadius, placeName: place.name }
     };
   }
 

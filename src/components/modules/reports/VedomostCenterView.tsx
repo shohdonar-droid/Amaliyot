@@ -14,11 +14,13 @@ import {
   Eye,
   FileCheck,
   Building,
-  Calendar
+  Calendar,
+  FileSpreadsheet
 } from 'lucide-react';
 import { storageService } from '../../../services/storageService';
 import { OfficialVedomost, VedomostStatus } from '../../../types';
 import { useToast } from '../../../context/ToastContext';
+import { exportToExcel } from '../../../utils/reportGenerators';
 import { OfficialVedomostPrintModal } from '../assessments/OfficialVedomostPrintModal';
 import { QRVerificationModal } from './QRVerificationModal';
 
@@ -96,32 +98,24 @@ export const VedomostCenterView: React.FC<{ practiceId?: string }> = ({
     }
   };
 
-  const handleExportCSV = (v: OfficialVedomost) => {
-    const header = '№,Talaba F.I.Sh.,Talaba ID,Guruh,Davomat (20),Kundalik (20),Ko‘nikmalar (30),Imtihon (30),Jami (100),Baho,Holat,Imzo';
-    const rows = v.students.map((s, idx) =>
-      `${idx + 1},"${s.fullName}",${s.studentCode},"${s.group}",${s.attendanceScore},${s.journalScore},${s.skillsScore},${s.finalExamScore},${s.totalScore},${s.grade},"${s.status}","${s.signature || ''}"`
-    );
-    const summary = [
-      '',
-      `"Jami talabalar: ${v.totalStudentsCount}"`,
-      `"A'lo (5): ${v.grade5Count}"`,
-      `"Yaxshi (4): ${v.grade4Count}"`,
-      `"Qoniqarli (3): ${v.grade3Count}"`,
-      `"Qoniqarsiz (2): ${v.grade2Count}"`,
-      `"O'zlashtirish ko'rsatkichi: ${v.masteryPercentage}%"`,
-      `"Sifat ko'rsatkichi: ${v.qualityPercentage}%"`
-    ].join('\n');
+  const handleExportExcel = (v: OfficialVedomost) => {
+    const data = v.students.map((s, idx) => ({
+      "№": idx + 1,
+      "Talaba F.I.Sh.": s.fullName,
+      "Talaba ID": s.studentCode,
+      "Guruh": s.group,
+      "Davomat (20 ball)": s.attendanceScore,
+      "Kundalik (20 ball)": s.journalScore,
+      "Ko'nikmalar (30 ball)": s.skillsScore,
+      "Imtihon (30 ball)": s.finalExamScore,
+      "Jami (100 ball)": s.totalScore,
+      "Baho": s.grade,
+      "Holat": s.status,
+      "Imzo": s.signature || "Imzolangan"
+    }));
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [header, ...rows, summary].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${v.vedomostNumber}_Amaliyot_Vedomosti.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    showToast('success', 'Eksport qilindi', `"${v.vedomostNumber}.csv" yuklab olindi.`);
+    exportToExcel(data, `${v.vedomostNumber}_Amaliyot_Vedomosti`);
+    showToast('success', 'Excel (.xlsx) yuklandi', `"${v.vedomostNumber}.xlsx" barcha ustunlari bilan yuklab olindi.`);
   };
 
   const getStatusBadge = (status: VedomostStatus) => {
@@ -331,11 +325,11 @@ export const VedomostCenterView: React.FC<{ practiceId?: string }> = ({
 
                         <button
                           type="button"
-                          onClick={() => handleExportCSV(v)}
+                          onClick={() => handleExportExcel(v)}
                           className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                          title="Excel / CSV yuklash"
+                          title="Excel (.xlsx) yuklash"
                         >
-                          <Download className="w-3.5 h-3.5" />
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
                         </button>
 
                         {v.status === 'GENERATED' && (
