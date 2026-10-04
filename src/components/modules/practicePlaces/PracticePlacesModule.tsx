@@ -13,7 +13,9 @@ import {
   Crosshair,
   Compass,
   ShieldCheck,
-  Navigation
+  Navigation,
+  Copy,
+  CheckCircle2
 } from 'lucide-react';
 import { PracticePlace, PracticePlaceType } from '../../../types';
 import { organizationService, getNextOrganizationId } from '../../../services/organizationService';
@@ -42,6 +44,12 @@ export function PracticePlacesModule() {
   const [modalLng, setModalLng] = useState<string>('69.2401');
   const [modalRadius, setModalRadius] = useState<number>(200);
   const [isLocating, setIsLocating] = useState<boolean>(false);
+
+  // Success dialog after creating an organization with its assigned ID
+  const [createdPlaceConfirmation, setCreatedPlaceConfirmation] = useState<{
+    place: PracticePlace;
+    orgId: string;
+  } | null>(null);
 
   const refreshList = async () => {
     const data = await organizationService.getOrganizations();
@@ -126,12 +134,17 @@ export function PracticePlacesModule() {
 
     if (placeToEdit) {
       await organizationService.updateOrganization(placeToEdit.id, place as Partial<PracticePlace>);
+      showToast('success', 'Amaliyot joyi saqlandi', `${place.name} (${finalOrgId})`);
     } else {
       await organizationService.createOrganization(place as Omit<PracticePlace, 'id'>);
+      setCreatedPlaceConfirmation({
+        place: place as PracticePlace,
+        orgId: finalOrgId
+      });
+      showToast('success', 'Tashkilot yaratildi!', `Ushbu tashkilot uchun ${finalOrgId} raqami biriktirildi.`);
     }
     refreshList();
     setIsModalOpen(false);
-    showToast('success', 'Amaliyot joyi saqlandi', `${place.name} (${finalOrgId})`);
   };
 
   const handleDeleteConfirm = async () => {
@@ -325,10 +338,38 @@ export function PracticePlacesModule() {
         maxWidth="2xl"
       >
         <form onSubmit={handleSave} className="space-y-3">
+          {!placeToEdit && (
+            <div className="p-3 bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-emerald-950">Tizim tomonidan avtomatik beriladigan raqam (ID):</span>
+                    <span className="font-mono font-black text-sm px-2.5 py-0.5 bg-white text-emerald-800 border border-emerald-300 rounded-md shadow-2xs">
+                      {assignedOrgId}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-700 mt-0.5">
+                    Tashkilot yaratilgan paytda tizim ushbu raqam biriktirilganligini avtomatik tasdiqlaydi.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div className="sm:col-span-1">
               <label className="block text-xs font-semibold text-slate-700 mb-1">Tashkilot ID *</label>
-              <input type="text" name="organizationId" required defaultValue={placeToEdit?.organizationId || ''} placeholder="TASH-000001" className="w-full px-3 py-2 text-xs border rounded-lg font-mono" />
+              <input
+                type="text"
+                name="organizationId"
+                required
+                defaultValue={placeToEdit ? (placeToEdit.organizationId || placeToEdit.id) : assignedOrgId}
+                placeholder="TASH-000001"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono font-bold bg-slate-50 text-slate-900 focus:bg-white"
+              />
             </div>
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-slate-700 mb-1">Muassasa nomi *</label>
@@ -425,6 +466,121 @@ export function PracticePlacesModule() {
         cancelLabel="Bekor qilish"
         isDestructive
       />
+
+      {/* Organization Created & Auto-ID Assigned Confirmation Modal */}
+      {createdPlaceConfirmation && (
+        <Modal
+          isOpen={!!createdPlaceConfirmation}
+          onClose={() => setCreatedPlaceConfirmation(null)}
+          title="Tashkilot Muvaffaqiyatli Ro'yxatga Olindi"
+          maxWidth="lg"
+        >
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl mx-auto flex items-center justify-center shadow-inner">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h4 className="text-base font-bold text-slate-900">
+                Tashkilot tizimda muvaffaqiyatli shakllantirildi!
+              </h4>
+              <p className="text-xs text-slate-500">
+                Tizim tomonidan mazkur amaliyot tashkiloti uchun quyidagi rasmiy raqam avtomatik tarzda biriktirildi:
+              </p>
+            </div>
+
+            {/* Official Assigned ID Card */}
+            <div className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-2xl shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-emerald-200/80">
+                <div>
+                  <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider block">
+                    Tizim biriktirgan rasmiy raqam (ID):
+                  </span>
+                  <span className="text-[11px] text-emerald-700">Tashkilotning unikal identifikatori</span>
+                </div>
+                <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                  <span className="font-mono font-black text-lg text-emerald-900 bg-white px-3.5 py-1 rounded-xl border border-emerald-400 shadow-2xs">
+                    {createdPlaceConfirmation.orgId}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdPlaceConfirmation.orgId);
+                      showToast('success', 'Nusxalandi', `${createdPlaceConfirmation.orgId} nusxalab olindi`);
+                    }}
+                    className="p-2 bg-white hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-300 transition-colors shadow-2xs"
+                    title="Raqamdan nusxa olish"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-700">
+                <div>
+                  <span className="text-[11px] text-slate-500 block">Tashkilot nomi:</span>
+                  <span className="font-bold text-slate-900">{createdPlaceConfirmation.place.name}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500 block">Muassasa turi:</span>
+                  <span className="font-semibold text-slate-800">{createdPlaceConfirmation.place.type}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500 block">Shahar va Manzil:</span>
+                  <span className="font-medium text-slate-800">{createdPlaceConfirmation.place.city}, {createdPlaceConfirmation.place.address}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500 block">Mas'ul shaxs:</span>
+                  <span className="font-medium text-slate-800">{createdPlaceConfirmation.place.contactPerson} ({createdPlaceConfirmation.place.contactPhone})</span>
+                </div>
+                <div className="sm:col-span-2 pt-1 border-t border-emerald-200/50 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-[11px] text-slate-600">
+                      GPS Koordinatalari: <strong className="font-mono text-slate-800">{createdPlaceConfirmation.place.latitude?.toFixed(4)}, {createdPlaceConfirmation.place.longitude?.toFixed(4)}</strong>
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                    Ruxsat etilgan radius: {createdPlaceConfirmation.place.allowedRadius || 200} metr
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 space-y-1">
+              <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                Avtomatik biriktiruv va GPS nazorati faollashtirildi
+              </p>
+              <p>
+                Ushbu <strong>{createdPlaceConfirmation.orgId}</strong> raqami orqali talabalar amaliyotga biriktiriladi. Talabalar amaliyotga kelib davomatdan o'tganda, ularning geolokatsiyasi ushbu tashkilot koordinatalari bilan solishtirilib, <strong>{createdPlaceConfirmation.place.allowedRadius || 200} metr</strong> radius ichida tekshiriladi.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  const text = `Tashkilot: ${createdPlaceConfirmation.place.name}\nRasmiy ID: ${createdPlaceConfirmation.orgId}\nTuri: ${createdPlaceConfirmation.place.type}\nManzil: ${createdPlaceConfirmation.place.city}, ${createdPlaceConfirmation.place.address}\nGPS: ${createdPlaceConfirmation.place.latitude}, ${createdPlaceConfirmation.place.longitude} (Radius: ${createdPlaceConfirmation.place.allowedRadius || 200}m)\nMas'ul: ${createdPlaceConfirmation.place.contactPerson} (${createdPlaceConfirmation.place.contactPhone})`;
+                  navigator.clipboard.writeText(text);
+                  showToast('success', 'Nusxalandi', 'Barcha tashkilot ma\'lumotlari xotiraga nusxalandi');
+                }}
+                className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <Copy className="w-3.5 h-3.5 text-slate-500" />
+                <span>Barcha ma'lumotlarni nusxalash</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCreatedPlaceConfirmation(null)}
+                className="w-full sm:w-auto px-6 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors"
+              >
+                Tushunarli
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

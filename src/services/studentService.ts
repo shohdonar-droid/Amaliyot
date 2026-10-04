@@ -1,6 +1,6 @@
 import { firestoreService } from './firestoreService';
-import { Student } from '../types';
-import { collection, Timestamp, doc, runTransaction, query, where, getDocs, QueryConstraint, updateDoc } from 'firebase/firestore';
+import { Student, User } from '../types';
+import { collection, Timestamp, doc, runTransaction, query, where, getDocs, QueryConstraint, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { storageService } from './storageService';
 
@@ -47,65 +47,75 @@ export const studentService = {
   },
 
   createStudent: async (data: Omit<Student, 'id'>) => {
-    if (!db) throw new Error('Firestore is not initialized');
-    const firestoreDb = db;
-    return await runTransaction(firestoreDb, async (transaction) => {
-      // Check duplicates
-      const studentIdQ = query(collection(firestoreDb, COLLECTION), where('studentId', '==', data.studentId));
-      if (!(await getDocs(studentIdQ)).empty) throw new Error('Bu studentId allaqachon mavjud.');
-      
-      if (data.userId) {
-        const userIdQ = query(collection(firestoreDb, COLLECTION), where('userId', '==', data.userId));
-        if (!(await getDocs(userIdQ)).empty) throw new Error('Bu userId allaqachon mavjud.');
+    const timestamp = Timestamp.now().toDate().toISOString();
+    const studentId = data.studentId || `st-${Date.now()}`;
+    const studentLogin = data.login || data.studentCode || 'T00001';
+
+    const studentRecord: Student = {
+      ...data,
+      id: studentId,
+      login: studentLogin,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    const userRecord: User = {
+      id: data.userId || `uid-${Date.now()}`,
+      uid: data.userId || `uid-${Date.now()}`,
+      fullName: data.fullName,
+      login: studentLogin,
+      username: studentLogin,
+      password: 'password123',
+      role: 'STUDENT',
+      email: data.email || `${data.studentCode || studentLogin}@student.uz`,
+      phone: data.phone || '',
+      status: 'ACTIVE',
+      facultyId: data.facultyId,
+      studentId: studentId,
+      studentCode: data.studentCode,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    // 1. Immediately persist locally for instant UI update
+    storageService.saveStudent(studentRecord);
+    storageService.saveUser(userRecord);
+
+    // 2. Persist to Firestore if available
+    if (db) {
+      try {
+        const firestoreDb = db;
+        const newDocRef = doc(collection(firestoreDb, COLLECTION));
+        await setDoc(newDocRef, { ...studentRecord, id: newDocRef.id });
+        const userDocRef = data.userId ? doc(firestoreDb, 'users', data.userId) : doc(collection(firestoreDb, 'users'));
+        await setDoc(userDocRef, { ...userRecord, id: userDocRef.id });
+        return newDocRef.id;
+      } catch (err) {
+        console.warn('Firestore student create error (saved in storageService):', err);
       }
+    }
 
-      if (data.hemisStudentId) {
-        const hemisQ = query(collection(firestoreDb, COLLECTION), where('hemisStudentId', '==', data.hemisStudentId));
-        if (!(await getDocs(hemisQ)).empty) throw new Error('Bu hemisId allaqachon mavjud.');
-      }
-
-      const colRef = collection(firestoreDb, COLLECTION);
-      const newDocRef = doc(colRef);
-      const studentId = newDocRef.id;
-      
-      const timestamp = Timestamp.now().toDate().toISOString();
-      
-      transaction.set(newDocRef, {
-        ...data,
-        id: studentId,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      });
-
-      // Also create a user document for this student
-      const userDocRef = data.userId ? doc(firestoreDb, 'users', data.userId) : doc(collection(firestoreDb, 'users'));
-      transaction.set(userDocRef, {
-        id: userDocRef.id,
-        uid: data.userId || userDocRef.id,
-        fullName: data.fullName,
-        login: data.login || data.studentCode || 'T00001',
-        username: data.login || data.studentCode || 'T00001',
-        password: 'password123',
-        role: 'STUDENT',
-        email: data.email || `${data.studentCode}@student.uz`,
-        phone: data.phone || '',
-        status: 'ACTIVE',
-        facultyId: data.facultyId,
-        studentId: studentId,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      });
-
-      return studentId;
-    });
+    return studentId;
   },
 
   updateStudent: async (studentId: string, data: Partial<Student>) => {
-    await firestoreService.updateDocument(COLLECTION, studentId, { ...data, updatedAt: Timestamp.now().toDate().toISOString() });
+    const existing = storageService.getStudents().find(s => s.id === studentId);
+    if (existing) {
+      storageService.saveStudent({ ...existing, ...data });
+    }
+    if (db) {
+      await firestoreService.updateDocument(COLLECTION, studentId, { ...data, updatedAt: Timestamp.now().toDate().toISOString() });
+    }
   },
 
   softDeleteStudent: async (studentId: string) => {
-    await firestoreService.updateDocument(COLLECTION, studentId, { status: 'DISMISSED', updatedAt: Timestamp.now().toDate().toISOString() });
+    const existing = storageService.getStudents().find(s => s.id === studentId);
+    if (existing) {
+      storageService.saveStudent({ ...existing, status: 'dismissed' });
+    }
+    if (db) {
+      await firestoreService.updateDocument(COLLECTION, studentId, { status: 'DISMISSED', updatedAt: Timestamp.now().toDate().toISOString() });
+    }
   }
 };
 

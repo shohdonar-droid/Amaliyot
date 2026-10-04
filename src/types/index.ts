@@ -102,8 +102,8 @@ export interface Group {
 }
 
 export type StudentStatus = 
-  | 'active' | 'in_practice' | 'completed' | 'suspended'
-  | 'ACTIVE' | 'IN_PRACTICE' | 'COMPLETED' | 'SUSPENDED';
+  | 'active' | 'in_practice' | 'completed' | 'suspended' | 'dismissed'
+  | 'ACTIVE' | 'IN_PRACTICE' | 'COMPLETED' | 'SUSPENDED' | 'DISMISSED';
 
 export interface Student {
   id: string;

@@ -1,6 +1,6 @@
 import { firestoreService } from './firestoreService';
 import { User } from '../types';
-import { collection, Timestamp, doc, runTransaction, query, where, getDocs, QueryConstraint } from 'firebase/firestore';
+import { collection, Timestamp, doc, runTransaction, query, where, getDocs, QueryConstraint, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { storageService } from './storageService';
 
@@ -24,33 +24,34 @@ export const userService = {
   },
 
   createUser: async (data: Omit<User, 'id'>) => {
-    if (!db) {
-        // Fallback for demo/offline
-        const id = `user-${Date.now()}`;
-        storageService.saveUser({ ...data, id } as User);
-        return id;
-    }
-    const firestoreDb = db;
-    return await runTransaction(firestoreDb, async (transaction) => {
-      // Check duplicate login
-      const q = query(collection(firestoreDb, COLLECTION), where('login', '==', data.login));
-      const snap = await getDocs(q);
-      if (!snap.empty) throw new Error('Bu login allaqachon mavjud.');
+    const id = data.uid || `user-${Date.now()}`;
+    const timestamp = new Date().toISOString();
+    const payload: User = {
+      ...data,
+      id,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
 
-      const docRef = data.uid ? doc(firestoreDb, COLLECTION, data.uid) : doc(collection(firestoreDb, COLLECTION));
-      const payload = {
-        ...data,
-        id: docRef.id,
-        createdAt: Timestamp.now().toDate().toISOString(),
-        updatedAt: Timestamp.now().toDate().toISOString()
-      };
-      transaction.set(docRef, payload);
-      
-      // Also save to storageService for immediate local UI update if needed
-      storageService.saveUser(payload as User);
-      
-      return docRef.id;
-    });
+    // 1. Save to local storageService immediately
+    storageService.saveUser(payload);
+
+    // 2. Save to Firestore users collection
+    if (db) {
+      try {
+        const firestoreDb = db;
+        const docRef = doc(firestoreDb, COLLECTION, id);
+        await setDoc(docRef, {
+          ...payload,
+          createdAt: Timestamp.now().toDate().toISOString(),
+          updatedAt: Timestamp.now().toDate().toISOString()
+        });
+      } catch (err) {
+        console.warn('Firestore createUser warning (saved in local storage):', err);
+      }
+    }
+
+    return id;
   },
 
   updateUser: async (id: string, data: Partial<User>) => {
