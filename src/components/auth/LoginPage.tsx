@@ -16,9 +16,10 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../common/Modal';
+import { resolveLoginToCandidateEmails } from '../../services/loginGeneratorService';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, forgotPassword } = useAuth();
   const { showToast } = useToast();
 
   const [username, setUsername] = useState('');
@@ -64,19 +65,36 @@ export function LoginPage() {
     }
   };
 
-  const handlePasswordRecovery = (e: React.FormEvent) => {
+  const handlePasswordRecovery = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!recoveryIdentifier.trim()) {
-      showToast('warning', 'Maydonni to\'ldiring', 'Login yoki HEMIS ID raqamingizni kiriting.');
+      showToast('warning', 'Maydonni to\'ldiring', 'Login yoki email manzilini kiriting.');
       return;
     }
-    setRecoverySuccess(true);
-    showToast('info', 'Parol so\'rovi qabul qilindi', 'Dekanat orqali parolni tiklash so\'rovi jo\'natildi.');
-    setTimeout(() => {
-      setIsForgotModalOpen(false);
-      setRecoverySuccess(false);
-      setRecoveryIdentifier('');
-    }, 2500);
+    
+    setIsLoading(true);
+    try {
+      // Assuming user enters email or login; resolve it first
+      const emails = resolveLoginToCandidateEmails(recoveryIdentifier);
+      if (emails.length === 0) {
+        showToast('error', 'Xatolik', 'Foydalanuvchi topilmadi.');
+        setIsLoading(false);
+        return;
+      }
+      
+      await forgotPassword(emails[0]);
+      setRecoverySuccess(true);
+      showToast('success', 'Parolni tiklash xati yuborildi', `Parolni tiklash havolasi ${emails[0]} manziliga yuborildi.`);
+      setTimeout(() => {
+        setIsForgotModalOpen(false);
+        setRecoverySuccess(false);
+        setRecoveryIdentifier('');
+      }, 2500);
+    } catch (err: any) {
+      showToast('error', 'Xatolik', err.message || 'Parolni tiklashda xatolik yuz berdi.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

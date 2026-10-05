@@ -5,6 +5,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -132,6 +133,7 @@ export interface AuthContextType {
   login: (loginOrIdentifier: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   switchRole: (identifier: string) => void;
+  forgotPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -499,6 +501,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(AUTH_TYPE_KEY);
   };
 
+  const forgotPassword = async (email: string) => {
+    if (!auth) throw new Error('Firebase Auth is not initialized');
+    await sendPasswordResetEmail(auth, email);
+  };
+
   const switchRole = (userId: string) => {
     if (userId === 'RESET_SUPER_ADMIN') {
       if (originalSuperAdmin) {
@@ -548,6 +555,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         switchRole,
+        forgotPassword,
         isSuperAdmin,
         isAuthenticated: !!currentUser,
         isFirebaseAuthenticated
