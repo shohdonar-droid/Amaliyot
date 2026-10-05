@@ -111,6 +111,7 @@ export interface Student {
   studentId: string;
   hemisStudentId?: string;
   login?: string;
+  password?: string;
   studentCode?: string;
   pinfl: string;
   fullName: string;

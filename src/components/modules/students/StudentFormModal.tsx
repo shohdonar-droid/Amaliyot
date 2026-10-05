@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Student, StudentStatus } from '../../../types';
 import { storageService } from '../../../services/storageService';
-import { getNextStudentLogin, allocateNextStudentLoginAtomic } from '../../../services/loginGeneratorService';
+import { generateAutoUserCredentials } from '../../../services/loginGeneratorService';
 import { db } from '../../../services/firebase';
 import { Modal } from '../../common/Modal';
-import { ShieldCheck, Hash } from 'lucide-react';
+import { ShieldCheck, Hash, Copy, RefreshCw, Key } from 'lucide-react';
+import { useToast } from '../../../context/ToastContext';
 
 interface StudentFormModalProps {
   isOpen: boolean;
@@ -13,12 +14,8 @@ interface StudentFormModalProps {
   studentToEdit?: Student | null;
 }
 
-export function StudentFormModal({
-  isOpen,
-  onClose,
-  onSave,
-  studentToEdit
-}: StudentFormModalProps) {
+export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: StudentFormModalProps) {
+  const { showToast } = useToast();
   const faculties = storageService.getFaculties();
   const directions = storageService.getDirections();
   const courses = storageService.getCourses();
@@ -27,7 +24,8 @@ export function StudentFormModal({
   const [fullName, setFullName] = useState('');
   const [studentId, setStudentId] = useState('');
   const [hemisStudentId, setHemisStudentId] = useState('');
-  const [assignedLogin, setAssignedLogin] = useState('T00001');
+  const [assignedLogin, setAssignedLogin] = useState('');
+  const [password, setPassword] = useState('');
   const [pinfl, setPinfl] = useState('');
   const [facultyId, setFacultyId] = useState(faculties[0]?.id || '');
   const [directionId, setDirectionId] = useState(directions[0]?.id || '');
@@ -39,12 +37,20 @@ export function StudentFormModal({
   const [status, setStatus] = useState<StudentStatus>('active');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const regenerateCredentials = (name: string) => {
+    const creds = generateAutoUserCredentials(name, 'STUDENT', storageService.getUsers(), storageService.getStudents());
+    setAssignedLogin(creds.login);
+    setEmail(creds.email);
+    setPassword(creds.password);
+  };
+
   useEffect(() => {
     if (studentToEdit) {
       setFullName(studentToEdit.fullName);
       setStudentId(studentToEdit.studentId);
       setHemisStudentId(studentToEdit.hemisStudentId || studentToEdit.studentId);
-      setAssignedLogin(studentToEdit.login || studentToEdit.studentCode || 'T00001');
+      setAssignedLogin(studentToEdit.login || studentToEdit.studentCode || '');
+      setPassword(studentToEdit.password || 'password123');
       setPinfl(studentToEdit.pinfl);
       setFacultyId(studentToEdit.facultyId);
       setDirectionId(studentToEdit.directionId);
@@ -55,12 +61,12 @@ export function StudentFormModal({
       setEmail(studentToEdit.email);
       setStatus(studentToEdit.status);
     } else {
-      // New student defaults with automatic sequential T00001 format
-      const nextLogin = getNextStudentLogin(storageService.getStudents(), storageService.getUsers());
+      const creds = generateAutoUserCredentials('', 'STUDENT', storageService.getUsers(), storageService.getStudents());
       setFullName('');
       setStudentId(`MED-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
       setHemisStudentId(String(Math.floor(10000000 + Math.random() * 90000000)));
-      setAssignedLogin(nextLogin);
+      setAssignedLogin(creds.login);
+      setPassword(creds.password);
       setPinfl('');
       setFacultyId(faculties[0]?.id || '');
       setDirectionId(directions[0]?.id || '');
@@ -68,7 +74,7 @@ export function StudentFormModal({
       setGroupId(groups[0]?.id || '');
       setPhone('+998 (90) ');
       setTelegram('@');
-      setEmail(`${nextLogin}@student.uz`);
+      setEmail(creds.email);
       setStatus('active');
     }
   }, [studentToEdit, isOpen]);
@@ -80,21 +86,16 @@ export function StudentFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !studentId.trim() || !pinfl.trim() || isSubmitting) {
-      return;
-    }
+    if (!fullName.trim() || !studentId.trim() || !pinfl.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
-    let finalLogin = studentToEdit?.login || studentToEdit?.studentCode;
-    if (!finalLogin) {
-      finalLogin = await allocateNextStudentLoginAtomic(db, storageService.getStudents(), storageService.getUsers());
-    }
-
+    
     const payload: Student = {
       id: studentToEdit?.id || 'new',
       userId: studentToEdit?.userId || `uid-std-${Date.now()}`,
-      login: finalLogin,
-      studentCode: finalLogin,
+      login: assignedLogin,
+      password: password,
+      studentCode: assignedLogin,
       hemisStudentId: hemisStudentId.trim() || studentId.trim(),
       fullName: fullName.trim(),
       studentId: studentId.trim(),
@@ -105,7 +106,7 @@ export function StudentFormModal({
       groupId: groupId || filteredGroups[0]?.id || 'grp-401',
       phone: phone.trim(),
       telegram: telegram.trim(),
-      email: `${finalLogin}@student.uz`,
+      email: email.trim(),
       status,
       currentPracticeId: studentToEdit?.currentPracticeId,
       currentPracticePlaceId: studentToEdit?.currentPracticePlaceId
@@ -125,20 +126,62 @@ export function StudentFormModal({
       maxWidth="2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* AIDE System Auto Login & Standard Password Info */}
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
-            <div>
-              <p className="text-xs font-bold text-emerald-900">Tizim Logini va Paroli (Avtomatik)</p>
-              <p className="text-[11px] text-emerald-700">Talaba uchun login T000XX formatida, bir martalik parol standart: <span className="font-mono font-bold">password123</span></p>
+        {/* AIDE System Auto Login, Password & Email Info */}
+        <div className="p-3.5 bg-gradient-to-br from-indigo-50/70 via-blue-50/50 to-emerald-50/40 border border-blue-200 rounded-xl space-y-2.5 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Key className="w-4 h-4 text-blue-600 shrink-0" />
+              <span className="text-xs font-bold text-slate-900">
+                Firebase Avtomatik Login, Parol va Email
+              </span>
+              <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-full border border-emerald-300">
+                Avtomatik
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={() => regenerateCredentials(fullName)}
+              className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
+              title="Yangi parol va logindan qayta generatsiya qilish"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Qayta yaratish</span>
+            </button>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-slate-500 font-medium">Login:</span>
-            <span className="text-sm font-mono font-bold px-2.5 py-1 bg-white border border-emerald-300 rounded text-emerald-800 shadow-2xs">
-              {assignedLogin}
-            </span>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
+              <span className="text-[10px] text-slate-400 block font-semibold">Tizim Logini:</span>
+              <input
+                type="text"
+                value={assignedLogin}
+                onChange={e => setAssignedLogin(e.target.value)}
+                placeholder="Login"
+                className="mt-1 w-full font-mono text-xs font-black text-slate-900 border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:bg-white"
+              />
+            </div>
+
+            <div className="p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
+              <span className="text-[10px] text-slate-400 block font-semibold">Tizim Paroli:</span>
+              <input
+                type="text"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Parol"
+                className="mt-1 w-full font-mono text-xs font-black text-blue-700 border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:bg-white"
+              />
+            </div>
+
+            <div className="p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
+              <span className="text-[10px] text-slate-400 block font-semibold">Avtomatik Email:</span>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="email@tma.uz"
+                className="mt-1 w-full text-xs font-semibold text-slate-800 border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:bg-white truncate"
+              />
+            </div>
           </div>
         </div>
 

@@ -1,8 +1,9 @@
 import { firestoreService } from './firestoreService';
 import { User } from '../types';
-import { collection, Timestamp, doc, runTransaction, query, where, getDocs, QueryConstraint, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { collection, Timestamp, doc, query, where, getDocs, QueryConstraint, setDoc } from 'firebase/firestore';
+import { db, auth } from './firebase';
 import { storageService } from './storageService';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 const COLLECTION = 'users';
 
@@ -24,11 +25,25 @@ export const userService = {
   },
 
   createUser: async (data: Omit<User, 'id'>) => {
-    const id = data.uid || `user-${Date.now()}`;
+    let uid = data.uid;
+    const email = data.email;
+    const password = data.password;
+
+    if (db && auth && email && password) {
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            uid = userCredential.user.uid;
+        } catch (err) {
+            console.warn('Firebase Auth createUser warning:', err);
+        }
+    }
+
+    const id = uid || `user-${Date.now()}`;
     const timestamp = new Date().toISOString();
     const payload: User = {
       ...data,
       id,
+      uid,
       createdAt: timestamp,
       updatedAt: timestamp
     };
