@@ -9,9 +9,7 @@ const COLLECTION = 'users';
 
 export const userService = {
   getUsers: async (constraints: QueryConstraint[] = []) => {
-    const fsData = await firestoreService.queryDocuments(COLLECTION, constraints) as User[];
-    const lsData = storageService.getUsers();
-    return mergeData(fsData, lsData, 'id');
+    return await firestoreService.queryDocuments(COLLECTION, constraints) as User[];
   },
 
   getUser: async (id: string) => {
@@ -25,20 +23,15 @@ export const userService = {
   },
 
   createUser: async (data: Omit<User, 'id'>) => {
-    let uid = data.uid;
-    const email = data.email;
-    const password = data.password;
-
-    if (db && auth && email && password) {
-        try {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            uid = userCredential.user.uid;
-        } catch (err) {
-            console.warn('Firebase Auth createUser warning:', err);
-        }
+    if (!auth || !data.email || !data.password) {
+      throw new Error('Authentication configuration error or missing credentials.');
     }
 
-    const id = uid || `user-${Date.now()}`;
+    // 1. Create in Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+    const uid = userCredential.user.uid;
+
+    const id = uid;
     const timestamp = new Date().toISOString();
     const payload: User = {
       ...data,
@@ -47,23 +40,18 @@ export const userService = {
       createdAt: timestamp,
       updatedAt: timestamp
     };
+    
+    // Remove password from payload before saving to Firestore
+    const { password, ...firestorePayload } = payload;
 
-    // 1. Save to local storageService immediately
-    storageService.saveUser(payload);
-
-    // 2. Save to Firestore users collection
+    // 2. Save to Firestore
     if (db) {
-      try {
-        const firestoreDb = db;
-        const docRef = doc(firestoreDb, COLLECTION, id);
+        const docRef = doc(db, COLLECTION, id);
         await setDoc(docRef, {
-          ...payload,
+          ...firestorePayload,
           createdAt: Timestamp.now().toDate().toISOString(),
           updatedAt: Timestamp.now().toDate().toISOString()
         });
-      } catch (err) {
-        console.warn('Firestore createUser warning (saved in local storage):', err);
-      }
     }
 
     return id;
@@ -87,12 +75,4 @@ export const userService = {
   }
 };
 
-function mergeData<T extends { id: string }>(fsData: T[], lsData: T[], idField: keyof T): T[] {
-    const fsMap = new Map(fsData.map(item => [item[idField], item]));
-    lsData.forEach(item => {
-        if (!fsMap.has(item[idField])) {
-            fsMap.set(item[idField], item);
-        }
-    });
-    return Array.from(fsMap.values());
-}
+

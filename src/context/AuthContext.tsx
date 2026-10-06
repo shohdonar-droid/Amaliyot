@@ -146,14 +146,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isFirebaseAuthenticated, setIsFirebaseAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem(CURRENT_USER_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return null;
-      }
-    }
     return null;
   });
   
@@ -266,24 +258,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userProfile));
       } else {
         setFirebaseUser(null);
-        const authType = localStorage.getItem(AUTH_TYPE_KEY);
-        if (authType === 'firebase') {
-          setIsFirebaseAuthenticated(false);
-          setCurrentUser(null);
-          localStorage.removeItem(CURRENT_USER_KEY);
-          localStorage.removeItem(AUTH_TYPE_KEY);
-        } else {
-          setIsFirebaseAuthenticated(false);
-          // Keep demo/local login intact if demo was used
-          const saved = localStorage.getItem(CURRENT_USER_KEY);
-          if (saved) {
-            try {
-              setCurrentUser(JSON.parse(saved));
-            } catch {
-              // ignore
-            }
-          }
-        }
+        setIsFirebaseAuthenticated(false);
+        setCurrentUser(null);
+        localStorage.removeItem(CURRENT_USER_KEY);
+        localStorage.removeItem(AUTH_TYPE_KEY);
       }
       setLoading(false);
     });

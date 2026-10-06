@@ -2149,15 +2149,13 @@ class StorageServiceV2 {
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.users)) {
           // Ensure all array fields exist without forcing mock data defaults if empty
-          parsed.users = (parsed.users || DEFAULT_USERS_V2).filter((u: any) => 
-            u.role === 'SUPER_ADMIN' || u.role === 'super_admin' || u.role === 'STUDENT' || u.role === 'student'
-          );
+          parsed.users = []; // Disabled demo users in production
           parsed.academicYears = parsed.academicYears || [];
           parsed.faculties = parsed.faculties || [];
           parsed.directions = parsed.directions || [];
-          parsed.courses = parsed.courses || DEFAULT_COURSES;
+          parsed.courses = parsed.courses || [];
           parsed.groups = parsed.groups || [];
-          parsed.students = parsed.students || [];
+          parsed.students = []; // Disabled demo students
           parsed.practicePlaces = parsed.practicePlaces || [];
           parsed.practiceDepartments = parsed.practiceDepartments || [];
           parsed.supervisors = parsed.supervisors || [];
@@ -2168,15 +2166,26 @@ class StorageServiceV2 {
           parsed.attendance = parsed.attendance || [];
           parsed.attendanceSessions = parsed.attendanceSessions || [];
           parsed.dailyJournals = parsed.dailyJournals || [];
-          parsed.skills = parsed.skills || DEFAULT_SKILLS_V2;
+          parsed.skills = parsed.skills || [];
           parsed.studentSkills = parsed.studentSkills || [];
           parsed.skillLogs = parsed.skillLogs || [];
-          parsed.skillCategories = parsed.skillCategories || DEFAULT_SKILL_CATEGORIES_V2;
+          parsed.skillCategories = parsed.skillCategories || [];
           parsed.tasks = parsed.tasks || [];
           parsed.assessments = parsed.assessments || [];
           parsed.finalExams = parsed.finalExams || [];
-          parsed.attestationCommissions = parsed.attestationCommissions || DEFAULT_COMMISSIONS_V2;
-          parsed.assessmentSettings = parsed.assessmentSettings || DEFAULT_ASSESSMENT_SETTINGS_V2;
+          parsed.attestationCommissions = parsed.attestationCommissions || [];
+          parsed.assessmentSettings = parsed.assessmentSettings || {
+              id: 'default',
+              attendanceMaxScore: 0,
+              journalMaxScore: 0,
+              skillsMaxScore: 0,
+              finalExamMaxScore: 0,
+              grade5Min: 0,
+              grade4Min: 0,
+              grade3Min: 0,
+              grade2Min: 0,
+              examCriteriaWeights: { theoryMax: 0, practicalMax: 0, clinicalCaseMax: 0, professionalismMax: 0, safetyMax: 0 }
+          };
           parsed.vedomosts = parsed.vedomosts || [];
           parsed.documents = parsed.documents || [];
           parsed.notifications = parsed.notifications || [];
@@ -2190,11 +2199,11 @@ class StorageServiceV2 {
 
     const defaultState: DatabaseStateV2 = {
       mode: 'DEVELOPMENT',
-      users: DEFAULT_USERS_V2.filter(u => u.role === 'SUPER_ADMIN' || u.role === 'super_admin'),
+      users: [],
       academicYears: [],
       faculties: [],
       directions: [],
-      courses: DEFAULT_COURSES,
+      courses: [],
       groups: [],
       students: [],
       practicePlaces: [],
@@ -2207,15 +2216,26 @@ class StorageServiceV2 {
       attendance: [],
       attendanceSessions: [],
       dailyJournals: [],
-      skills: DEFAULT_SKILLS_V2,
+      skills: [],
       studentSkills: [],
       skillLogs: [],
-      skillCategories: DEFAULT_SKILL_CATEGORIES_V2,
+      skillCategories: [],
       tasks: [],
       assessments: [],
       finalExams: [],
-      attestationCommissions: DEFAULT_COMMISSIONS_V2,
-      assessmentSettings: DEFAULT_ASSESSMENT_SETTINGS_V2,
+      attestationCommissions: [],
+      assessmentSettings: {
+          id: 'default',
+          attendanceMaxScore: 0,
+          journalMaxScore: 0,
+          skillsMaxScore: 0,
+          finalExamMaxScore: 0,
+          grade5Min: 0,
+          grade4Min: 0,
+          grade3Min: 0,
+          grade2Min: 0,
+          examCriteriaWeights: { theoryMax: 0, practicalMax: 0, clinicalCaseMax: 0, professionalismMax: 0, safetyMax: 0 }
+      },
       vedomosts: [],
       documents: [],
       notifications: [],
