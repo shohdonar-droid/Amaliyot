@@ -3,7 +3,9 @@ import { User } from '../types';
 import { collection, Timestamp, doc, query, where, getDocs, QueryConstraint, setDoc } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { storageService } from './storageService';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import firebaseConfig from '../../firebase-applet-config.json';
 
 const COLLECTION = 'users';
 
@@ -22,14 +24,19 @@ export const userService = {
     return results.length > 0 ? results[0] : null;
   },
 
-  createUser: async (data: Omit<User, 'id'>) => {
-    if (!auth || !data.email || !data.password) {
+  createUser: async (data: Omit<User, 'id' | 'uid'> & { uid?: string }) => {
+    if (!data.email || !data.password) {
       throw new Error('Authentication configuration error or missing credentials.');
     }
 
-    // 1. Create in Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+    // 1. Create in Firebase Auth using a secondary Firebase App instance
+    // This prevents replacing or logging out the active Admin session on primary auth!
+    const secondaryApp = getApps().find(a => a.name === 'userCreationApp') || initializeApp(firebaseConfig, 'userCreationApp');
+    const secondaryAuth = getAuth(secondaryApp);
+    
+    const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, data.password);
     const uid = userCredential.user.uid;
+    await signOut(secondaryAuth);
 
     const id = uid;
     const timestamp = new Date().toISOString();
