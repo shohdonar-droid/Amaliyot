@@ -506,10 +506,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await sendPasswordResetEmail(auth, email);
   };
 
-  const switchRole = (userId: string) => {
-    if (userId === 'RESET_SUPER_ADMIN') {
+  const switchRole = (roleOrUserId: string) => {
+    if (roleOrUserId === 'RESET_SUPER_ADMIN') {
       if (originalSuperAdmin) {
         setCurrentUser(originalSuperAdmin);
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(originalSuperAdmin));
       } else if (firebaseUser?.email === 'shohdonar@gmail.com') {
         const defaultAdmin: User = {
           id: firebaseUser.uid,
@@ -523,24 +524,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           createdAt: new Date().toISOString()
         };
         setCurrentUser(defaultAdmin);
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(defaultAdmin));
       }
       return;
     }
 
     const users = storageService.getUsers();
-    const userToSwitch = users.find(u => u.id === userId || u.uid === userId);
+    let userToSwitch = users.find(u => u.id === roleOrUserId || u.uid === roleOrUserId);
+
+    if (!userToSwitch) {
+      userToSwitch = users.find(u => u.role === roleOrUserId || toCanonicalRole(u.role) === toCanonicalRole(roleOrUserId as UserRole));
+    }
+
     if (userToSwitch) {
-      // Save current as original if original not set
       if (!originalSuperAdmin && (currentUser?.role === 'SUPER_ADMIN' || firebaseUser?.email === 'shohdonar@gmail.com')) {
         setOriginalSuperAdmin(currentUser);
       }
       setCurrentUser(userToSwitch);
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userToSwitch));
+    } else if (currentUser) {
+      const canonical = toCanonicalRole(roleOrUserId as UserRole);
+      if (canonical) {
+        const rolePersona: User = {
+          ...currentUser,
+          role: roleOrUserId as UserRole
+        };
+        if (!originalSuperAdmin && (currentUser.role === 'SUPER_ADMIN' || firebaseUser?.email === 'shohdonar@gmail.com')) {
+          setOriginalSuperAdmin(currentUser);
+        }
+        setCurrentUser(rolePersona);
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(rolePersona));
+      }
     }
   };
 
   const activeRole: UserRole = currentUser?.role || 'PRACTICE_HEAD';
   const canonicalRole = toCanonicalRole(activeRole);
-  const roleConfig = ROLE_CONFIGS[activeRole] || ROLE_CONFIGS[canonicalRole];
+  const roleConfig = ROLE_CONFIGS[activeRole] || ROLE_CONFIGS[canonicalRole] || ROLE_CONFIGS['PRACTICE_HEAD'];
   const isSuperAdmin = firebaseUser?.email === 'shohdonar@gmail.com' || canonicalRole === 'SUPER_ADMIN' || originalSuperAdmin !== null;
 
   return (

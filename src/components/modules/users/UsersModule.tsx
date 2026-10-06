@@ -310,12 +310,27 @@ export function UsersModule() {
     });
   };
 
+  const canDeleteUsers = isSuperAdmin || canonicalRole === 'SUPER_ADMIN' || canonicalRole === 'PRACTICE_HEAD' || activeUserRole === 'SUPER_ADMIN' || activeUserRole === 'PRACTICE_HEAD' || activeUserRole === 'super_admin' || activeUserRole === 'dept_head';
+
   const handleDeleteConfirm = () => {
     if (!userToDelete) return;
-    userService.deleteUser(userToDelete.id).then(() => {
-        loadUsers();
-        showToast('info', 'O\'chirildi', `${userToDelete.fullName} foydalanuvchisi tizimdan o'chirildi.`);
-        setUserToDelete(null);
+    const targetId = userToDelete.id;
+    const targetName = userToDelete.fullName;
+
+    if (!canDeleteUsers) {
+      showToast('error', 'Ruxsat etilmagan', 'Faqat Amaliyot bo\'limi boshlig\'i va Super Admin foydalanuvchini o\'chira oladi.');
+      setUserToDelete(null);
+      return;
+    }
+
+    // Immediately remove from UI list
+    setUsers(prev => prev.filter(u => u.id !== targetId));
+    setUserToDelete(null);
+    showToast('info', 'O\'chirildi', `${targetName} foydalanuvchisi tizimdan va ro'yxatdan o'chirildi.`);
+
+    userService.deleteUser(targetId).catch(err => {
+      showToast('error', 'Xatolik', 'Bazadan o\'chirishda xatolik: ' + (err.message || ''));
+      loadUsers();
     });
   };
 
@@ -612,14 +627,16 @@ export function UsersModule() {
                             </button>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={() => setUserToDelete(user)}
-                            className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="O'chirish"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canDeleteUsers && (
+                            <button
+                              type="button"
+                              onClick={() => setUserToDelete(user)}
+                              className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="O'chirish"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -134,15 +134,29 @@ export function StudentsModule() {
     }
   };
 
+  const canDeleteStudents = isSuperAdmin || canonicalRole === 'SUPER_ADMIN' || canonicalRole === 'PRACTICE_HEAD' || role === 'SUPER_ADMIN' || role === 'PRACTICE_HEAD' || role === 'super_admin' || role === 'dept_head';
+
   const handleDeleteConfirm = async () => {
     if (!studentToDelete) return;
-    try {
-      await studentService.softDeleteStudent(studentToDelete.id);
-      refreshList();
-      showToast('info', 'O\'chirildi', `${studentToDelete.fullName} ro'yxatdan olib tashlandi.`);
+    const targetId = studentToDelete.id;
+    const targetName = studentToDelete.fullName;
+
+    if (!canDeleteStudents) {
+      showToast('error', 'Ruxsat etilmagan', 'Faqat Amaliyot bo\'limi boshlig\'i va Super Admin talabani o\'chira oladi.');
       setStudentToDelete(null);
+      return;
+    }
+
+    // Immediately remove from UI list
+    setStudents(prev => prev.filter(s => s.id !== targetId));
+    setStudentToDelete(null);
+    showToast('info', 'O\'chirildi', `${targetName} talabasi tizimdan va ro'yxatdan o'chirildi.`);
+
+    try {
+      await studentService.softDeleteStudent(targetId);
     } catch (e: any) {
-      showToast('error', 'Xatolik', e.message);
+      showToast('error', 'Xatolik', 'Bazadan o\'chirishda xatolik: ' + (e.message || ''));
+      refreshList();
     }
   };
 
@@ -485,14 +499,16 @@ export function StudentsModule() {
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setStudentToDelete(student)}
-                            className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                            title="O'chirish"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canDeleteStudents && (
+                            <button
+                              type="button"
+                              onClick={() => setStudentToDelete(student)}
+                              className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                              title="O'chirish"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
