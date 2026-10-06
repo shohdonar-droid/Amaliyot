@@ -110,7 +110,7 @@ export function UserProfileModal({ isOpen, onClose, onRoleSwitched }: UserProfil
           {/* Top User Header Card */}
           <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-400/40 flex items-center justify-center text-xl font-bold shadow-lg shadow-blue-500/20 shrink-0">
-              {currentUser?.fullName.charAt(0) || 'U'}
+              {(currentUser?.fullName || 'U').charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-base font-bold text-white truncate leading-tight">

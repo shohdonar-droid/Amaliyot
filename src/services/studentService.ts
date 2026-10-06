@@ -1,10 +1,10 @@
 import { firestoreService } from './firestoreService';
 import { Student, User } from '../types';
-import { collection, Timestamp, doc, runTransaction, query, where, getDocs, QueryConstraint, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, Timestamp, doc, runTransaction, query, where, getDocs, QueryConstraint, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { storageService } from './storageService';
 import { userService } from './userService';
-import { recordUsedStudentSequence } from './loginGeneratorService';
+import { recordUsedStudentSequence, resetStudentLoginSequence } from './loginGeneratorService';
 
 const COLLECTION = 'students';
 
@@ -145,5 +145,30 @@ export const studentService = {
       await firestoreService.deleteDocument(COLLECTION, studentId).catch(console.warn);
     }
     storageService.deleteStudent(studentId);
+  },
+
+  clearAllStudentsAndResetSequence: async () => {
+    // 1. Delete all students from Firestore
+    if (db) {
+      try {
+        const snap = await getDocs(collection(db, COLLECTION));
+        for (const docSnap of snap.docs) {
+          await deleteDoc(doc(db, COLLECTION, docSnap.id)).catch(() => {});
+        }
+        // Also delete any users with role STUDENT
+        const usersSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'STUDENT')));
+        for (const uDoc of usersSnap.docs) {
+          await deleteDoc(doc(db, 'users', uDoc.id)).catch(() => {});
+        }
+      } catch (err) {
+        console.warn('Firestore purge error:', err);
+      }
+    }
+
+    // 2. Clear from local state
+    storageService.clearAllStudents();
+
+    // 3. Reset persistent sequence to 0 so next is strictly T00001
+    await resetStudentLoginSequence(0, db);
   }
 };

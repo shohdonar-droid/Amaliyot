@@ -1,5 +1,5 @@
 import { User, Student, UserRole } from '../types';
-import { doc, runTransaction, Firestore } from 'firebase/firestore';
+import { doc, runTransaction, Firestore, setDoc } from 'firebase/firestore';
 
 const STUDENT_SEQ_KEY = 'aide_highest_student_sequence_v1';
 
@@ -266,6 +266,71 @@ export async function recordUsedStudentSequence(
 }
 
 /**
+ * Resets the student sequence to 0 (or a specified number) in memory, localStorage, and Firestore.
+ * When reset to 0, the very next created student will receive T00001!
+ */
+export async function resetStudentLoginSequence(
+  newHighest = 0,
+  db?: Firestore | null
+): Promise<void> {
+  inMemoryHighestSequence = newHighest;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      if (newHighest === 0) {
+        localStorage.removeItem(STUDENT_SEQ_KEY);
+      } else {
+        localStorage.setItem(STUDENT_SEQ_KEY, String(newHighest));
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  if (db) {
+    try {
+      const counterRef = doc(db, 'systemCounters', 'studentLogin');
+      await setDoc(counterRef, {
+        type: 'STUDENT_LOGIN_COUNTER',
+        lastIssuedNumber: newHighest,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.warn('Failed to reset Firestore student counter:', err);
+    }
+  }
+}
+
+/**
+ * Peeks what the next student login will be WITHOUT mutating or allocating the sequence.
+ */
+export function peekNextStudentLogin(existingStudents: Student[] = [], existingUsers: User[] = []): string {
+  let highest = inMemoryHighestSequence;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(STUDENT_SEQ_KEY);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed > highest) {
+          highest = parsed;
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  for (const s of existingStudents) {
+    const seq = parseStudentCodeSequence(s.studentCode || s.login || '');
+    if (seq && seq > highest) highest = seq;
+  }
+  for (const u of existingUsers) {
+    const seq = parseStudentCodeSequence(u.studentCode || u.login || '');
+    if (seq && seq > highest) highest = seq;
+  }
+  return formatStudentCode(highest + 1);
+}
+
+/**
  * Generates `familyasi_ismi` login format for non-student roles.
  * Strips academic titles (Dr., Prof., Dots., PhD) and handles duplicate suffixes (Ergashev_Odil, Ergashev_Odil2, etc.)
  */
@@ -458,7 +523,7 @@ export function generateAutoUserCredentials(
   const existingLogins = existingUsers.map(u => u.login || u.username || '');
 
   if (isStudent) {
-    const studentLogin = getNextStudentLogin(existingStudents, existingUsers);
+    const studentLogin = peekNextStudentLogin(existingStudents, existingUsers);
     const studentEmail = getTechnicalEmail(studentLogin, role);
     return {
       login: studentLogin,

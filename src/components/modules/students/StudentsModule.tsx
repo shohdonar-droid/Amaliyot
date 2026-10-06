@@ -13,7 +13,8 @@ import {
   FileSpreadsheet,
   CheckCircle2,
   Copy,
-  Key
+  Key,
+  RotateCcw
 } from 'lucide-react';
 import { Student } from '../../../types';
 import { studentService } from '../../../services/studentService';
@@ -39,16 +40,22 @@ export function StudentsModule() {
   const [students, setStudents] = useState<Student[]>([]);
   
   useEffect(() => {
-    studentService.getStudents().then(setStudents);
+    studentService.getStudents().then(data => {
+      setStudents(Array.isArray(data) ? data : []);
+    }).catch(err => {
+      console.warn("Failed to load students:", err);
+      setStudents(storageService.getStudents() || []);
+    });
   }, []);
-  const faculties = storageService.getFaculties();
-  const directions = storageService.getDirections();
-  const courses = storageService.getCourses();
-  const groups = isSupervisor && supervisorId 
+
+  const faculties = storageService.getFaculties() || [];
+  const directions = storageService.getDirections() || [];
+  const courses = storageService.getCourses() || [];
+  const groups = (isSupervisor && supervisorId 
     ? storageService.getGroupsForSupervisor(supervisorId)
-    : storageService.getGroups();
-  const practices = storageService.getPractices();
-  const places = storageService.getPracticePlaces();
+    : storageService.getGroups()) || [];
+  const practices = storageService.getPractices() || [];
+  const places = storageService.getPracticePlaces() || [];
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,26 +73,41 @@ export function StudentsModule() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [createdCredentialsModal, setCreatedCredentialsModal] = useState<{
     student: Student;
   } | null>(null);
 
   const refreshList = async () => {
-    const data = await studentService.getStudents();
-    setStudents(data);
+    try {
+      const data = await studentService.getStudents();
+      setStudents(Array.isArray(data) ? data : []);
+    } catch {
+      setStudents(storageService.getStudents() || []);
+    }
   };
 
   // Filtered & Sequentially Sorted Students (Appended in increasing sequence order)
   const filteredStudents = useMemo(() => {
+    if (!Array.isArray(students)) return [];
+
     const list = students.filter(student => {
+      if (!student) return false;
+      const sFullName = String(student.fullName || '');
+      const sStudentId = String(student.studentId || '');
+      const sPinfl = String(student.pinfl || '');
+      const sPhone = String(student.phone || '');
+      const sLogin = String(student.login || student.studentCode || '');
+
       // Search by name, studentId, pinfl, phone, or login
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchName = student.fullName.toLowerCase().includes(q);
-        const matchId = student.studentId.toLowerCase().includes(q);
-        const matchPinfl = student.pinfl.includes(q);
-        const matchPhone = student.phone.includes(q);
-        const matchLogin = (student.login || student.studentCode || '').toLowerCase().includes(q);
+        const matchName = sFullName.toLowerCase().includes(q);
+        const matchId = sStudentId.toLowerCase().includes(q);
+        const matchPinfl = sPinfl.includes(q);
+        const matchPhone = sPhone.includes(q);
+        const matchLogin = sLogin.toLowerCase().includes(q);
         if (!matchName && !matchId && !matchPinfl && !matchPhone && !matchLogin) return false;
       }
 
@@ -101,10 +123,10 @@ export function StudentsModule() {
     });
 
     return list.sort((a, b) => {
-      const seqA = parseStudentCodeSequence(a.login || a.studentCode || '') || 0;
-      const seqB = parseStudentCodeSequence(b.login || b.studentCode || '') || 0;
+      const seqA = parseStudentCodeSequence(a?.login || a?.studentCode || '') || 0;
+      const seqB = parseStudentCodeSequence(b?.login || b?.studentCode || '') || 0;
       if (seqA !== seqB) return seqA - seqB;
-      return (a.createdAt || '').localeCompare(b.createdAt || '');
+      return String(a?.createdAt || '').localeCompare(String(b?.createdAt || ''));
     });
   }, [
     students,
@@ -160,6 +182,21 @@ export function StudentsModule() {
     }
   };
 
+  const handleResetAllStudents = async () => {
+    setIsResetting(true);
+    try {
+      await studentService.clearAllStudentsAndResetSequence();
+      setStudents([]);
+      setIsResetConfirmOpen(false);
+      showToast('success', 'Baza tozalandi', 'Barcha talabalar profili tozalandi va login hisoblagich T00001 dan qayta boshlanadigan qilib yangilandi.');
+      await refreshList();
+    } catch (err: any) {
+      showToast('error', 'Xatolik', 'Talabalarni tozalashda xatolik: ' + (err?.message || ''));
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const resetFilters = () => {
     setSearchQuery('');
     setFilterFaculty('');
@@ -198,17 +235,29 @@ export function StudentsModule() {
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             {isSupervisor 
-              ? `Sizga biriktirilgan guruhlar: ${groups.map(g => g.name).join(', ') || 'mavjud emas'} · Jami ${students.length} nafar talaba`
+              ? `Sizga biriktirilgan guruhlar: ${(groups || []).map(g => g?.name || '').filter(Boolean).join(', ') || 'mavjud emas'} · Jami ${students.length} nafar talaba`
               : `Jami: ${students.length} nafar talaba · Filtrlangan: ${filteredStudents.length} nafar`}
           </p>
         </div>
 
         {!isSupervisor && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {canDeleteStudents && (
+              <button
+                type="button"
+                onClick={() => setIsResetConfirmOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                title="Barcha talabalar profilini o'chirish va T00001 dan qayta boshlash"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+                <span className="hidden sm:inline">Tozalash (T00001 dan)</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setIsBulkModalOpen(true)}
-              className="flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shadow-2xs transition-colors"
+              className="flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shadow-2xs transition-colors cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4 text-blue-600" />
               <span>Bittada yuklash (Excel/CSV)</span>
@@ -220,7 +269,7 @@ export function StudentsModule() {
                 setStudentToEdit(null);
                 setIsFormModalOpen(true);
               }}
-              className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors"
+              className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Yangi talaba</span>
@@ -398,17 +447,18 @@ export function StudentsModule() {
                       </td>
 
                       {/* Name & Avatar */}
+                      {/* Name & Avatar */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
                           <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">
-                            {student.fullName.charAt(0)}
+                            {(student.fullName || 'T').charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <span className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors block">
-                              {student.fullName}
+                              {student.fullName || 'Talaba'}
                             </span>
                             <span className="text-[10px] text-slate-400">
-                              {student.email}
+                              {student.email || `${student.login || 'student'}@student.uz`}
                             </span>
                           </div>
                         </div>
@@ -416,13 +466,16 @@ export function StudentsModule() {
 
                       {/* AIDE Login & HEMIS ID */}
                       <td className="py-3 px-4 font-mono tabular-nums">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
                             {student.login || student.studentCode || 'T00001'}
                           </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            (ID: {student.studentId || (parseStudentCodeSequence(student.login || '') ? String(parseStudentCodeSequence(student.login || '')).padStart(5, '0') : '00001')})
+                          </span>
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">
-                          HEMIS: {student.hemisStudentId || student.studentId}
+                          HEMIS: {student.hemisStudentId || student.studentId || '-'}
                         </div>
                       </td>
 
@@ -553,6 +606,18 @@ export function StudentsModule() {
         title="Talabani o'chirish"
         message={`Haqiqatan ham "${studentToDelete?.fullName}" talabasini tizimdan o'chirmoqchimisiz? Talabaga tegishli barcha amaliyot va davomat ma'lumotlari ham o'chiriladi.`}
         confirmLabel="O'chirish"
+        cancelLabel="Bekor qilish"
+        isDestructive
+      />
+
+      {/* Reset All Students and Sequence Confirmation */}
+      <ConfirmDialog
+        isOpen={isResetConfirmOpen}
+        onClose={() => setIsResetConfirmOpen(false)}
+        onConfirm={handleResetAllStudents}
+        title="Talabalarni tozalash va T00001 dan qayta boshlash"
+        message="Haqiqatan ham barcha mavjud talabalar profillarini o'chirib, login hisoblagichini T00001 dan qayta boshlamoqchimisiz? Ushbu amal barcha talabalar hisoblarini tozalaydi va yangi yaratiladigan talabalar T00001 dan boshlab ketma-ket login oladi."
+        confirmLabel={isResetting ? "Tozalanmoqda..." : "Tozalash va T00001 dan boshlash"}
         cancelLabel="Bekor qilish"
         isDestructive
       />

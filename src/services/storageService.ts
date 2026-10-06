@@ -2148,19 +2148,19 @@ class StorageServiceV2 {
       try {
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.users)) {
-          // Ensure all array fields exist without forcing mock data defaults if empty
-          parsed.users = []; // Disabled demo users in production
+          // Keep users and students dynamic, while ensuring academic catalogs are populated
+          parsed.users = parsed.users || [];
           parsed.academicYears = parsed.academicYears || [];
-          parsed.faculties = parsed.faculties || [];
-          parsed.directions = parsed.directions || [];
-          parsed.courses = parsed.courses || [];
-          parsed.groups = parsed.groups || [];
-          parsed.students = []; // Disabled demo students
-          parsed.practicePlaces = parsed.practicePlaces || [];
+          parsed.faculties = parsed.faculties && parsed.faculties.length > 0 ? parsed.faculties : DEFAULT_FACULTIES;
+          parsed.directions = parsed.directions && parsed.directions.length > 0 ? parsed.directions : DEFAULT_DIRECTIONS;
+          parsed.courses = parsed.courses && parsed.courses.length > 0 ? parsed.courses : DEFAULT_COURSES;
+          parsed.groups = parsed.groups && parsed.groups.length > 0 ? parsed.groups : DEFAULT_GROUPS;
+          parsed.students = parsed.students || [];
+          parsed.practicePlaces = parsed.practicePlaces && parsed.practicePlaces.length > 0 ? parsed.practicePlaces : DEFAULT_PRACTICE_PLACES;
           parsed.practiceDepartments = parsed.practiceDepartments || [];
-          parsed.supervisors = parsed.supervisors || [];
-          parsed.clinicResponsibles = parsed.clinicResponsibles || [];
-          parsed.practices = parsed.practices || [];
+          parsed.supervisors = parsed.supervisors && parsed.supervisors.length > 0 ? parsed.supervisors : DEFAULT_SUPERVISORS;
+          parsed.clinicResponsibles = parsed.clinicResponsibles && parsed.clinicResponsibles.length > 0 ? parsed.clinicResponsibles : DEFAULT_CLINIC_RESPONSIBLES;
+          parsed.practices = parsed.practices && parsed.practices.length > 0 ? parsed.practices : DEFAULT_PRACTICES_V2;
           parsed.practiceDistributions = parsed.practiceDistributions || [];
           parsed.practiceAssignments = parsed.practiceAssignments || [];
           parsed.attendance = parsed.attendance || [];
@@ -2201,16 +2201,16 @@ class StorageServiceV2 {
       mode: 'DEVELOPMENT',
       users: [],
       academicYears: [],
-      faculties: [],
-      directions: [],
-      courses: [],
-      groups: [],
+      faculties: DEFAULT_FACULTIES,
+      directions: DEFAULT_DIRECTIONS,
+      courses: DEFAULT_COURSES,
+      groups: DEFAULT_GROUPS,
       students: [],
-      practicePlaces: [],
+      practicePlaces: DEFAULT_PRACTICE_PLACES,
       practiceDepartments: [],
-      supervisors: [],
-      clinicResponsibles: [],
-      practices: [],
+      supervisors: DEFAULT_SUPERVISORS,
+      clinicResponsibles: DEFAULT_CLINIC_RESPONSIBLES,
+      practices: DEFAULT_PRACTICES_V2,
       practiceDistributions: [],
       practiceAssignments: [],
       attendance: [],
@@ -2251,7 +2251,11 @@ class StorageServiceV2 {
   }
 
   private saveState(state: DatabaseStateV2): void {
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(state));
+    try {
+      localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(state));
+    } catch (err) {
+      console.warn('Failed to save state to localStorage:', err);
+    }
   }
 
   public getEnvironmentMode(): AppEnvironmentMode {
@@ -2659,6 +2663,24 @@ class StorageServiceV2 {
       entity: 'students',
       entityId: id,
       metadata: student ? JSON.stringify({ fullName: student.fullName, login: student.login, hemisStudentId: student.hemisStudentId }) : undefined
+    });
+
+    this.saveState(state);
+  }
+
+  public clearAllStudents(actorUserId = 'system', actorRole = 'SUPER_ADMIN'): void {
+    const state = this.getState();
+    const count = state.students.length;
+    state.students = [];
+    state.users = state.users.filter(u => u.role !== 'STUDENT' && u.role !== 'student');
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'studentDeleted',
+      entity: 'students',
+      entityId: 'all',
+      metadata: JSON.stringify({ clearedCount: count })
     });
 
     this.saveState(state);

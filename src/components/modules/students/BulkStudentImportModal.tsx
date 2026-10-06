@@ -61,10 +61,10 @@ export function BulkStudentImportModal({
   // Generate and download CSV template file
   const handleDownloadTemplate = () => {
     const csvContent = "\uFEFF" + [
-      "F.I.SH,Student ID,HEMIS ID,PINFL,Guruh,Telefon,Email",
-      "Sobirov Jamshid Alisherovich,MED-2026-2001,10002001,31405991230099,401-A (Davolash),+998901234567,jamshid@student.uz",
-      "Karimova Malika Nodir qizi,MED-2026-2002,10002002,32007011450077,401-A (Davolash),+998912345678,malika@student.uz",
-      "Ergashev Odil Mirzayevich,MED-2026-2003,10002003,31508982340012,401-A (Davolash),+998933456789,odil@student.uz"
+      "F.I.SH,HEMIS ID,PINFL,Telefon,Email",
+      "Sobirov Jamshid Alisherovich,382211100015,31405991230099,+998901234567,jamshid@student.uz",
+      "Karimova Malika Nodir qizi,382211100016,32007011450077,+998912345678,malika@student.uz",
+      "Ergashev Odil Mirzayevich,382211100017,31508982340012,+998933456789,odil@student.uz"
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -75,7 +75,7 @@ export function BulkStudentImportModal({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast('info', 'Namuna yuklandi', 'namuna_talabalar_royxati.csv fayli yuklab olindi.');
+    showToast('info', 'Namuna yuklandi', 'namuna_talabalar_royxati.csv fayli yuklab olindi. Login va parol tizim tomonidan tartibli beriladi.');
   };
 
   // Parse raw text or file content
@@ -90,7 +90,7 @@ export function BulkStudentImportModal({
 
     lines.forEach((line, index) => {
       // Skip header line if present
-      if (index === 0 && (line.toLowerCase().includes('f.i.sh') || line.toLowerCase().includes('fullname') || line.toLowerCase().includes('student id'))) {
+      if (index === 0 && (line.toLowerCase().includes('f.i.sh') || line.toLowerCase().includes('fullname') || line.toLowerCase().includes('hemis'))) {
         return;
       }
 
@@ -100,21 +100,19 @@ export function BulkStudentImportModal({
 
       if (parts.length > 0 && parts[0]) {
         const fullName = parts[0] || '';
-        const studentId = parts[1] || `MED-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-        const hemisStudentId = parts[2] || `${Math.floor(10000000 + Math.random() * 90000000)}`;
-        const pinfl = parts[3] || `${Math.floor(30000000000000 + Math.random() * 9000000000000)}`;
-        const groupName = parts[4] || '';
-        const phone = parts[5] || '+998 (90) 000-00-00';
-        const email = parts[6] || `${studentId.toLowerCase()}@student.uz`;
+        const hemisStudentId = parts[1] || '';
+        const pinfl = (parts[2] || '').replace(/\D/g, '');
+        const phone = parts[3] || '+998 (90) 000-00-00';
+        const email = parts[4] || '';
 
         const isValid = fullName.length >= 3;
 
         rows.push({
           fullName,
-          studentId,
+          studentId: '',
           hemisStudentId,
           pinfl,
-          groupName,
+          groupName: '',
           phone,
           email,
           isValid,
@@ -158,14 +156,20 @@ export function BulkStudentImportModal({
       let importedCount = 0;
       const targetGroup = groups.find(g => g.id === selectedGroupId) || groups[0];
 
+      let firstAllocatedLogin = '';
+      let lastAllocatedLogin = '';
+
       for (const row of validRows) {
         const studentCode = getNextStudentLogin(storageService.getStudents(), storageService.getUsers());
+        if (!firstAllocatedLogin) firstAllocatedLogin = studentCode;
+        lastAllocatedLogin = studentCode;
+
         const seq = parseStudentCodeSequence(studentCode);
         const autoStudentId = seq ? String(seq).padStart(5, '0') : studentCode;
         
         await studentService.createStudent({
           userId: `uid-std-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          studentId: row.studentId && !row.studentId.startsWith('MED-') ? row.studentId : autoStudentId,
+          studentId: autoStudentId,
           studentCode,
           login: studentCode,
           password: 'password123',
@@ -185,7 +189,10 @@ export function BulkStudentImportModal({
       }
 
       setIsProcessing(false);
-      showToast('success', 'Ommaviy yuklash yakunlandi', `${importedCount} nafar talaba tizimga muvaffaqiyatli yuklandi.`);
+      const rangeText = firstAllocatedLogin === lastAllocatedLogin 
+        ? `(${firstAllocatedLogin})` 
+        : `(${firstAllocatedLogin} — ${lastAllocatedLogin})`;
+      showToast('success', 'Ommaviy yuklash yakunlandi', `${importedCount} nafar talaba saqlandi. Loginlar: ${rangeText}.`);
       setRawPasteText('');
       setParsedRows([]);
       onSuccess();

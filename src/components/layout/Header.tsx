@@ -199,14 +199,14 @@ export function Header({
           title="Mening profilim"
         >
           <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shadow-xs">
-            {currentUser?.fullName.charAt(0) || 'U'}
+            {(currentUser?.fullName || 'U').charAt(0).toUpperCase()}
           </div>
           <div className="hidden xl:block text-left">
             <p className="text-xs font-semibold text-slate-800 leading-tight truncate max-w-[120px]">
-              {currentUser?.fullName.split(' ')[0]}
+              {currentUser?.fullName ? currentUser.fullName.split(' ')[0] : 'Profil'}
             </p>
             <p className="text-[10px] text-slate-400 truncate">
-              {ROLE_CONFIGS[role]?.title}
+              {ROLE_CONFIGS[role]?.title || 'Foydalanuvchi'}
             </p>
           </div>
         </button>
