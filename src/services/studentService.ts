@@ -7,17 +7,27 @@ import { userService } from './userService';
 
 const COLLECTION = 'students';
 
+export function isStudentActive(student: Partial<Student> | null | undefined): boolean {
+  if (!student) return false;
+  const s = String(student.status || '').toLowerCase();
+  return s !== 'suspended' && s !== 'dismissed' && s !== 'inactive';
+}
+
 export const studentService = {
   getStudents: async (constraints: QueryConstraint[] = []) => {
-    const fsData = await firestoreService.queryDocuments(COLLECTION, constraints) as Student[];
-    const lsData = storageService.getStudents();
-    return mergeData(fsData, lsData, 'id');
+    try {
+      const fsData = await firestoreService.queryDocuments(COLLECTION, constraints) as Student[];
+      if (fsData && fsData.length > 0) {
+        fsData.forEach(st => storageService.saveStudent(st));
+        return fsData;
+      }
+    } catch (err) {
+      console.warn("Firestore getStudents error:", err);
+    }
+    return storageService.getStudents();
   },
 
   getStudent: async (studentId: string) => {
-    // Note: Firestore stores students by auto-generated ID, but studentId is a business field. 
-    // We need to query by studentId (business field) if the ID passed is business ID.
-    // Assuming studentId param is the document ID for now.
     return await firestoreService.getDocumentById(COLLECTION, studentId) as Student | null;
   },
 
@@ -29,7 +39,9 @@ export const studentService = {
 
   getStudentsByGroup: async (groupId: string) => {
     const constraints = [where('groupId', '==', groupId)];
-    return await studentService.getStudents(constraints);
+    const allGroupStudents = await studentService.getStudents(constraints);
+    // Filter to only active students by default for group operations
+    return allGroupStudents.filter(isStudentActive);
   },
 
   getStudentsByAcademicYear: async (academicYearId: string) => {
@@ -69,7 +81,7 @@ export const studentService = {
         role: 'STUDENT',
         email: data.email || `${data.studentCode || studentLogin}@student.uz`,
         phone: data.phone || '',
-        status: 'ACTIVE',
+        status: isStudentActive(data) ? 'ACTIVE' : 'INACTIVE',
         facultyId: data.facultyId,
         studentId: studentId,
         studentCode: data.studentCode,
@@ -83,39 +95,34 @@ export const studentService = {
     if (db) {
         const newDocRef = doc(collection(db, COLLECTION));
         await setDoc(newDocRef, { ...finalStudentRecord, id: newDocRef.id });
+        storageService.saveStudent({ ...finalStudentRecord, id: newDocRef.id });
         return newDocRef.id;
     }
 
+    storageService.saveStudent(finalStudentRecord);
     return studentId;
   },
 
   updateStudent: async (studentId: string, data: Partial<Student>) => {
     const existing = storageService.getStudents().find(s => s.id === studentId);
-    if (existing) {
-      storageService.saveStudent({ ...existing, ...data });
-    }
+    const updatedStudent = { ...existing, ...data } as Student;
+    storageService.saveStudent(updatedStudent);
+
     if (db) {
       await firestoreService.updateDocument(COLLECTION, studentId, { ...data, updatedAt: Timestamp.now().toDate().toISOString() });
+    }
+
+    // Sync status to associated User account so blocked students cannot log in
+    if (data.status !== undefined) {
+      const active = isStudentActive({ status: data.status });
+      const targetUserId = updatedStudent.userId || updatedStudent.id;
+      if (targetUserId) {
+        userService.updateUser(targetUserId, { status: active ? 'ACTIVE' : 'INACTIVE' }).catch(() => {});
+      }
     }
   },
 
   softDeleteStudent: async (studentId: string) => {
-    const existing = storageService.getStudents().find(s => s.id === studentId);
-    if (existing) {
-      storageService.saveStudent({ ...existing, status: 'dismissed' });
-    }
-    if (db) {
-      await firestoreService.updateDocument(COLLECTION, studentId, { status: 'DISMISSED', updatedAt: Timestamp.now().toDate().toISOString() });
-    }
+    await studentService.updateStudent(studentId, { status: 'dismissed' });
   }
 };
-
-function mergeData<T extends { id: string }>(fsData: T[], lsData: T[], idField: keyof T): T[] {
-    const fsMap = new Map(fsData.map(item => [item[idField], item]));
-    lsData.forEach(item => {
-        if (!fsMap.has(item[idField])) {
-            fsMap.set(item[idField], item);
-        }
-    });
-    return Array.from(fsMap.values());
-}

@@ -144,6 +144,18 @@ export function StudentsModule() {
     filterGroup || filterPractice || filterPlace || filterStatus
   );
 
+  const canEditStatus = canonicalRole === 'SUPER_ADMIN' || canonicalRole === 'PRACTICE_HEAD' || canonicalRole === 'PRACTICE_STAFF' || canonicalRole === 'FACULTY_DEAN';
+
+  const handleStudentStatusChange = async (targetStudent: Student, newStatus: string) => {
+    try {
+      await studentService.updateStudent(targetStudent.id, { status: newStatus as any });
+      await refreshList();
+      showToast('info', 'Status yangilandi', `${targetStudent.fullName} statusi "${newStatus}" ga o'zgartirildi.`);
+    } catch (err: any) {
+      showToast('error', 'Xatolik', 'Statusni yangilashda xatolik: ' + (err.message || ''));
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top action header */}
@@ -281,7 +293,7 @@ export function StudentsModule() {
           >
             <option value="">Holat (Barchasi)</option>
             <option value="in_practice">Amaliyotda</option>
-            <option value="active">Boshlanmagan</option>
+            <option value="active">Faol (O'qimoqda)</option>
             <option value="completed">Yakunlagan</option>
             <option value="suspended">Chetlashtirilgan</option>
           </select>
@@ -315,6 +327,7 @@ export function StudentsModule() {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-3 w-10 text-center">№</th>
                   <th className="py-3 px-4">Talaba (F.I.Sh.)</th>
                   <th className="py-3 px-4">AIDE Login / HEMIS ID</th>
                   <th className="py-3 px-4">Fakultet & Yo'nalish</th>
@@ -325,7 +338,7 @@ export function StudentsModule() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredStudents.map(student => {
+                {filteredStudents.map((student, idx) => {
                   const faculty = faculties.find(f => f.id === student.facultyId);
                   const direction = directions.find(d => d.id === student.directionId);
                   const course = courses.find(c => c.id === student.courseId);
@@ -334,12 +347,12 @@ export function StudentsModule() {
                   const statusVariant = 
                     student.status === 'in_practice' ? 'success' :
                     student.status === 'active' ? 'info' :
-                    student.status === 'suspended' ? 'danger' : 'neutral';
+                    student.status === 'suspended' || student.status === 'dismissed' ? 'danger' : 'neutral';
 
                   const statusLabel = 
                     student.status === 'in_practice' ? 'Amaliyotda' :
-                    student.status === 'active' ? 'Boshlanmagan' :
-                    student.status === 'suspended' ? 'Chetlashtirilgan' : 'Yakunlagan';
+                    student.status === 'active' ? 'Faol (O\'qimoqda)' :
+                    student.status === 'suspended' || student.status === 'dismissed' ? 'Chetlashtirilgan' : 'Yakunlagan';
 
                   return (
                     <tr
@@ -347,6 +360,11 @@ export function StudentsModule() {
                       className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
                       onClick={() => setSelectedStudentForDetail(student)}
                     >
+                      {/* Order number */}
+                      <td className="py-3 px-3 text-center font-bold text-slate-400">
+                        {idx + 1}
+                      </td>
+
                       {/* Name & Avatar */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
@@ -404,9 +422,27 @@ export function StudentsModule() {
                         </div>
                       </td>
 
-                      {/* Status */}
-                      <td className="py-3 px-4">
-                        <StatusBadge label={statusLabel} variant={statusVariant} />
+                      {/* Editable Status */}
+                      <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
+                        {canEditStatus ? (
+                          <select
+                            value={student.status}
+                            onChange={e => handleStudentStatusChange(student, e.target.value)}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-bold border focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+                              student.status === 'in_practice' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                              student.status === 'active' ? 'bg-blue-50 text-blue-800 border-blue-300' :
+                              student.status === 'suspended' || student.status === 'dismissed' ? 'bg-rose-50 text-rose-800 border-rose-300' :
+                              'bg-slate-100 text-slate-700 border-slate-300'
+                            }`}
+                          >
+                            <option value="active">Faol (O'qimoqda)</option>
+                            <option value="in_practice">Amaliyotda</option>
+                            <option value="completed">Yakunlagan</option>
+                            <option value="suspended">Chetlashtirilgan (Nofaol)</option>
+                          </select>
+                        ) : (
+                          <StatusBadge label={statusLabel} variant={statusVariant} />
+                        )}
                       </td>
 
                       {/* Actions */}

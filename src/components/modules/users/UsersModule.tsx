@@ -91,9 +91,24 @@ export function UsersModule() {
     loadUsers();
   }, []);
 
-  const loadUsers = () => {
-    const list = storageService.getUsers();
+  const loadUsers = async () => {
+    const list = await userService.getUsers();
     setUsers(list);
+  };
+
+  const handleToggleUserStatus = async (targetUser: User) => {
+    const newStatus: 'ACTIVE' | 'INACTIVE' = targetUser.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    try {
+      await userService.updateUser(targetUser.id, { status: newStatus });
+      await loadUsers();
+      showToast(
+        newStatus === 'ACTIVE' ? 'success' : 'warning',
+        newStatus === 'ACTIVE' ? 'Foydalanuvchi faollashtirildi' : 'Foydalanuvchi bloklandi',
+        `${targetUser.fullName} hisobi ${newStatus === 'ACTIVE' ? 'faol holatga keltirildi' : 'bloklandi (nofaol qilindi)'}.`
+      );
+    } catch (err: any) {
+      showToast('error', 'Xatolik', 'Statusni o\'zgartirishda xatolik: ' + (err.message || 'Noma\'lum xatolik'));
+    }
   };
 
   // Roles assignable based on logged-in user permissions
@@ -467,70 +482,116 @@ export function UsersModule() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-4">Foydalanuvchi F.I.SH</th>
-                <th className="py-3 px-4">Login / Parol</th>
-                <th className="py-3 px-4">Tizimdagi Roli</th>
-                <th className="py-3 px-4">Aloqa (Email / Tel)</th>
-                <th className="py-3 px-4">Holati</th>
+                <th className="py-3 px-3 w-10 text-center">№</th>
+                <th className="py-3 px-4">F.I.SH</th>
+                <th className="py-3 px-4">Lavozimi (Roli)</th>
+                <th className="py-3 px-4">Tel raqami</th>
+                <th className="py-3 px-4">Login</th>
+                <th className="py-3 px-4">Parol</th>
+                <th className="py-3 px-4 text-center">Holat</th>
                 <th className="py-3 px-4 text-right">Amallar</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     Bunday parametrlar bo'yicha foydalanuvchilar topilmadi.
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map(user => {
+                filteredUsers.map((user, idx) => {
                   const cfg = ROLE_CONFIGS[user.role] || ROLE_CONFIGS['PRACTICE_HEAD'];
+                  const isUserActive = user.status === 'ACTIVE';
                   return (
                     <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
+                      {/* Order number */}
+                      <td className="py-3 px-3 text-center font-bold text-slate-400">
+                        {idx + 1}
+                      </td>
+
+                      {/* Full Name */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold shrink-0 text-xs">
                             {user.fullName.charAt(0)}
                           </div>
                           <div>
                             <p className="font-bold text-slate-900">{user.fullName}</p>
-                            <p className="text-[10px] text-slate-400">ID: {user.id}</p>
+                            <p className="text-[10px] text-slate-400">{user.email || 'Email biriktirilmagan'}</p>
                           </div>
                         </div>
                       </td>
 
-                      <td className="py-3 px-4 font-mono">
-                        <div className="font-semibold text-slate-800">{user.login || user.username}</div>
-                        <div className="text-[10px] text-slate-400">••••••••</div>
-                      </td>
-
+                      {/* Role */}
                       <td className="py-3 px-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${cfg.badgeColor}`}>
                           {cfg.title}
                         </span>
                       </td>
 
-                      <td className="py-3 px-4 text-slate-600">
-                        <p className="truncate">{user.email || '—'}</p>
-                        <p className="text-[11px] text-slate-400">{user.phone || '—'}</p>
+                      {/* Phone */}
+                      <td className="py-3 px-4 text-slate-700 font-mono text-[11px]">
+                        {user.phone || '—'}
                       </td>
 
-                      <td className="py-3 px-4">
-                        {user.status === 'ACTIVE' ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-semibold">
-                            <CheckCircle2 className="w-3 h-3" />
+                      {/* Login */}
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                        <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-xs">
+                          {user.login || user.username || '—'}
+                        </span>
+                      </td>
+
+                      {/* Password */}
+                      <td className="py-3 px-4 font-mono">
+                        <span className="px-2 py-0.5 bg-blue-50 border border-blue-200 text-blue-900 rounded font-bold text-xs">
+                          {user.password || 'password123'}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3 px-4 text-center">
+                        {isUserActive ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                             Faol
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full text-[10px] font-semibold">
-                            <XCircle className="w-3 h-3" />
-                            Nofaol
+                          <span className="inline-flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                            <XCircle className="w-3 h-3 text-rose-600" />
+                            Bloklangan
                           </span>
                         )}
                       </td>
 
+                      {/* Actions */}
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {/* Toggle active / block status icon */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleUserStatus(user)}
+                            className={`p-1.5 rounded-lg border transition-colors ${
+                              isUserActive
+                                ? 'text-rose-600 bg-rose-50 hover:bg-rose-100 border-rose-200'
+                                : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'
+                            }`}
+                            title={isUserActive ? 'Foydalanuvchini bloklash (nofaol qilish)' : 'Foydalanuvchini faollashtirish'}
+                          >
+                            <Lock className="w-4 h-4" />
+                          </button>
+
+                          {/* Edit button */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(user)}
+                            className="p-1.5 text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-slate-200"
+                            title="Tahrirlash (Parolni tahrirlash)"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+
+                          {/* View Profile */}
                           <button
                             type="button"
                             onClick={() => setUserToView(user)}
@@ -538,15 +599,6 @@ export function UsersModule() {
                             title="Profilni ko'rish"
                           >
                             <Eye className="w-4 h-4" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(user)}
-                            className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                            title="Tahrirlash"
-                          >
-                            <Edit2 className="w-4 h-4" />
                           </button>
 
                           {isSuperAdmin && (

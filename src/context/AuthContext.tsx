@@ -302,6 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // 1. Build list of candidate emails to try for Firebase Auth
     const candidateEmails: string[] = [];
+    let foundFirestoreUser: User | null = null;
 
     // If entered directly as email with @
     if (rawLogin.includes('@')) {
@@ -321,13 +322,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (!snap.empty) {
-          const docData = snap.docs[0].data() as User;
-          if (docData.email) {
-            candidateEmails.push(docData.email.toLowerCase());
+          foundFirestoreUser = snap.docs[0].data() as User;
+          if (foundFirestoreUser.email) {
+            candidateEmails.push(foundFirestoreUser.email.toLowerCase());
           }
         }
       } catch (dbErr) {
         console.warn('Firestore user lookup error during login:', dbErr);
+      }
+    }
+
+    // If user is explicitly blocked in Firestore
+    if (foundFirestoreUser) {
+      const st = String(foundFirestoreUser.status || '').toUpperCase();
+      if (st === 'INACTIVE' || st === 'SUSPENDED' || st === 'DISMISSED') {
+        setLoading(false);
+        return {
+          success: false,
+          error: 'Ushbu foydalanuvchi hisobi faolsizlantirilgan (bloklangan).'
+        };
       }
     }
 
@@ -375,6 +388,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   lastLoginAt: new Date().toISOString()
                 };
                 updateDoc(userRef, { lastLoginAt: new Date().toISOString() }).catch(() => {});
+              } else if (foundFirestoreUser) {
+                userProfile = foundFirestoreUser;
               } else {
                 const defaultRole: UserRole = isSuper ? 'SUPER_ADMIN' : 'STUDENT';
                 userProfile = {
@@ -396,7 +411,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } catch (err) {
               console.warn('Firestore load profile error after Auth sign-in:', err);
               const defaultRole: UserRole = isSuper ? 'SUPER_ADMIN' : 'STUDENT';
-              userProfile = {
+              userProfile = foundFirestoreUser || {
                 id: cred.user.uid,
                 uid: cred.user.uid,
                 login: rawLogin,
@@ -412,7 +427,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           } else {
             const defaultRole: UserRole = isSuper ? 'SUPER_ADMIN' : 'STUDENT';
-            userProfile = {
+            userProfile = foundFirestoreUser || {
               id: cred.user.uid,
               uid: cred.user.uid,
               login: rawLogin,
@@ -424,6 +439,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               status: 'ACTIVE',
               createdAt: new Date().toISOString(),
               lastLoginAt: new Date().toISOString()
+            };
+          }
+
+          // Verify user active status
+          const userSt = String(userProfile.status || '').toUpperCase();
+          if (userSt === 'INACTIVE' || userSt === 'SUSPENDED' || userSt === 'DISMISSED') {
+            await signOut(auth);
+            setLoading(false);
+            return {
+              success: false,
+              error: 'Ushbu foydalanuvchi hisobi faolsizlantirilgan (bloklangan).'
             };
           }
 
