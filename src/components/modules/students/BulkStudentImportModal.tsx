@@ -14,7 +14,7 @@ import {
 import { Student } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { studentService } from '../../../services/studentService';
-import { getNextStudentLogin } from '../../../services/loginGeneratorService';
+import { getNextStudentLogin, parseStudentCodeSequence } from '../../../services/loginGeneratorService';
 import { useToast } from '../../../context/ToastContext';
 import { Modal } from '../../common/Modal';
 
@@ -160,13 +160,16 @@ export function BulkStudentImportModal({
 
       for (const row of validRows) {
         const studentCode = getNextStudentLogin(storageService.getStudents(), storageService.getUsers());
+        const seq = parseStudentCodeSequence(studentCode);
+        const autoStudentId = seq ? String(seq).padStart(5, '0') : studentCode;
         
         await studentService.createStudent({
           userId: `uid-std-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          studentId: row.studentId,
+          studentId: row.studentId && !row.studentId.startsWith('MED-') ? row.studentId : autoStudentId,
           studentCode,
           login: studentCode,
-          hemisStudentId: row.hemisStudentId,
+          password: 'password123',
+          hemisStudentId: row.hemisStudentId || autoStudentId,
           pinfl: row.pinfl,
           fullName: row.fullName,
           facultyId: selectedFacultyId,
@@ -174,7 +177,7 @@ export function BulkStudentImportModal({
           courseId: selectedCourseId,
           groupId: targetGroup?.id || selectedGroupId,
           phone: row.phone,
-          email: row.email,
+          email: row.email || `${studentCode}@student.uz`,
           status: 'active'
         }).catch(err => console.error("Error creating student in bulk import:", err));
 

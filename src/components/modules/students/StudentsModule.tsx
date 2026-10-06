@@ -10,11 +10,15 @@ import {
   GraduationCap,
   Building2,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  CheckCircle2,
+  Copy,
+  Key
 } from 'lucide-react';
 import { Student } from '../../../types';
 import { studentService } from '../../../services/studentService';
 import { storageService } from '../../../services/storageService';
+import { parseStudentCodeSequence } from '../../../services/loginGeneratorService';
 import { useToast } from '../../../context/ToastContext';
 import { StatusBadge } from '../../common/Badge';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
@@ -22,6 +26,7 @@ import { StudentDetailModal } from './StudentDetailModal';
 import { StudentFormModal } from './StudentFormModal';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
 import { EmptyState } from '../../common/EmptyState';
+import { Modal } from '../../common/Modal';
 import { useAuth } from '../../../context/AuthContext';
 import { useEffect, useState, useMemo } from 'react';
 
@@ -61,23 +66,27 @@ export function StudentsModule() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [createdCredentialsModal, setCreatedCredentialsModal] = useState<{
+    student: Student;
+  } | null>(null);
 
   const refreshList = async () => {
     const data = await studentService.getStudents();
     setStudents(data);
   };
 
-  // Filtered Students
+  // Filtered & Sequentially Sorted Students (Appended in increasing sequence order)
   const filteredStudents = useMemo(() => {
-    return students.filter(student => {
-      // Search by name, studentId, or pinfl
+    const list = students.filter(student => {
+      // Search by name, studentId, pinfl, phone, or login
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchName = student.fullName.toLowerCase().includes(q);
         const matchId = student.studentId.toLowerCase().includes(q);
         const matchPinfl = student.pinfl.includes(q);
         const matchPhone = student.phone.includes(q);
-        if (!matchName && !matchId && !matchPinfl && !matchPhone) return false;
+        const matchLogin = (student.login || student.studentCode || '').toLowerCase().includes(q);
+        if (!matchName && !matchId && !matchPinfl && !matchPhone && !matchLogin) return false;
       }
 
       if (filterFaculty && student.facultyId !== filterFaculty) return false;
@@ -89,6 +98,13 @@ export function StudentsModule() {
       if (filterPlace && student.currentPracticePlaceId !== filterPlace) return false;
 
       return true;
+    });
+
+    return list.sort((a, b) => {
+      const seqA = parseStudentCodeSequence(a.login || a.studentCode || '') || 0;
+      const seqB = parseStudentCodeSequence(b.login || b.studentCode || '') || 0;
+      if (seqA !== seqB) return seqA - seqB;
+      return (a.createdAt || '').localeCompare(b.createdAt || '');
     });
   }, [
     students,
@@ -106,11 +122,13 @@ export function StudentsModule() {
     try {
       if (saved.id && saved.id !== 'new') {
         await studentService.updateStudent(saved.id, saved);
+        showToast('success', 'Muvaffaqiyatli saqlandi', `${saved.fullName} ma'lumotlari yangilandi.`);
       } else {
         await studentService.createStudent(saved as Omit<Student, 'id'>);
+        setCreatedCredentialsModal({ student: saved });
+        showToast('success', 'Talaba yaratildi!', `${saved.fullName} uchun tartibli login (${saved.login}) va parol biriktirildi.`);
       }
       refreshList();
-      showToast('success', 'Muvaffaqiyatli saqlandi', `${saved.fullName} ro'yxatda yangilandi.`);
     } catch (e: any) {
       showToast('error', 'Xatolik', e.message);
     }
@@ -522,6 +540,127 @@ export function StudentsModule() {
         cancelLabel="Bekor qilish"
         isDestructive
       />
+
+      {/* Created Student Credentials Modal */}
+      {createdCredentialsModal && (
+        <Modal
+          isOpen={Boolean(createdCredentialsModal)}
+          onClose={() => setCreatedCredentialsModal(null)}
+          title="Talaba Profili Muvaffaqiyatli Yaratildi!"
+          maxWidth="md"
+        >
+          <div className="space-y-4">
+            <div className="text-center space-y-1.5">
+              <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl mx-auto flex items-center justify-center shadow-inner">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+
+              <h4 className="text-base font-bold text-slate-900">
+                Tizimda Yangi Talaba Saqlandi!
+              </h4>
+              <p className="text-xs text-slate-500">
+                Quyidagi tartibli login va parol avtomatik ravishda talabaga biriktirildi:
+              </p>
+            </div>
+
+            {/* Credentials Card */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
+                <div>
+                  <span className="font-bold text-slate-900 text-sm block">
+                    {createdCredentialsModal.student.fullName}
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium font-mono">
+                    HEMIS ID: {createdCredentialsModal.student.hemisStudentId}
+                  </span>
+                </div>
+                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full border border-emerald-300">
+                  FAOL
+                </span>
+              </div>
+
+              <div className="space-y-2 text-xs">
+                {/* Login Row */}
+                <div className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold">Tizimdagi Tartibli Login:</span>
+                    <span className="font-bold text-slate-900 font-mono text-sm">
+                      {createdCredentialsModal.student.login || createdCredentialsModal.student.studentCode}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdCredentialsModal.student.login || createdCredentialsModal.student.studentCode || '');
+                      showToast('success', 'Nusxalandi', `${createdCredentialsModal.student.login} logini nusxalab olindi`);
+                    }}
+                    className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors border border-slate-200"
+                    title="Login nusxalash"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Password Row */}
+                <div className="flex items-center justify-between p-2.5 bg-blue-50/60 rounded-xl border border-blue-200 shadow-2xs">
+                  <div>
+                    <span className="text-[10px] text-blue-700 block font-bold">Tizim Paroli:</span>
+                    <span className="font-bold text-blue-950 font-mono text-sm">
+                      {createdCredentialsModal.student.password || 'password123'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdCredentialsModal.student.password || 'password123');
+                      showToast('success', 'Nusxalandi', 'Parol nusxalab olindi');
+                    }}
+                    className="p-1.5 bg-white hover:bg-blue-100 text-blue-700 rounded-lg transition-colors border border-blue-200 shadow-2xs"
+                    title="Parolni nusxalash"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Email & Student ID */}
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="p-2 bg-white rounded-lg border border-slate-200">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Student ID (Sonli):</span>
+                    <span className="font-mono font-bold text-slate-800">{createdCredentialsModal.student.studentId}</span>
+                  </div>
+                  <div className="p-2 bg-white rounded-lg border border-slate-200 truncate">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Avtomatik Email:</span>
+                    <span className="font-mono font-bold text-slate-800 truncate block">{createdCredentialsModal.student.email}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  const txt = `F.I.Sh: ${createdCredentialsModal.student.fullName}\nHEMIS ID: ${createdCredentialsModal.student.hemisStudentId}\nLogin: ${createdCredentialsModal.student.login || createdCredentialsModal.student.studentCode}\nParol: ${createdCredentialsModal.student.password || 'password123'}\nStudent ID: ${createdCredentialsModal.student.studentId}\nEmail: ${createdCredentialsModal.student.email}`;
+                  navigator.clipboard.writeText(txt);
+                  showToast('success', 'Nusxalandi', 'Talabaning barcha kirish ma\'lumotlari nusxalab olindi');
+                }}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <Copy className="w-3.5 h-3.5 text-slate-500" />
+                <span>Nusxa olish</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCreatedCredentialsModal(null)}
+                className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors"
+              >
+                Tushunarli
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

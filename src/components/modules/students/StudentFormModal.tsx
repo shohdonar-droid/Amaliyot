@@ -86,19 +86,23 @@ export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: Stu
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !studentId.trim() || !pinfl.trim() || isSubmitting) return;
+    if (!fullName.trim() || !hemisStudentId.trim() || !pinfl.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
     
+    // Derive numeric studentId sequence (e.g. T00020 -> 00020)
+    const seqNum = parseStudentCodeSequence(assignedLogin);
+    const autoStudentId = seqNum ? String(seqNum).padStart(5, '0') : assignedLogin;
+
     const payload: Student = {
       id: studentToEdit?.id || 'new',
       userId: studentToEdit?.userId || `uid-std-${Date.now()}`,
       login: assignedLogin,
-      password: password,
+      password: password || 'password123',
       studentCode: assignedLogin,
-      hemisStudentId: hemisStudentId.trim() || studentId.trim(),
+      hemisStudentId: hemisStudentId.trim(),
       fullName: fullName.trim(),
-      studentId: studentId.trim(),
+      studentId: studentToEdit?.studentId || autoStudentId,
       pinfl: pinfl.trim(),
       facultyId,
       directionId,
@@ -106,7 +110,7 @@ export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: Stu
       groupId: groupId || filteredGroups[0]?.id || 'grp-401',
       phone: phone.trim(),
       telegram: telegram.trim(),
-      email: email.trim(),
+      email: email.trim() || `${assignedLogin}@student.uz`,
       status,
       currentPracticeId: studentToEdit?.currentPracticeId,
       currentPracticePlaceId: studentToEdit?.currentPracticePlaceId
@@ -126,65 +130,6 @@ export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: Stu
       maxWidth="2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* AIDE System Auto Login, Password & Email Info */}
-        <div className="p-3.5 bg-gradient-to-br from-indigo-50/70 via-blue-50/50 to-emerald-50/40 border border-blue-200 rounded-xl space-y-2.5 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Key className="w-4 h-4 text-blue-600 shrink-0" />
-              <span className="text-xs font-bold text-slate-900">
-                Firebase Avtomatik Login, Parol va Email
-              </span>
-              <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-full border border-emerald-300">
-                Avtomatik
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => regenerateCredentials(fullName)}
-              className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
-              title="Yangi parol va logindan qayta generatsiya qilish"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Qayta yaratish</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div className="p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
-              <span className="text-[10px] text-slate-400 block font-semibold">Tizim Logini:</span>
-              <input
-                type="text"
-                value={assignedLogin}
-                onChange={e => setAssignedLogin(e.target.value)}
-                placeholder="Login"
-                className="mt-1 w-full font-mono text-xs font-black text-slate-900 border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:bg-white"
-              />
-            </div>
-
-            <div className="p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
-              <span className="text-[10px] text-slate-400 block font-semibold">Tizim Paroli:</span>
-              <input
-                type="text"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Parol"
-                className="mt-1 w-full font-mono text-xs font-black text-blue-700 border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:bg-white"
-              />
-            </div>
-
-            <div className="p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
-              <span className="text-[10px] text-slate-400 block font-semibold">Avtomatik Email:</span>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="email@tma.uz"
-                className="mt-1 w-full text-xs font-semibold text-slate-800 border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:bg-white truncate"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Full Name */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
@@ -200,37 +145,21 @@ export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: Stu
           />
         </div>
 
-        {/* HEMIS ID & Student ID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-              <Hash className="w-3.5 h-3.5 text-blue-600" />
-              HEMIS Talaba ID *
-            </label>
-            <input
-              type="text"
-              required
-              value={hemisStudentId}
-              onChange={e => setHemisStudentId(e.target.value)}
-              placeholder="12345678"
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-mono"
-            />
-            <span className="text-[10px] text-slate-400">HEMIS bazasidagi o'zgarmas rasmiy ID</span>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Universitet Guvohnoma / ID raqami *
-            </label>
-            <input
-              type="text"
-              required
-              value={studentId}
-              onChange={e => setStudentId(e.target.value)}
-              placeholder="MED-2022-1084"
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-mono"
-            />
-          </div>
+        {/* HEMIS ID */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+            <Hash className="w-3.5 h-3.5 text-blue-600" />
+            HEMIS Talaba ID *
+          </label>
+          <input
+            type="text"
+            required
+            value={hemisStudentId}
+            onChange={e => setHemisStudentId(e.target.value)}
+            placeholder="12345678"
+            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-mono"
+          />
+          <span className="text-[10px] text-slate-400">HEMIS bazasidagi o'zgarmas rasmiy ID</span>
         </div>
 
         {/* JSHSHIR & Status */}
