@@ -32,7 +32,7 @@ import { useEffect, useState, useMemo } from 'react';
 
 export function StudentsModule() {
   const { showToast } = useToast();
-  const { canonicalRole, currentUser } = useAuth();
+  const { canonicalRole, currentUser, role, isSuperAdmin } = useAuth();
   const isSupervisor = canonicalRole === 'PRACTICE_SUPERVISOR';
   const supervisorId = currentUser?.supervisorId || (isSupervisor ? 'sup-1' : undefined);
 
@@ -150,10 +150,10 @@ export function StudentsModule() {
     // Immediately remove from UI list
     setStudents(prev => prev.filter(s => s.id !== targetId));
     setStudentToDelete(null);
-    showToast('info', 'O\'chirildi', `${targetName} talabasi tizimdan va ro'yxatdan o'chirildi.`);
+    showToast('success', 'Tizimdan o\'chirildi', `${targetName} talabasi tizimdan muvaffaqiyatli o'chirildi.`);
 
     try {
-      await studentService.softDeleteStudent(targetId);
+      await studentService.deleteStudent(targetId);
     } catch (e: any) {
       showToast('error', 'Xatolik', 'Bazadan o\'chirishda xatolik: ' + (e.message || ''));
       refreshList();

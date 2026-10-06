@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 
 export type ActiveModule = 
   | 'dashboard'
@@ -47,6 +48,7 @@ interface SidebarProps {
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   unreadNotificationsCount?: number;
+  onOpenProfile?: () => void;
 }
 
 interface NavItem {
@@ -62,9 +64,11 @@ export function Sidebar({
   onSelectModule,
   isOpenMobile,
   onCloseMobile,
-  unreadNotificationsCount = 0
+  unreadNotificationsCount = 0,
+  onOpenProfile
 }: SidebarProps) {
   const { role, canonicalRole, roleConfig, currentUser, logout, isSuperAdmin } = useAuth();
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   const allNavItems: NavItem[] = [
     {
@@ -101,6 +105,12 @@ export function Sidebar({
       label: 'Amaliyot joylari',
       icon: Building2,
       allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible']
+    },
+    {
+      id: 'supervisors',
+      label: 'Rahbarlar va mas\'ullar',
+      icon: UserCheck,
+      allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'super_admin', 'dept_head', 'dept_staff', 'dean']
     },
     {
       id: 'allocation',
@@ -258,27 +268,50 @@ export function Sidebar({
         {/* User Card in Footer */}
         <div className="p-3 border-t border-slate-800 bg-slate-950/60">
           <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-900/80 border border-slate-800">
-            <div className="w-8 h-8 rounded-full bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-xs font-bold text-blue-300 shrink-0">
-              {currentUser?.fullName.charAt(0) || 'U'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-white truncate leading-tight">
-                {currentUser?.fullName || 'Foydalanuvchi'}
-              </p>
-              <p className="text-[11px] text-slate-400 truncate">
-                {currentUser?.email || 'user@tma.uz'}
-              </p>
-            </div>
             <button
-              onClick={logout}
+              type="button"
+              onClick={onOpenProfile}
+              title="Mening profilimni ko'rish"
+              className="flex items-center gap-2.5 min-w-0 flex-1 text-left hover:opacity-85 transition-opacity cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-full bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-xs font-bold text-blue-300 shrink-0">
+                {currentUser?.fullName.charAt(0) || 'U'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-white truncate leading-tight">
+                  {currentUser?.fullName || 'Foydalanuvchi'}
+                </p>
+                <p className="text-[11px] text-blue-400 font-medium truncate">
+                  Profilni ko'rish &rarr;
+                </p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsLogoutConfirmOpen(true)}
               title="Tizimdan chiqish"
-              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-md transition-colors"
+              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
       </aside>
+
+      {/* Logout Confirmation */}
+      <ConfirmDialog
+        isOpen={isLogoutConfirmOpen}
+        onClose={() => setIsLogoutConfirmOpen(false)}
+        onConfirm={async () => {
+          setIsLogoutConfirmOpen(false);
+          await logout();
+        }}
+        title="Tizimdan chiqish"
+        message="Haqiqatan ham o'z hisobingizdan chiqmoqchimisiz? Tizimdan chiqish uchun qaytadan login va parol kiritishingiz kerak bo'ladi."
+        confirmText="Ha, chiqish"
+        cancelText="Bekor qilish"
+        variant="danger"
+      />
     </>
   );
 }

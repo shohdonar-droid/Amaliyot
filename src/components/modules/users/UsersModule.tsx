@@ -43,7 +43,7 @@ import { Modal } from '../../common/Modal';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
 
 export function UsersModule() {
-  const { currentUser, role: activeUserRole, isSuperAdmin, switchRole } = useAuth();
+  const { currentUser, role: activeUserRole, canonicalRole, isSuperAdmin, switchRole } = useAuth();
   const { showToast } = useToast();
 
   const [users, setUsers] = useState<User[]>([]);
@@ -326,7 +326,7 @@ export function UsersModule() {
     // Immediately remove from UI list
     setUsers(prev => prev.filter(u => u.id !== targetId));
     setUserToDelete(null);
-    showToast('info', 'O\'chirildi', `${targetName} foydalanuvchisi tizimdan va ro'yxatdan o'chirildi.`);
+    showToast('success', 'Tizimdan o\'chirildi', `${targetName} foydalanuvchisi tizimdan muvaffaqiyatli o'chirildi.`);
 
     userService.deleteUser(targetId).catch(err => {
       showToast('error', 'Xatolik', 'Bazadan o\'chirishda xatolik: ' + (err.message || ''));

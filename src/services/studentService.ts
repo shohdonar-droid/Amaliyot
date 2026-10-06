@@ -4,6 +4,7 @@ import { collection, Timestamp, doc, runTransaction, query, where, getDocs, Quer
 import { db } from './firebase';
 import { storageService } from './storageService';
 import { userService } from './userService';
+import { recordUsedStudentSequence } from './loginGeneratorService';
 
 const COLLECTION = 'students';
 
@@ -124,5 +125,25 @@ export const studentService = {
 
   softDeleteStudent: async (studentId: string) => {
     await studentService.updateStudent(studentId, { status: 'dismissed' });
+  },
+
+  deleteStudent: async (studentId: string) => {
+    const existing = storageService.getStudents().find(s => s.id === studentId);
+    if (existing) {
+      const codeOrLogin = existing.studentCode || existing.login || '';
+      const match = codeOrLogin.match(/^T(\d{5})$/i);
+      if (match && match[1]) {
+        const seq = parseInt(match[1], 10);
+        await recordUsedStudentSequence(seq, db).catch(() => {});
+      }
+      if (existing.userId) {
+        await userService.deleteUser(existing.userId).catch(() => {});
+      }
+    }
+
+    if (db) {
+      await firestoreService.deleteDocument(COLLECTION, studentId).catch(console.warn);
+    }
+    storageService.deleteStudent(studentId);
   }
 };

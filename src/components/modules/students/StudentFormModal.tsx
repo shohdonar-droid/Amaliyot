@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Student, StudentStatus } from '../../../types';
 import { storageService } from '../../../services/storageService';
-import { generateAutoUserCredentials } from '../../../services/loginGeneratorService';
+import { generateAutoUserCredentials, parseStudentCodeSequence } from '../../../services/loginGeneratorService';
 import { db } from '../../../services/firebase';
 import { Modal } from '../../common/Modal';
 import { ShieldCheck, Hash, Copy, RefreshCw, Key } from 'lucide-react';
