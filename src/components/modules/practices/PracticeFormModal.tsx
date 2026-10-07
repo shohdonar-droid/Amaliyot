@@ -28,8 +28,9 @@ export function PracticeFormModal({
   const directions = storageService.getDirections();
   const groups = storageService.getGroups();
   const places = storageService.getPracticePlaces();
-  const supervisors = storageService.getSupervisors();
-  const clinicResponsibles = storageService.getClinicResponsibles();
+  
+  const [supervisors, setSupervisors] = useState(() => storageService.getSupervisors());
+  const [clinicResponsibles, setClinicResponsibles] = useState(() => storageService.getClinicResponsibles());
 
   const [name, setName] = useState('');
   const [type, setType] = useState<PracticeType>("Klinik ishlab chiqarish amaliyoti");
@@ -52,6 +53,10 @@ export function PracticeFormModal({
   const [status, setStatus] = useState<PracticeStatus>('draft');
 
   useEffect(() => {
+    if (isOpen) {
+      setSupervisors(storageService.getSupervisors());
+      setClinicResponsibles(storageService.getClinicResponsibles());
+    }
     if (practiceToEdit) {
       setName(practiceToEdit.name);
       setType(practiceToEdit.type);

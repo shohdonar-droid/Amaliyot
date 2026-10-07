@@ -26,30 +26,52 @@ export const supervisorService = {
   },
 
   createSupervisor: async (data: Omit<Supervisor, 'id'>) => {
-    if (!db) throw new Error('Firestore is not initialized');
-    const firestoreDb = db;
-    return await runTransaction(firestoreDb, async (transaction) => {
-      const q = query(collection(firestoreDb, COLLECTION), where('userId', '==', data.userId));
-      if (!(await getDocs(q)).empty) throw new Error('Bu foydalanuvchi uchun supervisor allaqachon mavjud.');
+    let createdId = `sup-${Date.now()}`;
+    if (db) {
+      try {
+        const firestoreDb = db;
+        createdId = await runTransaction(firestoreDb, async (transaction) => {
+          const q = query(collection(firestoreDb, COLLECTION), where('userId', '==', data.userId));
+          if (!(await getDocs(q)).empty) throw new Error('Bu foydalanuvchi uchun supervisor allaqachon mavjud.');
 
-      const colRef = collection(firestoreDb, COLLECTION);
-      const newDocRef = doc(colRef);
-      transaction.set(newDocRef, {
-        ...data,
-        createdAt: Timestamp.now().toDate().toISOString(),
-        updatedAt: Timestamp.now().toDate().toISOString(),
-        status: 'ACTIVE'
-      });
-      return newDocRef.id;
-    });
+          const colRef = collection(firestoreDb, COLLECTION);
+          const newDocRef = doc(colRef);
+          transaction.set(newDocRef, {
+            ...data,
+            createdAt: Timestamp.now().toDate().toISOString(),
+            updatedAt: Timestamp.now().toDate().toISOString(),
+            status: 'ACTIVE'
+          });
+          return newDocRef.id;
+        });
+      } catch (err) {
+        console.warn("Firestore createSupervisor warning/fallback:", err);
+      }
+    }
+    const supObj: Supervisor = {
+      ...data,
+      id: createdId,
+      status: 'ACTIVE'
+    };
+    storageService.saveSupervisor(supObj);
+    return createdId;
   },
 
   updateSupervisor: async (id: string, data: Partial<Supervisor>) => {
-    await firestoreService.updateDocument(COLLECTION, id, { ...data, updatedAt: Timestamp.now().toDate().toISOString() });
+    if (db) {
+      await firestoreService.updateDocument(COLLECTION, id, { ...data, updatedAt: Timestamp.now().toDate().toISOString() });
+    }
+    const existing = storageService.getSupervisors().find(s => s.id === id);
+    if (existing) {
+      storageService.saveSupervisor({ ...existing, ...data });
+    }
   },
 
   softDeleteSupervisor: async (id: string) => {
-    await firestoreService.updateDocument(COLLECTION, id, { status: 'INACTIVE', updatedAt: Timestamp.now().toDate().toISOString() });
+    if (db) {
+      await firestoreService.updateDocument(COLLECTION, id, { status: 'INACTIVE', updatedAt: Timestamp.now().toDate().toISOString() });
+    }
+    storageService.deleteSupervisor(id);
   }
 };
 

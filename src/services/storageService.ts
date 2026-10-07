@@ -2382,8 +2382,17 @@ class StorageServiceV2 {
       state.users.unshift(user);
     }
 
-    // Automatically sync Supervisor entry if role is PRACTICE_SUPERVISOR
-    if (user.role === 'PRACTICE_SUPERVISOR' || user.role === 'supervisor') {
+    // Automatically sync Supervisor entry if user role is any supervisor variation
+    const rUpper = (user.role || '').toUpperCase();
+    const isSupervisorUser = (
+      rUpper === 'PRACTICE_SUPERVISOR' ||
+      rUpper === 'SUPERVISOR' ||
+      rUpper === 'SUPERVISOR_UNIVERSITY' ||
+      rUpper === 'PRACTICE_LEADER_UNI' ||
+      rUpper === 'DEPT_STAFF' ||
+      rUpper === 'FACULTY_DEAN'
+    );
+    if (isSupervisorUser) {
       if (!state.supervisors) state.supervisors = [];
       const supIdx = state.supervisors.findIndex(s => s.id === `sup-${user.id}` || s.userId === user.uid || s.userId === user.id);
       const supervisorObj: Supervisor = {
@@ -2391,7 +2400,7 @@ class StorageServiceV2 {
         userId: user.uid || user.id,
         fullName: user.fullName,
         phone: user.phone || '+998 (90) 000-00-00',
-        email: user.email || `${user.login}@tma.uz`,
+        email: user.email || `${user.login || 'user'}@tma.uz`,
         type: 'university',
         department: 'Kafedra',
         academicDegree: 'Dotsent / O\'qituvchi',
@@ -2944,12 +2953,33 @@ class StorageServiceV2 {
 
   public saveSupervisor(supervisor: Supervisor): void {
     const state = this.getState();
+    if (!state.supervisors) state.supervisors = [];
     const idx = state.supervisors.findIndex(s => s.id === supervisor.id);
     if (idx >= 0) {
       state.supervisors[idx] = supervisor;
     } else {
       state.supervisors.unshift(supervisor);
     }
+
+    // Also ensure matching user account exists in state.users for login and user management
+    if (!state.users) state.users = [];
+    const userExists = state.users.some(u => u.id === supervisor.userId || u.uid === supervisor.userId || u.id === supervisor.id);
+    if (!userExists) {
+      const loginStr = supervisor.email ? supervisor.email.split('@')[0] : `rahbar_${Date.now()}`;
+      state.users.unshift({
+        id: supervisor.userId || `user-${supervisor.id}`,
+        uid: supervisor.userId || `uid-${supervisor.id}`,
+        fullName: supervisor.fullName,
+        login: loginStr,
+        password: 'password123',
+        role: 'PRACTICE_SUPERVISOR',
+        email: supervisor.email || `${loginStr}@tma.uz`,
+        phone: supervisor.phone || '+998 (90) 000-00-00',
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString()
+      });
+    }
+
     this.saveState(state);
   }
 
