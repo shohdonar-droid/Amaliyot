@@ -2381,6 +2381,52 @@ class StorageServiceV2 {
     } else {
       state.users.unshift(user);
     }
+
+    // Automatically sync Supervisor entry if role is PRACTICE_SUPERVISOR
+    if (user.role === 'PRACTICE_SUPERVISOR' || user.role === 'supervisor') {
+      if (!state.supervisors) state.supervisors = [];
+      const supIdx = state.supervisors.findIndex(s => s.id === `sup-${user.id}` || s.userId === user.uid || s.userId === user.id);
+      const supervisorObj: Supervisor = {
+        id: supIdx >= 0 ? state.supervisors[supIdx].id : `sup-${user.id || user.uid}`,
+        userId: user.uid || user.id,
+        fullName: user.fullName,
+        phone: user.phone || '+998 (90) 000-00-00',
+        email: user.email || `${user.login}@tma.uz`,
+        type: 'university',
+        department: 'Kafedra',
+        academicDegree: 'Dotsent / O\'qituvchi',
+        assignedStudentsCount: supIdx >= 0 ? state.supervisors[supIdx].assignedStudentsCount : 0,
+        status: 'ACTIVE'
+      };
+      if (supIdx >= 0) {
+        state.supervisors[supIdx] = supervisorObj;
+      } else {
+        state.supervisors.unshift(supervisorObj);
+      }
+    }
+
+    // Automatically sync ClinicResponsible entry if role is CLINIC_RESPONSIBLE
+    if (user.role === 'CLINIC_RESPONSIBLE' || user.role === 'clinic_responsible') {
+      if (!state.clinicResponsibles) state.clinicResponsibles = [];
+      const crIdx = state.clinicResponsibles.findIndex(c => c.id === `cr-${user.id}` || c.userId === user.uid || c.userId === user.id);
+      const crObj: ClinicResponsible = {
+        id: crIdx >= 0 ? state.clinicResponsibles[crIdx].id : `cr-${user.id || user.uid}`,
+        userId: user.uid || user.id,
+        fullName: user.fullName,
+        phone: user.phone || '+998 (90) 000-00-00',
+        email: user.email || `${user.login}@tma.uz`,
+        practicePlaceId: user.practicePlaceId || state.practicePlaces?.[0]?.id || 'place-1',
+        position: crIdx >= 0 ? state.clinicResponsibles[crIdx].position : 'Shifoxona mas\'uli',
+        department: 'Shifoxona bo\'limi',
+        status: 'ACTIVE'
+      };
+      if (crIdx >= 0) {
+        state.clinicResponsibles[crIdx] = crObj;
+      } else {
+        state.clinicResponsibles.unshift(crObj);
+      }
+    }
+
     this.saveState(state);
   }
 
@@ -2863,7 +2909,37 @@ class StorageServiceV2 {
 
   // --- SUPERVISORS & CLINIC RESPONSIBLES ---
   public getSupervisors(): Supervisor[] {
-    return this.getState().supervisors;
+    const state = this.getState();
+    const supervisors = [...(state.supervisors || [])];
+    const supervisorUsers = (state.users || []).filter(u => {
+      const r = (u.role || '').toUpperCase();
+      return (
+        r === 'PRACTICE_SUPERVISOR' ||
+        r === 'SUPERVISOR' ||
+        r === 'PRACTICE_LEADER_UNI' ||
+        r === 'SUPERVISOR_UNIVERSITY' ||
+        r === 'DEPT_STAFF'
+      );
+    });
+
+    for (const u of supervisorUsers) {
+      const exists = supervisors.some(s => s.id === `sup-${u.id}` || s.userId === u.uid || s.userId === u.id);
+      if (!exists) {
+        supervisors.unshift({
+          id: `sup-${u.id || u.uid}`,
+          userId: u.uid || u.id,
+          fullName: u.fullName,
+          phone: u.phone || '+998 (90) 000-00-00',
+          email: u.email || `${u.login}@tma.uz`,
+          type: 'university',
+          department: 'Kafedra',
+          academicDegree: 'Dotsent / O\'qituvchi',
+          assignedStudentsCount: 0,
+          status: 'ACTIVE'
+        });
+      }
+    }
+    return supervisors;
   }
 
   public saveSupervisor(supervisor: Supervisor): void {
@@ -7284,7 +7360,7 @@ class StorageServiceV2 {
         number: v.vedomostNumber,
         title: v.title,
         academicYear: v.academicYear,
-        faculty: v.facultyName || 'Toshkent Tibbiyot Akademiyasi',
+        faculty: v.facultyName || this.getUniversityName(),
         practice: v.practiceName || 'Klinik amaliyot',
         commission: v.commissionName || 'Attestatsiya komissiyasi',
         chairperson: v.commissionChairperson || 'Komissiya raisi',

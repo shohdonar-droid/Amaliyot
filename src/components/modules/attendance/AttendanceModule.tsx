@@ -794,6 +794,7 @@ export function AttendanceModule() {
       {activeTab === 'supervisor_portal' && (
         <SupervisorAttendanceView
           supervisorId={currentSupervisorId}
+          onStartQr={() => setIsQrGeneratorOpen(true)}
           onOpenManualModal={(stId, prId) => {
             setEditingStudentId(stId);
             setSelectedPracticeId(prId);

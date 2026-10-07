@@ -10,7 +10,8 @@ import {
   Eye,
   Check,
   Building2,
-  Calendar
+  Calendar,
+  QrCode
 } from 'lucide-react';
 import { Supervisor, Student, Practice, PracticeAssignment, Attendance, PracticePlace, Group } from '../../../types';
 import { storageService } from '../../../services/storageService';
@@ -19,12 +20,14 @@ import { useAuth } from '../../../context/AuthContext';
 
 interface SupervisorAttendanceViewProps {
   supervisorId: string;
+  onStartQr?: () => void;
   onOpenManualModal?: (studentId: string, practiceId: string) => void;
   onRefresh?: () => void;
 }
 
 export function SupervisorAttendanceView({
   supervisorId,
+  onStartQr,
   onOpenManualModal,
   onRefresh
 }: SupervisorAttendanceViewProps) {
@@ -126,15 +129,27 @@ export function SupervisorAttendanceView({
             </p>
           </div>
 
-          <div className="relative w-72">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Talaba F.I.Sh. yoki guruh..."
-              className="w-full pl-9 pr-3 py-1.5 text-xs border rounded-lg bg-slate-50 focus:bg-white"
-            />
+          <div className="flex items-center gap-3">
+            {onStartQr && (
+              <button
+                type="button"
+                onClick={onStartQr}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer"
+              >
+                <QrCode className="w-4 h-4 text-white" />
+                <span>QR Kod Yaratish</span>
+              </button>
+            )}
+            <div className="relative w-64">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Talaba F.I.Sh. yoki guruh..."
+                className="w-full pl-9 pr-3 py-1.5 text-xs border rounded-lg bg-slate-50 focus:bg-white"
+              />
+            </div>
           </div>
         </div>
       </div>

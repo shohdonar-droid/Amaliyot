@@ -197,6 +197,7 @@ export interface ClinicResponsible {
   department: string;
   phone: string;
   email: string;
+  status?: 'ACTIVE' | 'INACTIVE';
   createdAt?: string;
 }
 
