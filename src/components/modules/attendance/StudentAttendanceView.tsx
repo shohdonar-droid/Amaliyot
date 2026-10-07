@@ -126,7 +126,7 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
             <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md group-hover:rotate-6 transition-transform">
               <QrCode className="w-5 h-5" />
             </div>
-            <span>[ QR SKANERLASH ]</span>
+            <span>Davomatdan o'tish</span>
           </button>
         </div>
 

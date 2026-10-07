@@ -76,6 +76,9 @@ export function PracticeWizardModal({
   const allStudents = storageService.getStudents();
   const allPlaces = storageService.getPracticePlaces();
 
+  // Wizard current step: 1..5
+  const [currentStep, setCurrentStep] = useState<number>(1);
+
   const [allSupervisors, setAllSupervisors] = useState(() => storageService.getSupervisors());
   const [allClinicResponsibles, setAllClinicResponsibles] = useState(() => storageService.getClinicResponsibles());
 
@@ -84,10 +87,7 @@ export function PracticeWizardModal({
       setAllSupervisors(storageService.getSupervisors());
       setAllClinicResponsibles(storageService.getClinicResponsibles());
     }
-  }, [isOpen]);
-
-  // Wizard current step: 1..5
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  }, [isOpen, currentStep]);
 
   // STEP 1: Basic Information
   const [name, setName] = useState('');

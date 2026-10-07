@@ -44,6 +44,7 @@ import {
   StudentTimelineStep
 } from '../types';
 import { getFirebaseConfigStatus, db } from './firebase';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { recordUsedStudentSequence } from './loginGeneratorService';
 
 const STORAGE_KEY_V2 = 'tma_amaliyot_cloud_db_v2';
@@ -2153,55 +2154,104 @@ const DEFAULT_AUDIT_LOGS_V2: AuditLog[] = [
 ];
 
 class StorageServiceV2 {
+  private memoryState: DatabaseStateV2 | null = null;
+  private saveDebounceTimer: any = null;
+  private isSyncingFromCloud: boolean = false;
+
+  constructor() {
+    this.initCloudSync();
+  }
+
+  private initCloudSync(): void {
+    if (typeof window === 'undefined' || !db) return;
+    try {
+      const docRef = doc(db, 'appState', 'v2');
+      onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const cloudData = docSnap.data();
+          if (cloudData && Array.isArray(cloudData.users)) {
+            this.isSyncingFromCloud = true;
+            this.memoryState = this.normalizeState(cloudData);
+            try {
+              localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(this.memoryState));
+            } catch (e) {
+              console.warn('Failed to save cloud state to localStorage:', e);
+            }
+            this.isSyncingFromCloud = false;
+            window.dispatchEvent(new CustomEvent('tma_state_changed', { detail: this.memoryState }));
+          }
+        } else {
+          // If document does not exist in Firestore, write current local state
+          const initialState = this.getState();
+          setDoc(docRef, JSON.parse(JSON.stringify(initialState))).catch(err => {
+            console.warn('Failed to initialize cloud database state:', err);
+          });
+        }
+      }, (err) => {
+        console.warn('Firestore onSnapshot error:', err);
+      });
+    } catch (err) {
+      console.warn('Could not initialize cloud database sync:', err);
+    }
+  }
+
+  private normalizeState(parsed: any): DatabaseStateV2 {
+    parsed.users = parsed.users || [];
+    parsed.academicYears = parsed.academicYears || [];
+    parsed.faculties = parsed.faculties && parsed.faculties.length > 0 ? parsed.faculties : DEFAULT_FACULTIES;
+    parsed.directions = parsed.directions && parsed.directions.length > 0 ? parsed.directions : DEFAULT_DIRECTIONS;
+    parsed.courses = parsed.courses && parsed.courses.length > 0 ? parsed.courses : DEFAULT_COURSES;
+    parsed.groups = parsed.groups && parsed.groups.length > 0 ? parsed.groups : DEFAULT_GROUPS;
+    parsed.students = parsed.students || [];
+    parsed.practicePlaces = parsed.practicePlaces && parsed.practicePlaces.length > 0 ? parsed.practicePlaces : DEFAULT_PRACTICE_PLACES;
+    parsed.practiceDepartments = parsed.practiceDepartments || [];
+    parsed.supervisors = parsed.supervisors && parsed.supervisors.length > 0 ? parsed.supervisors : DEFAULT_SUPERVISORS;
+    parsed.clinicResponsibles = parsed.clinicResponsibles && parsed.clinicResponsibles.length > 0 ? parsed.clinicResponsibles : DEFAULT_CLINIC_RESPONSIBLES;
+    parsed.practices = parsed.practices && parsed.practices.length > 0 ? parsed.practices : DEFAULT_PRACTICES_V2;
+    parsed.practiceDistributions = parsed.practiceDistributions || [];
+    parsed.practiceAssignments = parsed.practiceAssignments || [];
+    parsed.attendance = parsed.attendance || [];
+    parsed.attendanceSessions = parsed.attendanceSessions || [];
+    parsed.dailyJournals = parsed.dailyJournals || [];
+    parsed.skills = parsed.skills || [];
+    parsed.studentSkills = parsed.studentSkills || [];
+    parsed.skillLogs = parsed.skillLogs || [];
+    parsed.skillCategories = parsed.skillCategories || [];
+    parsed.tasks = parsed.tasks || [];
+    parsed.assessments = parsed.assessments || [];
+    parsed.finalExams = parsed.finalExams || [];
+    parsed.attestationCommissions = parsed.attestationCommissions || [];
+    parsed.assessmentSettings = parsed.assessmentSettings || {
+      id: 'default',
+      attendanceMaxScore: 0,
+      journalMaxScore: 0,
+      skillsMaxScore: 0,
+      finalExamMaxScore: 0,
+      grade5Min: 0,
+      grade4Min: 0,
+      grade3Min: 0,
+      grade2Min: 0,
+      examCriteriaWeights: { theoryMax: 0, practicalMax: 0, clinicalCaseMax: 0, professionalismMax: 0, safetyMax: 0 }
+    };
+    parsed.vedomosts = parsed.vedomosts || [];
+    parsed.documents = parsed.documents || [];
+    parsed.notifications = parsed.notifications || [];
+    parsed.auditLogs = parsed.auditLogs || [];
+    return parsed as DatabaseStateV2;
+  }
+
   private initDatabase(): DatabaseStateV2 {
-    const raw = localStorage.getItem(STORAGE_KEY_V2);
+    if (this.memoryState) {
+      return this.memoryState;
+    }
+
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_V2) : null;
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.users)) {
-          // Keep users and students dynamic, while ensuring academic catalogs are populated
-          parsed.users = parsed.users || [];
-          parsed.academicYears = parsed.academicYears || [];
-          parsed.faculties = parsed.faculties && parsed.faculties.length > 0 ? parsed.faculties : DEFAULT_FACULTIES;
-          parsed.directions = parsed.directions && parsed.directions.length > 0 ? parsed.directions : DEFAULT_DIRECTIONS;
-          parsed.courses = parsed.courses && parsed.courses.length > 0 ? parsed.courses : DEFAULT_COURSES;
-          parsed.groups = parsed.groups && parsed.groups.length > 0 ? parsed.groups : DEFAULT_GROUPS;
-          parsed.students = parsed.students || [];
-          parsed.practicePlaces = parsed.practicePlaces && parsed.practicePlaces.length > 0 ? parsed.practicePlaces : DEFAULT_PRACTICE_PLACES;
-          parsed.practiceDepartments = parsed.practiceDepartments || [];
-          parsed.supervisors = parsed.supervisors && parsed.supervisors.length > 0 ? parsed.supervisors : DEFAULT_SUPERVISORS;
-          parsed.clinicResponsibles = parsed.clinicResponsibles && parsed.clinicResponsibles.length > 0 ? parsed.clinicResponsibles : DEFAULT_CLINIC_RESPONSIBLES;
-          parsed.practices = parsed.practices && parsed.practices.length > 0 ? parsed.practices : DEFAULT_PRACTICES_V2;
-          parsed.practiceDistributions = parsed.practiceDistributions || [];
-          parsed.practiceAssignments = parsed.practiceAssignments || [];
-          parsed.attendance = parsed.attendance || [];
-          parsed.attendanceSessions = parsed.attendanceSessions || [];
-          parsed.dailyJournals = parsed.dailyJournals || [];
-          parsed.skills = parsed.skills || [];
-          parsed.studentSkills = parsed.studentSkills || [];
-          parsed.skillLogs = parsed.skillLogs || [];
-          parsed.skillCategories = parsed.skillCategories || [];
-          parsed.tasks = parsed.tasks || [];
-          parsed.assessments = parsed.assessments || [];
-          parsed.finalExams = parsed.finalExams || [];
-          parsed.attestationCommissions = parsed.attestationCommissions || [];
-          parsed.assessmentSettings = parsed.assessmentSettings || {
-              id: 'default',
-              attendanceMaxScore: 0,
-              journalMaxScore: 0,
-              skillsMaxScore: 0,
-              finalExamMaxScore: 0,
-              grade5Min: 0,
-              grade4Min: 0,
-              grade3Min: 0,
-              grade2Min: 0,
-              examCriteriaWeights: { theoryMax: 0, practicalMax: 0, clinicalCaseMax: 0, professionalismMax: 0, safetyMax: 0 }
-          };
-          parsed.vedomosts = parsed.vedomosts || [];
-          parsed.documents = parsed.documents || [];
-          parsed.notifications = parsed.notifications || [];
-          parsed.auditLogs = parsed.auditLogs || [];
-          return parsed;
+          this.memoryState = this.normalizeState(parsed);
+          return this.memoryState;
         }
       } catch (err) {
         console.error('Error parsing stored database v2, resetting defaults', err);
@@ -2209,7 +2259,7 @@ class StorageServiceV2 {
     }
 
     const defaultState: DatabaseStateV2 = {
-      mode: 'DEVELOPMENT',
+      mode: 'PRODUCTION',
       users: [],
       academicYears: [],
       faculties: DEFAULT_FACULTIES,
@@ -2236,16 +2286,16 @@ class StorageServiceV2 {
       finalExams: [],
       attestationCommissions: [],
       assessmentSettings: {
-          id: 'default',
-          attendanceMaxScore: 0,
-          journalMaxScore: 0,
-          skillsMaxScore: 0,
-          finalExamMaxScore: 0,
-          grade5Min: 0,
-          grade4Min: 0,
-          grade3Min: 0,
-          grade2Min: 0,
-          examCriteriaWeights: { theoryMax: 0, practicalMax: 0, clinicalCaseMax: 0, professionalismMax: 0, safetyMax: 0 }
+        id: 'default',
+        attendanceMaxScore: 0,
+        journalMaxScore: 0,
+        skillsMaxScore: 0,
+        finalExamMaxScore: 0,
+        grade5Min: 0,
+        grade4Min: 0,
+        grade3Min: 0,
+        grade2Min: 0,
+        examCriteriaWeights: { theoryMax: 0, practicalMax: 0, clinicalCaseMax: 0, professionalismMax: 0, safetyMax: 0 }
       },
       vedomosts: [],
       documents: [],
@@ -2253,7 +2303,10 @@ class StorageServiceV2 {
       auditLogs: []
     };
 
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(defaultState));
+    this.memoryState = defaultState;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(defaultState));
+    }
     return defaultState;
   }
 
@@ -2262,10 +2315,31 @@ class StorageServiceV2 {
   }
 
   private saveState(state: DatabaseStateV2): void {
+    this.memoryState = state;
     try {
-      localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(state));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(state));
+        window.dispatchEvent(new CustomEvent('tma_state_changed', { detail: state }));
+      }
     } catch (err) {
       console.warn('Failed to save state to localStorage:', err);
+    }
+
+    if (!this.isSyncingFromCloud && db) {
+      if (this.saveDebounceTimer) {
+        clearTimeout(this.saveDebounceTimer);
+      }
+      this.saveDebounceTimer = setTimeout(() => {
+        try {
+          const docRef = doc(db, 'appState', 'v2');
+          const cleanState = JSON.parse(JSON.stringify(state));
+          setDoc(docRef, cleanState).catch(err => {
+            console.warn('Error persisting state to Firestore:', err);
+          });
+        } catch (e) {
+          console.warn('Error preparing state for Firestore:', e);
+        }
+      }, 150);
     }
   }
 
@@ -2923,26 +2997,32 @@ class StorageServiceV2 {
     const supervisorUsers = (state.users || []).filter(u => {
       const r = (u.role || '').toUpperCase();
       return (
-        r === 'PRACTICE_SUPERVISOR' ||
-        r === 'SUPERVISOR' ||
-        r === 'PRACTICE_LEADER_UNI' ||
-        r === 'SUPERVISOR_UNIVERSITY' ||
-        r === 'DEPT_STAFF'
+        r !== 'STUDENT' &&
+        r !== 'TALABA' &&
+        r !== 'CLINIC_RESPONSIBLE' &&
+        r !== 'CLINIC' &&
+        r !== 'SUPERVISOR_CLINIC'
       );
     });
 
     for (const u of supervisorUsers) {
-      const exists = supervisors.some(s => s.id === `sup-${u.id}` || s.userId === u.uid || s.userId === u.id);
+      const exists = supervisors.some(s => 
+        s.id === `sup-${u.id}` ||
+        s.id === u.id ||
+        s.userId === u.uid ||
+        s.userId === u.id ||
+        (s.fullName && u.fullName && s.fullName.trim().toLowerCase() === u.fullName.trim().toLowerCase())
+      );
       if (!exists) {
         supervisors.unshift({
           id: `sup-${u.id || u.uid}`,
           userId: u.uid || u.id,
           fullName: u.fullName,
           phone: u.phone || '+998 (90) 000-00-00',
-          email: u.email || `${u.login}@tma.uz`,
+          email: u.email || `${u.login || 'user'}@tma.uz`,
           type: 'university',
-          department: 'Kafedra',
-          academicDegree: 'Dotsent / O\'qituvchi',
+          department: 'Kafedra / Dekanat',
+          academicDegree: 'O\'qituvchi / Rahbar',
           assignedStudentsCount: 0,
           status: 'ACTIVE'
         });
@@ -2990,7 +3070,36 @@ class StorageServiceV2 {
   }
 
   public getClinicResponsibles(): ClinicResponsible[] {
-    return this.getState().clinicResponsibles;
+    const state = this.getState();
+    const responsibles = [...(state.clinicResponsibles || [])];
+    const clinicUsers = (state.users || []).filter(u => {
+      const r = (u.role || '').toUpperCase();
+      return r === 'CLINIC_RESPONSIBLE' || r === 'CLINIC' || r === 'SUPERVISOR_CLINIC' || r === 'CLINIC_RESPONSIBLE_HOSPITAL';
+    });
+
+    for (const u of clinicUsers) {
+      const exists = responsibles.some(c => 
+        c.id === `cr-${u.id}` || 
+        c.id === u.id || 
+        c.userId === u.uid || 
+        c.userId === u.id ||
+        (c.fullName && u.fullName && c.fullName.trim().toLowerCase() === u.fullName.trim().toLowerCase())
+      );
+      if (!exists) {
+        responsibles.unshift({
+          id: `cr-${u.id || u.uid}`,
+          userId: u.uid || u.id,
+          fullName: u.fullName,
+          phone: u.phone || '+998 (90) 000-00-00',
+          email: u.email || `${u.login || 'clinic'}@tma.uz`,
+          practicePlaceId: u.practicePlaceId || state.practicePlaces?.[0]?.id || 'place-1',
+          position: 'Shifoxona mas\'uli',
+          department: 'Shifoxona bo\'limi',
+          status: 'ACTIVE'
+        });
+      }
+    }
+    return responsibles;
   }
 
   // --- PRACTICE DISTRIBUTIONS (AMALIYOT TAQSIMOTI) ---

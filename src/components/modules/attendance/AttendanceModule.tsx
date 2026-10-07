@@ -260,6 +260,9 @@ export function AttendanceModule() {
     setIsManualModalOpen(true);
   };
 
+  const userRoleUpper = (role || currentUser?.role || '').toUpperCase();
+  const isStudentUser = userRoleUpper === 'STUDENT' || userRoleUpper === 'TALABA';
+
   return (
     <div className="space-y-6">
       {/* Top Main Navigation Header */}
@@ -267,121 +270,136 @@ export function AttendanceModule() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold tracking-tight text-slate-900">
-              Elektron Davomat + QR Davomat Tizimi
+              {isStudentUser ? "Mening Amaliyot Davomatim" : "Elektron Davomat + QR Davomat Tizimi"}
             </h2>
             <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold uppercase font-mono tracking-wider">
-              4-Bosqich Faol
+              {isStudentUser ? "Talaba Kabineti" : "4-Bosqich Faol"}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Klinik amaliyot bazalarida real-time QR davomat, geolokatsiya, kechikishlar va audit jurnali nazorati
+            {isStudentUser
+              ? "Klinik amaliyot bazasida kunlik davomatdan o'tish va davomat ko'rsatkichlarini kuzatish"
+              : "Klinik amaliyot bazalarida real-time QR davomat, geolokatsiya, kechikishlar va audit jurnali nazorati"}
           </p>
         </div>
 
         {/* Global Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Section 24: QA Tester Button */}
-          <button
-            type="button"
-            onClick={() => setIsQATesterOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-colors shadow-2xs"
-          >
-            <FlaskConical className="w-4 h-4 text-purple-600" />
-            <span>10 ta QA Test</span>
-          </button>
+          {!isStudentUser && (
+            <>
+              {/* Section 24: QA Tester Button */}
+              <button
+                type="button"
+                onClick={() => setIsQATesterOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-colors shadow-2xs"
+              >
+                <FlaskConical className="w-4 h-4 text-purple-600" />
+                <span>10 ta QA Test</span>
+              </button>
 
-          {/* Student QR Scanner Modal Trigger */}
+              {/* Clinical Responsible / Supervisor QR Generator Modal Trigger */}
+              <button
+                type="button"
+                onClick={() => setIsQrGeneratorOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>QR DAVOMATNI BOSHLASH</span>
+              </button>
+            </>
+          )}
+
+          {/* Student / Universal Davomatdan o'tish Button */}
           <button
             type="button"
             onClick={() => setIsQrScannerOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs"
           >
             <Smartphone className="w-4 h-4" />
-            <span>[ QR SKANERLASH ]</span>
-          </button>
-
-          {/* Clinical Responsible / Supervisor QR Generator Modal Trigger */}
-          <button
-            type="button"
-            onClick={() => setIsQrGeneratorOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs"
-          >
-            <QrCode className="w-4 h-4" />
-            <span>QR DAVOMATNI BOSHLASH</span>
+            <span>Davomatdan o'tish</span>
           </button>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto text-xs font-semibold text-slate-600">
-        <button
-          type="button"
-          onClick={() => setActiveTab('overview')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all shrink-0 ${
-            activeTab === 'overview'
-              ? 'bg-white text-slate-900 shadow-2xs font-bold'
-              : 'hover:text-slate-900'
-          }`}
-        >
-          <CalendarCheck className="w-4 h-4 text-blue-600" />
-          <span>Umumiy davomat</span>
-        </button>
+      {/* Tabs Navigation (Only shown for Admin / Staff / Supervisor roles, hidden for Students) */}
+      {!isStudentUser && (
+        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto text-xs font-semibold text-slate-600">
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all shrink-0 ${
+              activeTab === 'overview'
+                ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            <CalendarCheck className="w-4 h-4 text-blue-600" />
+            <span>Umumiy davomat</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('issues')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all shrink-0 ${
-            activeTab === 'issues'
-              ? 'bg-white text-slate-900 shadow-2xs font-bold'
-              : 'hover:text-slate-900'
-          }`}
-        >
-          <AlertTriangle className="w-4 h-4 text-amber-500" />
-          <span>Davomat muammolari (🔴 🟠 🟡)</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('issues')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all shrink-0 ${
+              activeTab === 'issues'
+                ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <span>Davomat muammolari (🔴 🟠 🟡)</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('student_portal')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all shrink-0 ${
-            activeTab === 'student_portal'
-              ? 'bg-white text-slate-900 shadow-2xs font-bold'
-              : 'hover:text-slate-900'
-          }`}
-        >
-          <Smartphone className="w-4 h-4 text-emerald-600" />
-          <span>Talaba kabineti (Davomatim)</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('student_portal')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all shrink-0 ${
+              activeTab === 'student_portal'
+                ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            <Smartphone className="w-4 h-4 text-emerald-600" />
+            <span>Talaba kabineti (Davomatim)</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('supervisor_portal')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all shrink-0 ${
-            activeTab === 'supervisor_portal'
-              ? 'bg-white text-slate-900 shadow-2xs font-bold'
-              : 'hover:text-slate-900'
-          }`}
-        >
-          <Users className="w-4 h-4 text-teal-600" />
-          <span>Rahbar kabineti</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('supervisor_portal')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all shrink-0 ${
+              activeTab === 'supervisor_portal'
+                ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            <Users className="w-4 h-4 text-teal-600" />
+            <span>Rahbar kabineti</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('clinic_portal')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all shrink-0 ${
-            activeTab === 'clinic_portal'
-              ? 'bg-white text-slate-900 shadow-2xs font-bold'
-              : 'hover:text-slate-900'
-          }`}
-        >
-          <Building2 className="w-4 h-4 text-indigo-600" />
-          <span>Klinika mas'uli</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('clinic_portal')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all shrink-0 ${
+              activeTab === 'clinic_portal'
+                ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-indigo-600" />
+            <span>Klinika mas'uli</span>
+          </button>
+        </div>
+      )}
 
-      {/* TAB 1: OVERVIEW (Section 1) */}
-      {activeTab === 'overview' && (
+      {isStudentUser ? (
+        <StudentAttendanceView
+          student={currentStudent}
+          onRefresh={refreshData}
+        />
+      ) : (
+        <>
+          {/* TAB 1: OVERVIEW (Section 1) */}
+          {activeTab === 'overview' && (
         <div className="space-y-6">
           {/* Section 1: 6 Live Counter Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -816,6 +834,8 @@ export function AttendanceModule() {
           }}
           onRefresh={refreshData}
         />
+      )}
+        </>
       )}
 
       {/* Modals */}

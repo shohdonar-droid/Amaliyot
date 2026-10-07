@@ -399,5 +399,10 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update, delete: if false;
     }
+
+    // --- CENTRAL APP DATABASE STATE (MULTI-DEVICE UNIFIED SYNC) ---
+    match /appState/{docId} {
+      allow read, write: if true;
+    }
   }
 }
