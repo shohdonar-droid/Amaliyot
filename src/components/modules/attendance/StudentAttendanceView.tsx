@@ -99,7 +99,7 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
           <div className="text-center sm:text-left space-y-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-blue-100 text-xs font-semibold backdrop-blur-xs">
               <Sparkles className="w-3.5 h-3.5 text-blue-200" />
-              Toshkent Tibbiyot Akademiyasi · Mobil Davomat
+              {storageService.getUniversityName()} · Mobil Davomat
             </span>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
               {student.fullName}

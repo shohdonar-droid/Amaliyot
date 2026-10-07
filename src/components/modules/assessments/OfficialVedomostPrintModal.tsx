@@ -162,7 +162,7 @@ export const OfficialVedomostPrintModal: React.FC<OfficialVedomostPrintModalProp
               O'ZBEKISTON RESPUBLIKASI SOG'LIQNI SAQLASH VAZIRLIGI
             </p>
             <h2 className="text-sm sm:text-base font-extrabold uppercase text-slate-900 tracking-wide">
-              TOSHKENT TIBBIYOT AKADEMIYASI
+              {storageService.getUniversityName().toUpperCase()}
             </h2>
             <div className="pt-2">
               <span className="inline-block px-4 py-1 bg-slate-100 text-slate-900 text-xs sm:text-sm font-extrabold uppercase tracking-wider border border-slate-300 rounded">

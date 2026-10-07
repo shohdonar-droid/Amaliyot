@@ -64,7 +64,7 @@ export function DailyJournalPrintView({
             O'ZBEKISTON RESPUBLIKASI SOG'LIQNI SAQLASH VAZIRLIGI
           </p>
           <h2 className="text-base font-bold uppercase tracking-wider text-slate-900 mt-1">
-            TOSHKENT TIBBIYOT AKADEMIYASI
+            {storageService.getUniversityName().toUpperCase()}
           </h2>
           <p className="text-xs italic text-slate-600 font-sans mt-0.5">
             O'quv-uslubiy boshqarma • Talabalar amaliyoti bo'limi

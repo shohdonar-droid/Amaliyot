@@ -154,7 +154,7 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
             Salom, {currentUser?.fullName || 'Amaliyot Boshlig\'i'}!
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
-            Toshkent Tibbiyot Akademiyasi talabalarining barcha klinik bazalardagi amaliyot jarayoni, davomati va elektron kundaliklari nazoratda.
+            {storageService.getUniversityName()} talabalarining barcha klinik bazalardagi amaliyot jarayoni, davomati va elektron kundaliklari nazoratda.
           </p>
         </div>
 

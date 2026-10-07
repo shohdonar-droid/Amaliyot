@@ -232,7 +232,7 @@ export function JournalArchiveModule() {
               Talabalar amaliyoti elektron arxivi
             </h2>
             <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-              Toshkent Tibbiyot Akademiyasining barcha fakultet, yo'nalish va kurslari bo'yicha talabalarning elektron amaliyot kundaliklari, davomat va yakuniy baholarining rasmiy arxiv fondi. Ushbu moduldan rasmiy PDF, Excel va to'liq ZIP paketlar yuklab olinadi.
+              {storageService.getUniversityName()}ning barcha fakultet, yo'nalish va kurslari bo'yicha talabalarning elektron amaliyot kundaliklari, davomat va yakuniy baholarining rasmiy arxiv fondi. Ushbu moduldan rasmiy PDF, Excel va to'liq ZIP paketlar yuklab olinadi.
             </p>
           </div>
 

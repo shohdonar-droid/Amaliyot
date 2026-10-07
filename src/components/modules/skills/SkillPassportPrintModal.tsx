@@ -100,7 +100,7 @@ export function SkillPassportPrintModal({
               O'ZBEKISTON RESPUBLIKASI SOG'LIQNI SAQLASH VAZIRLIGI
             </p>
             <p className="text-[10px] font-serif uppercase tracking-widest text-slate-600 mb-1">
-              TOSHKENT TIBBIYOT AKADEMIYASI · AMALIYOT BO'LIMI
+              {storageService.getUniversityName().toUpperCase()} · AMALIYOT BO'LIMI
             </p>
             <h1 className="text-base sm:text-lg font-serif font-black uppercase text-slate-900 tracking-tight mt-1">
               TIBBIY AMALIYOT TALABASINING AMALIY KO'NIKMALAR PASPORTI VA JURNALI

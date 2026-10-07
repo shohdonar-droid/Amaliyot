@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../common/Modal';
 import { resolveLoginToCandidateEmails } from '../../services/loginGeneratorService';
+import { storageService } from '../../services/storageService';
 
 export function LoginPage() {
   const { login, forgotPassword } = useAuth();

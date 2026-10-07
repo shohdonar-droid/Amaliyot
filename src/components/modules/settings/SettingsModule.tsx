@@ -459,8 +459,6 @@ export function SettingsModule() {
         </div>
       </div>
 
-      </div>
-
       {/* CREATE USER MODAL */}
       <Modal
         isOpen={isUserModalOpen}

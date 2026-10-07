@@ -96,7 +96,7 @@ export const StudentIndividualCertificateModal: React.FC<StudentIndividualCertif
                 O'ZBEKISTON RESPUBLIKASI SOG'LIQNI SAQLASH VAZIRLIGI
               </p>
               <h2 className="text-base sm:text-lg font-black uppercase text-slate-900 tracking-wider">
-                TOSHKENT TIBBIYOT AKADEMIYASI
+                {storageService.getUniversityName().toUpperCase()}
               </h2>
               <p className="text-xs font-semibold text-slate-600">
                 O'quv-uslubiy boshqarma va Klinik amaliyot bo'limi
