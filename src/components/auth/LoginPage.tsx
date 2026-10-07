@@ -108,7 +108,7 @@ export function LoginPage() {
           <GraduationCap className="w-9 h-9" />
         </div>
         <h2 className="text-xl font-bold tracking-tight text-white uppercase">
-          Tibbiyot Universiteti
+          {storageService.getUniversityName()}
         </h2>
         <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-blue-400">
           TALABALAR AMALIYOTI ELEKTRON TIZIMI
@@ -218,7 +218,7 @@ export function LoginPage() {
         </div>
 
         <p className="mt-4 text-center text-xs text-slate-500">
-          © 2026 Tibbiyot Universiteti. Barcha huquqlar himoyalangan.
+          © 2026 {storageService.getUniversityName()}. Barcha huquqlar himoyalangan.
         </p>
       </div>
 

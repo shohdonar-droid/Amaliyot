@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Printer, X, Download } from 'lucide-react';
 import { DailyJournal, Student, Practice, PracticePlace, Supervisor, Faculty, Group, JournalTemplate } from '../../../types';
 import { journalTemplateService } from '../../../services/journalTemplateService';
+import { storageService } from '../../../services/storageService';
 
 interface DailyJournalPrintViewProps {
   journal: DailyJournal;

@@ -143,16 +143,40 @@ export function StudentsModule() {
   const handleSaveStudent = async (saved: Student) => {
     try {
       if (saved.id && saved.id !== 'new') {
-        await studentService.updateStudent(saved.id, saved);
+        // Update existing
+        setStudents(prev => prev.map(s => s.id === saved.id ? saved : s));
+        storageService.saveStudent(saved);
         showToast('success', 'Muvaffaqiyatli saqlandi', `${saved.fullName} ma'lumotlari yangilandi.`);
+        studentService.updateStudent(saved.id, saved).catch(console.warn);
       } else {
-        await studentService.createStudent(saved as Omit<Student, 'id'>);
-        setCreatedCredentialsModal({ student: saved });
+        // Create new - INSTANT optimistic update
+        const tempId = `st-${Date.now()}`;
+        const newStudentRecord: Student = { ...saved, id: tempId };
+        
+        storageService.saveStudent(newStudentRecord);
+        setStudents(prev => [...prev.filter(s => s.id !== tempId), newStudentRecord]);
+        setCreatedCredentialsModal({ student: newStudentRecord });
         showToast('success', 'Talaba yaratildi!', `${saved.fullName} uchun tartibli login (${saved.login}) va parol biriktirildi.`);
+
+        // Clear active search/filters so new student is immediately visible in list
+        resetFilters();
+
+        // Asynchronous background persistence to Firestore
+        (async () => {
+          try {
+            const actualId = await studentService.createStudent(saved as Omit<Student, 'id'>);
+            if (actualId && actualId !== tempId) {
+              const updatedRecord = { ...newStudentRecord, id: actualId };
+              storageService.saveStudent(updatedRecord);
+              await refreshList();
+            }
+          } catch (err) {
+            console.warn("Background student creation warning:", err);
+          }
+        })();
       }
-      refreshList();
     } catch (e: any) {
-      showToast('error', 'Xatolik', e.message);
+      showToast('error', 'Xatolik', e.message || 'Saqlashda xatolik yuz berdi');
     }
   };
 

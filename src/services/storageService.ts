@@ -51,8 +51,19 @@ const APP_MODE_KEY = 'tma_amaliyot_environment_mode';
 
 export type AppEnvironmentMode = 'DEVELOPMENT' | 'PRODUCTION';
 
+export interface SystemSettings {
+  universityName: string;
+  universityShortName?: string;
+  academicYear: string;
+  semester: string;
+  qrRadiusMeters: number;
+  journalDeadlineTime: string;
+  mode: AppEnvironmentMode;
+}
+
 export interface DatabaseStateV2 {
   mode: AppEnvironmentMode;
+  systemSettings?: SystemSettings;
   users: User[];
   academicYears: AcademicYear[];
   students: Student[];
@@ -2259,13 +2270,51 @@ class StorageServiceV2 {
   }
 
   public getEnvironmentMode(): AppEnvironmentMode {
-    return this.getState().mode || 'DEVELOPMENT';
+    return 'PRODUCTION';
   }
 
   public setEnvironmentMode(mode: AppEnvironmentMode): void {
     const state = this.getState();
-    state.mode = mode;
+    state.mode = 'PRODUCTION';
     this.saveState(state);
+  }
+
+  public getSystemSettings(): SystemSettings {
+    const state = this.getState();
+    if (!state.systemSettings) {
+      state.systemSettings = {
+        universityName: 'Toshkent Tibbiyot Akademiyasi',
+        universityShortName: 'TMA',
+        academicYear: '2025-2026',
+        semester: 'Kuzgi',
+        qrRadiusMeters: 150,
+        journalDeadlineTime: '23:59',
+        mode: 'PRODUCTION'
+      };
+      this.saveState(state);
+    }
+    return state.systemSettings;
+  }
+
+  public getUniversityName(): string {
+    return this.getSystemSettings().universityName || 'Toshkent Tibbiyot Akademiyasi';
+  }
+
+  public updateSystemSettings(updates: Partial<SystemSettings>): SystemSettings {
+    const state = this.getState();
+    const current = this.getSystemSettings();
+    state.systemSettings = {
+      ...current,
+      ...updates,
+      mode: 'PRODUCTION'
+    };
+    state.mode = 'PRODUCTION';
+    this.saveState(state);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('system_settings_updated', { detail: state.systemSettings }));
+    }
+    return state.systemSettings;
   }
 
   public resetToDefaults(): void {

@@ -36,14 +36,12 @@ export function SettingsModule() {
   const { showToast } = useToast();
   const { role, canonicalRole, isSuperAdmin } = useAuth();
 
-  const [mode, setMode] = useState<AppEnvironmentMode>(() => storageService.getEnvironmentMode());
-  const [univName, setUnivName] = useState('Toshkent Tibbiyot Akademiyasi');
-  const [academicYear, setAcademicYear] = useState('2025-2026');
-  const [semester, setSemester] = useState('Kuzgi');
-  const [qrRadius, setQrRadius] = useState(150);
-  const [journalDeadline, setJournalDeadline] = useState('23:59');
-
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const sysSettings = storageService.getSystemSettings();
+  const [univName, setUnivName] = useState(sysSettings.universityName || 'Toshkent Tibbiyot Akademiyasi');
+  const [academicYear, setAcademicYear] = useState(sysSettings.academicYear || '2025-2026');
+  const [semester, setSemester] = useState(sysSettings.semester || 'Kuzgi');
+  const [qrRadius, setQrRadius] = useState(sysSettings.qrRadiusMeters || 150);
+  const [journalDeadline, setJournalDeadline] = useState(sysSettings.journalDeadlineTime || '23:59');
 
   // User Management State
   const [usersList, setUsersList] = useState<User[]>(() => storageService.getUsers());
@@ -138,16 +136,19 @@ export function SettingsModule() {
 
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
-    storageService.setEnvironmentMode(mode);
-    showToast('success', 'Sozlamalar saqlandi', `Tizim ${mode} rejimida yangilandi.`);
-  };
-
-  const handleResetData = () => {
-    storageService.clearDatabase();
-    showToast('info', 'Tizim 0 holatiga keltirildi', 'Barcha demo talabalar, klinik bazalar va statistikalar to\'liq o\'chirildi.');
-    setTimeout(() => {
-      window.location.reload();
-    }, 400);
+    if (!univName.trim()) {
+      showToast('warning', 'Ma\'lumot yetarli emas', 'OTM to\'liq nomi kiritilishi shart');
+      return;
+    }
+    storageService.updateSystemSettings({
+      universityName: univName.trim(),
+      academicYear: academicYear.trim(),
+      semester,
+      qrRadiusMeters: qrRadius,
+      journalDeadlineTime: journalDeadline,
+      mode: 'PRODUCTION'
+    });
+    showToast('success', 'Sozlamalar saqlandi', `OTM nomi ("${univName.trim()}") va tizim parametrlari rasman saqlandi hamda barcha modullarda yangilandi.`);
   };
 
   const filteredUsers = usersList.filter(u => {
@@ -279,61 +280,6 @@ export function SettingsModule() {
       </div>
 
       <form onSubmit={handleSaveSettings} className="space-y-5">
-        {/* Environment Mode Selection */}
-        <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-3">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Database className="w-4 h-4 text-blue-600" />
-            <span>Ma'lumotlar bazasi ishchi rejimi (Environment Mode)</span>
-          </h3>
-
-          <p className="text-xs text-slate-600">
-            Tizim demo/sinov ma'lumotlari bilan ishlab turishi yoki real ishlab chiqarish (Production) uchun toza ma'lumotlar bazasida ishlashi mumkin.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <label className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-              mode === 'DEVELOPMENT'
-                ? 'border-blue-600 bg-blue-50/40 text-blue-950 shadow-2xs'
-                : 'border-slate-200 bg-white hover:border-slate-300'
-            }`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-xs uppercase tracking-wider text-blue-700">Development (Demo)</span>
-                <input
-                  type="radio"
-                  name="envMode"
-                  value="DEVELOPMENT"
-                  checked={mode === 'DEVELOPMENT'}
-                  onChange={() => setMode('DEVELOPMENT')}
-                  className="w-4 h-4 text-blue-600"
-                />
-              </div>
-              <p className="text-xs text-slate-600">
-                Klinik shifoxonalar, talabalar va amaliyot buyruqlari demo ma'lumotlari bilan to'ldirilgan holatda ishlaydi.
-              </p>
-            </label>
-
-            <label className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-              mode === 'PRODUCTION'
-                ? 'border-emerald-600 bg-emerald-50/40 text-emerald-950 shadow-2xs'
-                : 'border-slate-200 bg-white hover:border-slate-300'
-            }`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-xs uppercase tracking-wider text-emerald-700">Production (Haqiqiy baza)</span>
-                <input
-                  type="radio"
-                  name="envMode"
-                  value="PRODUCTION"
-                  checked={mode === 'PRODUCTION'}
-                  onChange={() => setMode('PRODUCTION')}
-                  className="w-4 h-4 text-emerald-600"
-                />
-              </div>
-              <p className="text-xs text-slate-600">
-                Toza cloud database rejimi. Faqat rasmiy rektorat buyruqlari va tasdiqlangan foydalanuvchilar qabul qilinadi.
-              </p>
-            </label>
-          </div>
-        </div>
 
         {/* University Info Card */}
         <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-4">
@@ -513,22 +459,6 @@ export function SettingsModule() {
         </div>
       </div>
 
-      {/* Danger Zone: Reset Data */}
-      <div className="p-5 bg-red-50/50 rounded-xl border border-red-200 space-y-3">
-        <h4 className="text-sm font-bold text-red-900 flex items-center gap-2">
-          <RotateCcw className="w-4 h-4 text-red-600" />
-          <span>Tizimni 0 (Nol) holatiga keltirish va demo ma'lumotlarni to'liq o'chirish</span>
-        </h4>
-        <p className="text-xs text-red-700 leading-relaxed">
-          Ushbu tugma bosilganda tizimdagi barcha demo talabalar, klinik amaliyot joylari (tashkilotlar), amaliyot buyruqlari, davomatlar va statistikalar butunlay o'chiriladi hamda real amaliy jarayonlarni boshlash uchun toza "0 holati" yaratiladi. Super Admin hisobi saqlanadi.
-        </p>
-        <button
-          type="button"
-          onClick={() => setIsResetConfirmOpen(true)}
-          className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-xs transition-colors cursor-pointer"
-        >
-          Tizimni 0 holatiga keltirish (Demo ma'lumotlarni o'chirish)
-        </button>
       </div>
 
       {/* CREATE USER MODAL */}
@@ -633,16 +563,7 @@ export function SettingsModule() {
         </form>
       </Modal>
 
-      <ConfirmDialog
-        isOpen={isResetConfirmOpen}
-        onClose={() => setIsResetConfirmOpen(false)}
-        onConfirm={handleResetData}
-        title="Bazani qayta tiklash"
-        message="Haqiqatan ham barcha o'zgarishlarni bekor qilib, dastlabki demo holatga qaytarmoqchimisiz?"
-        confirmLabel="Qayta tiklash"
-        cancelLabel="Bekor qilish"
-        isDestructive
-      />
+
 
       <ConfirmDialog
         isOpen={!!userToDelete}

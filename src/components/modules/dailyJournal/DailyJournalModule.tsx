@@ -109,66 +109,87 @@ export function DailyJournalModule() {
 
   // Determine current student profile for Student Cabinet view
   const currentStudent = useMemo(() => {
-    return students.find(s => s.userId === currentUser?.uid || s.id === currentUser?.studentId) || students[0];
+    if (!students || students.length === 0) return null;
+    return students.find(s => s?.userId === currentUser?.uid || s?.id === currentUser?.studentId) || students[0] || null;
   }, [students, currentUser]);
 
   const currentAssignment = useMemo(() => {
-    return assignments.find((a: PracticeAssignment) => a.studentId === currentStudent?.id) || assignments[0];
+    if (!currentStudent || !assignments || assignments.length === 0) return null;
+    return assignments.find((a: PracticeAssignment) => a?.studentId === currentStudent.id) || assignments[0] || null;
   }, [assignments, currentStudent]);
 
   const currentPractice = useMemo(() => {
-    return practices.find(p => p.id === currentAssignment?.practiceId) || practices[0];
+    if (!practices || practices.length === 0) return null;
+    if (currentAssignment?.practiceId) {
+      return practices.find(p => p?.id === currentAssignment.practiceId) || practices[0] || null;
+    }
+    return practices[0] || null;
   }, [practices, currentAssignment]);
 
   const currentPlace = useMemo(() => {
-    return practicePlaces.find(p => p.id === currentAssignment?.practicePlaceId) || practicePlaces[0];
+    if (!practicePlaces || practicePlaces.length === 0) return null;
+    if (currentAssignment?.practicePlaceId) {
+      return practicePlaces.find(p => p?.id === currentAssignment.practicePlaceId) || practicePlaces[0] || null;
+    }
+    return practicePlaces[0] || null;
   }, [practicePlaces, currentAssignment]);
 
   const currentSupervisor = useMemo(() => {
-    return supervisors.find(s => s.id === currentAssignment?.supervisorId) || supervisors[0];
+    if (!supervisors || supervisors.length === 0) return null;
+    if (currentAssignment?.supervisorId) {
+      return supervisors.find(s => s?.id === currentAssignment.supervisorId) || supervisors[0] || null;
+    }
+    return supervisors[0] || null;
   }, [supervisors, currentAssignment]);
 
   // Student's own attendance and attendance rate
   const studentAttendanceList = useMemo(() => {
-    if (!currentStudent || !currentPractice) return [];
-    return allAttendance.filter(a => a.studentId === currentStudent.id && a.practiceId === currentPractice.id);
+    if (!currentStudent || !currentPractice || !allAttendance) return [];
+    return allAttendance.filter(a => a?.studentId === currentStudent.id && a?.practiceId === currentPractice.id);
   }, [allAttendance, currentStudent, currentPractice]);
 
   const studentAttendanceRate = useMemo(() => {
     if (studentAttendanceList.length === 0) return 95;
-    const presentCount = studentAttendanceList.filter(a => a.status.toUpperCase() === 'PRESENT' || a.status.toUpperCase() === 'LATE').length;
+    const presentCount = studentAttendanceList.filter(a => (a?.status || '').toUpperCase() === 'PRESENT' || (a?.status || '').toUpperCase() === 'LATE').length;
     return Math.round((presentCount / studentAttendanceList.length) * 100);
   }, [studentAttendanceList]);
 
   // Today's attendance record for current student
   const todayStr = new Date().toISOString().split('T')[0];
   const todayAttendance = useMemo(() => {
-    return studentAttendanceList.find(a => a.date === todayStr);
+    return studentAttendanceList.find(a => a?.date === todayStr);
   }, [studentAttendanceList, todayStr]);
 
   // Student's journals
   const studentJournals = useMemo(() => {
-    return journals.filter(j => j.studentId === currentStudent?.id);
+    if (!currentStudent || !journals) return [];
+    return journals.filter(j => j?.studentId === currentStudent.id);
   }, [journals, currentStudent]);
 
   const todayJournal = useMemo(() => {
-    return studentJournals.find(j => j.date === todayStr);
+    return studentJournals.find(j => j?.date === todayStr);
   }, [studentJournals, todayStr]);
 
   const revisionNeededJournal = useMemo(() => {
-    return studentJournals.find(j => j.status.toUpperCase() === 'REVISION' || j.status.toUpperCase() === 'REJECTED');
+    return studentJournals.find(j => {
+      const st = (j?.status || '').toUpperCase();
+      return st === 'REVISION' || st === 'REJECTED';
+    });
   }, [studentJournals]);
 
   // Calculate Statistics (Section 1)
   const stats = useMemo(() => {
-    const totalStudents = students.length;
+    const totalStudents = students ? students.length : 0;
     // Unique students who submitted at least one journal
-    const studentsWithJournal = new Set(journals.map(j => j.studentId)).size;
+    const studentsWithJournal = new Set((journals || []).map(j => j?.studentId).filter(Boolean)).size;
     const studentsWithoutJournal = Math.max(0, totalStudents - studentsWithJournal);
 
-    const pendingCount = journals.filter(j => j.status.toUpperCase() === 'PENDING').length;
-    const approvedCount = journals.filter(j => j.status.toUpperCase() === 'APPROVED').length;
-    const revisionCount = journals.filter(j => j.status.toUpperCase() === 'REVISION' || j.status.toUpperCase() === 'REJECTED').length;
+    const pendingCount = (journals || []).filter(j => (j?.status || '').toUpperCase() === 'PENDING').length;
+    const approvedCount = (journals || []).filter(j => (j?.status || '').toUpperCase() === 'APPROVED').length;
+    const revisionCount = (journals || []).filter(j => {
+      const st = (j?.status || '').toUpperCase();
+      return st === 'REVISION' || st === 'REJECTED';
+    }).length;
 
     return {
       totalStudents,

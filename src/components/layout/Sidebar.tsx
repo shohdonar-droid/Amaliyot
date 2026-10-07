@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { storageService } from '../../services/storageService';
 import {
   LayoutDashboard,
   Users,
@@ -69,6 +70,15 @@ export function Sidebar({
 }: SidebarProps) {
   const { role, canonicalRole, roleConfig, currentUser, logout, isSuperAdmin } = useAuth();
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const [univName, setUnivName] = useState(() => storageService.getUniversityName());
+
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setUnivName(storageService.getUniversityName());
+    };
+    window.addEventListener('system_settings_updated', handleSettingsUpdate);
+    return () => window.removeEventListener('system_settings_updated', handleSettingsUpdate);
+  }, []);
 
   const allNavItems: NavItem[] = [
     {
@@ -206,8 +216,8 @@ export function Sidebar({
             <GraduationCap className="w-6 h-6" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-sm font-bold tracking-tight text-white leading-tight uppercase">
-              Tibbiyot Universiteti
+            <h1 className="text-xs font-bold tracking-tight text-white leading-tight uppercase line-clamp-2">
+              {univName}
             </h1>
             <p className="text-[11px] text-blue-400 font-medium tracking-wide truncate">
               Talabalar amaliyoti tizimi

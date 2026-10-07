@@ -21,7 +21,7 @@ import { useToast } from '../../../context/ToastContext';
 import { QrScannerModal } from './QrScannerModal';
 
 interface StudentAttendanceViewProps {
-  student: Student;
+  student: Student | null;
   onRefresh?: () => void;
 }
 
@@ -32,24 +32,33 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const todayDate = '2026-09-28';
 
-  const practices = storageService.getPractices();
-  const places = storageService.getPracticePlaces();
-  const assignments = storageService.getAssignments();
-  const attendanceList = storageService.getAttendance();
+  if (!student) {
+    return (
+      <div className="p-8 text-center text-slate-500 bg-white rounded-2xl border border-slate-200">
+        <p className="text-sm font-bold text-slate-800">Talaba ma'lumotlari topilmadi</p>
+        <p className="text-xs text-slate-500 mt-1">Tizimda mos talaba profili mavjud emas yoki hali tanlanmagan.</p>
+      </div>
+    );
+  }
+
+  const practices = storageService.getPractices() || [];
+  const places = storageService.getPracticePlaces() || [];
+  const assignments = storageService.getAssignments() || [];
+  const attendanceList = storageService.getAttendance() || [];
 
   // Find student's assignment
-  const assignment = assignments.find(a => a.studentId === student.id);
-  const practice = practices.find(p => p.id === (assignment?.practiceId || student.currentPracticeId));
-  const place = places.find(p => p.id === (assignment?.practicePlaceId || student.currentPracticePlaceId));
+  const assignment = assignments.find(a => a?.studentId === student.id);
+  const practice = practices.find(p => p?.id === (assignment?.practiceId || student.currentPracticeId));
+  const place = places.find(p => p?.id === (assignment?.practicePlaceId || student.currentPracticePlaceId));
 
   // Today's attendance
   const todayRecord = attendanceList.find(
-    a => a.studentId === student.id && a.date === todayDate
+    a => a?.studentId === student.id && a?.date === todayDate
   );
 
   // Student's full history for this practice
   const studentHistory = attendanceList
-    .filter(a => a.studentId === student.id && (!practice || a.practiceId === practice.id))
+    .filter(a => a?.studentId === student.id && (!practice || a?.practiceId === practice.id))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Calculate statistics (Section 12 specification)

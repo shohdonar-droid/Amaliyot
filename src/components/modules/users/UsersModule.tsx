@@ -203,67 +203,80 @@ export function UsersModule() {
       createdAt: new Date().toISOString(),
     };
 
-    try {
-      const userId = await userService.createUser(userData);
-      if (!userId) {
-        throw new Error('Foydalanuvchi yaratilmadi');
-      }
+    const tempId = `usr-${Date.now()}`;
+    const fullUser: User = { ...userData, id: tempId };
 
-      if (formData.role === 'STUDENT' || formData.role === 'student') {
-        const directions = storageService.getDirections();
-        const courses = storageService.getCourses();
-        const groups = storageService.getGroups();
-        
-        await studentService.createStudent({
-          userId: userData.uid,
-          studentId: `MED-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-          login: finalLogin,
-          studentCode: finalLogin,
-          hemisStudentId: String(Math.floor(10000000 + Math.random() * 90000000)),
-          pinfl: '3140' + String(Math.floor(1000000000 + Math.random() * 9000000000)),
-          fullName: userData.fullName,
-          facultyId: formData.facultyId || faculties[0]?.id || '',
-          directionId: directions[0]?.id || '',
-          courseId: courses[0]?.id || '',
-          groupId: groups[0]?.id || '',
-          phone: userData.phone,
-          telegram: '@',
-          email: finalEmail,
-          status: 'active'
+    // 1. Instant local persistence and UI update
+    storageService.saveUser(fullUser);
+    setUsers(prev => [fullUser, ...prev.filter(u => u.id !== tempId)]);
+    setCreatedCredentialsModal({ user: fullUser, rawPassword: finalPassword });
+    setIsCreateModalOpen(false);
+    showToast('success', 'Foydalanuvchi yaratildi!', `${fullUser.fullName} uchun login (${finalLogin}) va parol tayyorlandi`);
+
+    // Reset search and filters so new user appears immediately in table
+    setSearchQuery('');
+    setRoleFilter('ALL');
+    setStatusFilter('ALL');
+
+    // 2. Asynchronous background sync to Firestore / Auth
+    (async () => {
+      try {
+        const createdId = await userService.createUser(userData);
+        const actualId = createdId || tempId;
+        const updatedFullUser: User = { ...fullUser, id: actualId };
+        storageService.saveUser(updatedFullUser);
+
+        if (formData.role === 'STUDENT' || formData.role === 'student') {
+          const directions = storageService.getDirections() || [];
+          const courses = storageService.getCourses() || [];
+          const groups = storageService.getGroups() || [];
+          
+          await studentService.createStudent({
+            userId: userData.uid,
+            studentId: `MED-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+            login: finalLogin,
+            studentCode: finalLogin,
+            hemisStudentId: String(Math.floor(10000000 + Math.random() * 90000000)),
+            pinfl: '3140' + String(Math.floor(1000000000 + Math.random() * 9000000000)),
+            fullName: userData.fullName,
+            facultyId: formData.facultyId || faculties[0]?.id || '',
+            directionId: directions[0]?.id || '',
+            courseId: courses[0]?.id || '',
+            groupId: groups[0]?.id || '',
+            phone: userData.phone,
+            telegram: '@',
+            email: finalEmail,
+            status: 'active'
+          }).catch(console.warn);
+        }
+
+        if (formData.role === 'PRACTICE_SUPERVISOR' || formData.role === 'supervisor') {
+          await supervisorService.createSupervisor({
+            userId: userData.uid,
+            fullName: userData.fullName,
+            phone: userData.phone,
+            email: finalEmail,
+            type: 'university',
+            department: 'Kafedra',
+            academicDegree: 'Dotsent',
+            status: 'ACTIVE'
+          }).catch(console.warn);
+        }
+
+        storageService.recordAuditLog({
+          userId: currentUser?.uid || currentUser?.id || 'system',
+          userRole: activeUserRole,
+          action: 'userCreated',
+          entity: 'users',
+          entityId: actualId,
+          metadata: JSON.stringify({ createdRole: formData.role, fullName: formData.fullName, login: finalLogin, email: finalEmail })
         });
+
+        await loadUsers();
+      } catch (error) {
+        console.warn("Background user creation warning:", error);
       }
-
-      if (formData.role === 'PRACTICE_SUPERVISOR' || formData.role === 'supervisor') {
-        await supervisorService.createSupervisor({
-          userId: userData.uid,
-          fullName: userData.fullName,
-          phone: userData.phone,
-          email: finalEmail,
-          type: 'university',
-          department: 'Kafedra',
-          academicDegree: 'Dotsent',
-          status: 'ACTIVE'
-        });
-      }
-
-      storageService.recordAuditLog({
-        userId: currentUser?.uid || currentUser?.id || 'system',
-        userRole: activeUserRole,
-        action: 'userCreated',
-        entity: 'users',
-        entityId: userId,
-        metadata: JSON.stringify({ createdRole: formData.role, fullName: formData.fullName, login: finalLogin, email: finalEmail })
-      });
-
-      const fullUser: User = { ...userData, id: userId };
-      setCreatedCredentialsModal({ user: fullUser, rawPassword: finalPassword });
-      setIsCreateModalOpen(false);
-      loadUsers();
-      showToast('success', 'Foydalanuvchi yaratildi!', `${fullUser.fullName} uchun email, login va parol shakllantirildi`);
-    } catch (error) {
-      console.error("Error creating user:", error);
-      showToast('error', 'Xatolik', 'Foydalanuvchi yaratishda xatolik yuz berdi: ' + (error instanceof Error ? error.message : 'Noma\'lum xato'));
-    }
+    })();
   };
 
   const handleOpenEditModal = (u: User) => {

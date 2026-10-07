@@ -119,13 +119,15 @@ export function AttendanceModule() {
   const isExcused = (st?: string) => st?.toUpperCase() === 'EXCUSED';
 
   // Current logged in student/clinic/supervisor resolution
-  const currentStudent = students.find(s => s.id === currentUser?.studentId || s.userId === currentUser?.uid) || students[0];
+  const currentStudent = (students && students.length > 0)
+    ? (students.find(s => s.id === currentUser?.studentId || s.userId === currentUser?.uid) || students[0])
+    : null;
   const currentPlaceId = currentUser?.practicePlaceId || 'place-1';
   const currentSupervisorId = currentUser?.supervisorId || 'sup-1';
 
   // Section 1: Calculate Live Top Counters
   // Jami talabalar, Bugun kelganlar, Kechikkanlar, Kelmaganlar, Uzrli kelmaganlar, Davomat foizi
-  const dayRecords = attendanceRecords.filter(a => 
+  const dayRecords = (attendanceRecords || []).filter(a => 
     (!selectedPracticeId || a.practiceId === selectedPracticeId) && a.date === selectedDate
   );
 
@@ -136,8 +138,8 @@ export function AttendanceModule() {
 
   // Selected practice students
   const activePractice = practices.find(p => p.id === selectedPracticeId);
-  const totalPracticeStudents = students.filter(s =>
-    activePractice ? activePractice.groupIds.includes(s.groupId) : true
+  const totalPracticeStudents = (students || []).filter(s =>
+    activePractice && Array.isArray(activePractice.groupIds) ? activePractice.groupIds.includes(s.groupId) : true
   ).length;
 
   const totalEvaluated = dayRecords.length;
@@ -147,9 +149,11 @@ export function AttendanceModule() {
 
   // Filtered Student List for the Overview Table
   const filteredRows = useMemo(() => {
-    return students.filter(student => {
+    return (students || []).filter(student => {
+      if (!student) return false;
+
       // Practice group filter
-      if (activePractice && !activePractice.groupIds.includes(student.groupId)) {
+      if (activePractice && Array.isArray(activePractice.groupIds) && !activePractice.groupIds.includes(student.groupId)) {
         return false;
       }
 
@@ -834,7 +838,7 @@ export function AttendanceModule() {
           setIsQrScannerOpen(false);
           refreshData();
         }}
-        studentId={currentStudent.id}
+        studentId={currentStudent?.id || ''}
         onSuccess={() => refreshData()}
       />
 

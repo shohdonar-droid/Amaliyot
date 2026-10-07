@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import QRCode from 'qrcode';
 import { Student, Practice, DailyJournal, Attendance, Supervisor, PracticePlace, Faculty, Group, Direction } from '../types';
+import { storageService } from './storageService';
 
 export interface ExportContext {
   student: Student;
@@ -116,7 +117,7 @@ export const journalExportService = {
 
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42); // slate-900
-    doc.text("TOSHKENT TIBBIYOT AKADEMIYASI", pageWidth / 2, y, { align: 'center' });
+    doc.text(storageService.getUniversityName().toUpperCase(), pageWidth / 2, y, { align: 'center' });
     y += 6;
 
     doc.setFontSize(8);
@@ -375,7 +376,7 @@ export const journalExportService = {
     // Sheet 1: Umumiy ma'lumotlar (Metadata & Summary)
     // ----------------------------------------------------
     const metaRows: any[][] = [
-      ["TOSHKENT TIBBIYOT AKADEMIYASI"],
+      [storageService.getUniversityName().toUpperCase()],
       ["ELEKTRON AMALIYOT KUNDALIGI VA DAVOMATNING RASMIY HISOBOTI"],
       ["Hujjat yaratilgan sana va vaqt:", new Date().toLocaleString('uz-UZ')],
       [],
@@ -590,7 +591,7 @@ export const journalExportService = {
     const wb = XLSX.utils.book_new();
 
     const titleRows = [
-      ["TOSHKENT TIBBIYOT AKADEMIYASI - AMALIYOT KUNDALIKLARI JADVALI"],
+      [`${storageService.getUniversityName().toUpperCase()} - AMALIYOT KUNDALIKLARI JADVALI`],
       ["Hujjat yaratilgan sana:", new Date().toLocaleString('uz-UZ'), "", "Jami kundaliklar soni:", journals.length],
       []
     ];
@@ -706,7 +707,7 @@ export const journalExportService = {
     const wb = XLSX.utils.book_new();
 
     const titleRows = [
-      ["TOSHKENT TIBBIYOT AKADEMIYASI - TALABALAR AMALIYOT ARXIVI FONDI"],
+      [`${storageService.getUniversityName().toUpperCase()} - TALABALAR AMALIYOT ARXIVI FONDI`],
       ["Hujjat yaratilgan sana:", new Date().toLocaleString('uz-UZ'), "", "Arxivdagi talabalar soni:", students.length],
       []
     ];
@@ -811,7 +812,7 @@ export const journalExportService = {
     const wb = XLSX.utils.book_new();
 
     const titleRows = [
-      ["TOSHKENT TIBBIYOT AKADEMIYASI - YAKUNIY TASDIQLASH NAVBATIDAGI TALABALAR"],
+      [`${storageService.getUniversityName().toUpperCase()} - YAKUNIY TASDIQLASH NAVBATIDAGI TALABALAR`],
       ["Hujjat yaratilgan sana:", new Date().toLocaleString('uz-UZ'), "", "Kutilayotgan talabalar soni:", items.length],
       []
     ];
