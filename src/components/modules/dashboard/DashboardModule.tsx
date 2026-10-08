@@ -69,11 +69,11 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
   // 1. STUDENT DASHBOARD VIEW (Strict Role Isolation)
   // =========================================================================
   if (isStudent) {
-    const myStudent = students.find(s => s?.userId === currentUser?.uid || s?.id === currentUser?.studentId || s?.login === currentUser?.login) || students[0];
-    const myAssignment = assignments.find(a => a?.studentId === myStudent?.id) || assignments[0];
-    const myPractice = practices.find(p => p?.id === myAssignment?.practiceId) || practices[0];
-    const myClinicPlace = places.find(p => p?.id === myAssignment?.practicePlaceId) || places[0];
-    const mySupervisor = supervisors.find(s => s?.id === myAssignment?.supervisorId) || supervisors[0];
+    const myStudent = students.find(s => s?.userId === currentUser?.uid || s?.id === currentUser?.studentId || s?.login === currentUser?.login) || null;
+    const myAssignment = myStudent ? assignments.find(a => a?.studentId === myStudent.id) : null;
+    const myPractice = myAssignment ? practices.find(p => p?.id === myAssignment.practiceId) : null;
+    const myClinicPlace = myAssignment ? places.find(p => p?.id === myAssignment.practicePlaceId) : null;
+    const mySupervisor = myAssignment ? supervisors.find(s => s?.id === myAssignment.supervisorId) : null;
 
     const myAttendance = attendance.filter(a => a?.studentId === myStudent?.id);
     const myPresentCount = myAttendance.filter(a => {

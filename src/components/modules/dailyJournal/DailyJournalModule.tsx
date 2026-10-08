@@ -107,39 +107,39 @@ export function DailyJournalModule() {
     setJournals(data);
   };
 
-  // Determine current student profile for Student Cabinet view
+  // Determine current student profile for Student Cabinet view (Strict Role Isolation)
   const currentStudent = useMemo(() => {
     if (!students || students.length === 0) return null;
-    return students.find(s => s?.userId === currentUser?.uid || s?.id === currentUser?.studentId) || students[0] || null;
+    return students.find(s => s?.userId === currentUser?.uid || s?.id === currentUser?.studentId || s?.login === currentUser?.login) || null;
   }, [students, currentUser]);
 
   const currentAssignment = useMemo(() => {
     if (!currentStudent || !assignments || assignments.length === 0) return null;
-    return assignments.find((a: PracticeAssignment) => a?.studentId === currentStudent.id) || assignments[0] || null;
+    return assignments.find((a: PracticeAssignment) => a?.studentId === currentStudent.id) || null;
   }, [assignments, currentStudent]);
 
   const currentPractice = useMemo(() => {
-    if (!practices || practices.length === 0) return null;
+    if (!practices || practices.length === 0 || !currentAssignment) return null;
     if (currentAssignment?.practiceId) {
-      return practices.find(p => p?.id === currentAssignment.practiceId) || practices[0] || null;
+      return practices.find(p => p?.id === currentAssignment.practiceId) || null;
     }
-    return practices[0] || null;
+    return null;
   }, [practices, currentAssignment]);
 
   const currentPlace = useMemo(() => {
-    if (!practicePlaces || practicePlaces.length === 0) return null;
+    if (!practicePlaces || practicePlaces.length === 0 || !currentAssignment) return null;
     if (currentAssignment?.practicePlaceId) {
-      return practicePlaces.find(p => p?.id === currentAssignment.practicePlaceId) || practicePlaces[0] || null;
+      return practicePlaces.find(p => p?.id === currentAssignment.practicePlaceId) || null;
     }
-    return practicePlaces[0] || null;
+    return null;
   }, [practicePlaces, currentAssignment]);
 
   const currentSupervisor = useMemo(() => {
-    if (!supervisors || supervisors.length === 0) return null;
+    if (!supervisors || supervisors.length === 0 || !currentAssignment) return null;
     if (currentAssignment?.supervisorId) {
-      return supervisors.find(s => s?.id === currentAssignment.supervisorId) || supervisors[0] || null;
+      return supervisors.find(s => s?.id === currentAssignment.supervisorId) || null;
     }
-    return supervisors[0] || null;
+    return null;
   }, [supervisors, currentAssignment]);
 
   // Student's own attendance and attendance rate
@@ -410,29 +410,33 @@ export function DailyJournalModule() {
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Switch tabs between Student view, Management view, Final Approval, and Archive */}
           <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold flex-wrap gap-1">
-            <button
-              type="button"
-              onClick={() => setViewTab('student_cabinet')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                viewTab === 'student_cabinet'
-                  ? 'bg-white text-blue-700 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Mening kundaligim (Talaba)
-            </button>
+            {isStudent && (
+              <button
+                type="button"
+                onClick={() => setViewTab('student_cabinet')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  viewTab === 'student_cabinet'
+                    ? 'bg-white text-blue-700 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Mening kundaligim (Talaba)
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => setViewTab('all_journals')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                viewTab === 'all_journals'
-                  ? 'bg-white text-blue-700 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {isSupervisorOnly ? "Mening talabalarim (Supervisor)" : "Kundaliklar nazorati (Tekshiruv)"}
-            </button>
+            {!isStudent && (
+              <button
+                type="button"
+                onClick={() => setViewTab('all_journals')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  viewTab === 'all_journals'
+                    ? 'bg-white text-blue-700 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {isSupervisor ? "Mening talabalarim (Supervisor)" : "Kundaliklar nazorati (Tekshiruv)"}
+              </button>
+            )}
 
             {isPracticeHeadOrAdmin && (
               <button
@@ -463,17 +467,19 @@ export function DailyJournalModule() {
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setJournalToEdit(null);
-              setIsSubmitModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Kundalik to'ldirish</span>
-          </button>
+          {isStudent && (
+            <button
+              type="button"
+              onClick={() => {
+                setJournalToEdit(null);
+                setIsSubmitModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Kundalik to'ldirish</span>
+            </button>
+          )}
         </div>
       </div>
 

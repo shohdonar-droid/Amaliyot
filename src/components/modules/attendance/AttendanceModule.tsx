@@ -120,10 +120,14 @@ export function AttendanceModule() {
 
   // Current logged in student/clinic/supervisor resolution
   const currentStudent = (students && students.length > 0)
-    ? (students.find(s => s.id === currentUser?.studentId || s.userId === currentUser?.uid) || students[0])
+    ? (students.find(s => s.id === currentUser?.studentId || s.userId === currentUser?.uid || s.login === currentUser?.login) || null)
     : null;
-  const currentPlaceId = currentUser?.practicePlaceId || 'place-1';
-  const currentSupervisorId = currentUser?.supervisorId || 'sup-1';
+
+  const currentSupervisor = supervisors.find(s => s.userId === currentUser?.uid || s.id === currentUser?.supervisorId || s.userId === currentUser?.id || s.email === currentUser?.email) || supervisors[0];
+  const currentSupervisorId = currentSupervisor?.id || currentUser?.supervisorId || 'sup-1';
+
+  const currentPlace = places.find(p => p.id === currentUser?.practicePlaceId) || places[0];
+  const currentPlaceId = currentPlace?.id || currentUser?.practicePlaceId || 'place-1';
 
   // Section 1: Calculate Live Top Counters
   // Jami talabalar, Bugun kelganlar, Kechikkanlar, Kelmaganlar, Uzrli kelmaganlar, Davomat foizi
@@ -262,6 +266,8 @@ export function AttendanceModule() {
 
   const userRoleUpper = (role || currentUser?.role || '').toUpperCase();
   const isStudentUser = userRoleUpper === 'STUDENT' || userRoleUpper === 'TALABA';
+  const isSupervisorUser = userRoleUpper === 'PRACTICE_SUPERVISOR' || userRoleUpper === 'SUPERVISOR' || userRoleUpper === 'PRACTICE_LEADER_UNI' || userRoleUpper === 'SUPERVISOR_UNIVERSITY';
+  const isClinicUser = userRoleUpper === 'CLINIC_RESPONSIBLE' || userRoleUpper === 'CLINIC' || userRoleUpper === 'SUPERVISOR_CLINIC';
 
   return (
     <div className="space-y-6">
@@ -270,22 +276,26 @@ export function AttendanceModule() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold tracking-tight text-slate-900">
-              {isStudentUser ? "Mening Amaliyot Davomatim" : "Elektron Davomat + QR Davomat Tizimi"}
+              {isStudentUser ? "Mening Amaliyot Davomatim" : isSupervisorUser ? "Amaliyot Rahbari Kabineti" : isClinicUser ? "Klinika Mas'uli Kabineti" : "Elektron Davomat + QR Davomat Tizimi"}
             </h2>
             <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold uppercase font-mono tracking-wider">
-              {isStudentUser ? "Talaba Kabineti" : "4-Bosqich Faol"}
+              {isStudentUser ? "Talaba Kabineti" : isSupervisorUser ? "Rahbar Portali" : isClinicUser ? "Klinika Portali" : "4-Bosqich Faol"}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             {isStudentUser
               ? "Klinik amaliyot bazasida kunlik davomatdan o'tish va davomat ko'rsatkichlarini kuzatish"
+              : isSupervisorUser
+              ? "Sizga biriktirilgan talabalar davomati, QR kod yaratish va intizom nazorati"
+              : isClinicUser
+              ? "Shifoxonangizga kelgan talabalar davomatini nazorat qilish va QR kod yaratish"
               : "Klinik amaliyot bazalarida real-time QR davomat, geolokatsiya, kechikishlar va audit jurnali nazorati"}
           </p>
         </div>
 
         {/* Global Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          {!isStudentUser && (
+          {!isStudentUser && !isSupervisorUser && !isClinicUser && (
             <>
               {/* Section 24: QA Tester Button */}
               <button
@@ -321,8 +331,8 @@ export function AttendanceModule() {
         </div>
       </div>
 
-      {/* Tabs Navigation (Only shown for Admin / Staff / Supervisor roles, hidden for Students) */}
-      {!isStudentUser && (
+      {/* Tabs Navigation (Only shown for Admin / Staff roles) */}
+      {!isStudentUser && !isSupervisorUser && !isClinicUser && (
         <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto text-xs font-semibold text-slate-600">
           <button
             type="button"
@@ -394,6 +404,28 @@ export function AttendanceModule() {
       {isStudentUser ? (
         <StudentAttendanceView
           student={currentStudent}
+          onRefresh={refreshData}
+        />
+      ) : isSupervisorUser ? (
+        <SupervisorAttendanceView
+          supervisorId={currentSupervisorId}
+          onStartQr={() => setIsQrGeneratorOpen(true)}
+          onOpenManualModal={(stId, prId) => {
+            setEditingStudentId(stId);
+            setSelectedPracticeId(prId);
+            setIsManualModalOpen(true);
+          }}
+          onRefresh={refreshData}
+        />
+      ) : isClinicUser ? (
+        <ClinicResponsibleAttendanceView
+          practicePlaceId={currentPlaceId}
+          onStartQr={() => setIsQrGeneratorOpen(true)}
+          onOpenManualModal={(stId, prId) => {
+            setEditingStudentId(stId);
+            setSelectedPracticeId(prId);
+            setIsManualModalOpen(true);
+          }}
           onRefresh={refreshData}
         />
       ) : (
