@@ -352,8 +352,10 @@ export function UsersModule() {
     showToast('success', 'Profilga o\'tildi', `${u.fullName} (${ROLE_CONFIGS[u.role]?.title || u.role}) profilidasiz.`);
   };
 
-  // Filtered users
+  // Filtered users (exclude students)
   const filteredUsers = users.filter(u => {
+    const r = (u.role || '').toUpperCase();
+    if (r === 'STUDENT' || r === 'TALABA') return false;
     if (roleFilter !== 'ALL' && u.role !== roleFilter) return false;
     if (statusFilter !== 'ALL' && u.role !== statusFilter && u.status !== statusFilter) return false;
     if (searchQuery.trim()) {
@@ -367,11 +369,16 @@ export function UsersModule() {
     return true;
   });
 
+  const nonStudentUsers = users.filter(u => {
+    const r = (u.role || '').toUpperCase();
+    return r !== 'STUDENT' && r !== 'TALABA';
+  });
+
   // Stats
-  const totalUsers = users.length;
-  const practiceDeptCount = users.filter(u => u.role === 'PRACTICE_HEAD' || u.role === 'PRACTICE_STAFF' || u.role === 'super_admin' || u.role === 'SUPER_ADMIN').length;
-  const deansAndSupervisorsCount = users.filter(u => u.role === 'FACULTY_DEAN' || u.role === 'PRACTICE_SUPERVISOR' || u.role === 'dean' || u.role === 'supervisor').length;
-  const clinicResponsiblesCount = users.filter(u => u.role === 'CLINIC_RESPONSIBLE' || u.role === 'clinic_responsible').length;
+  const totalUsers = nonStudentUsers.length;
+  const practiceDeptCount = nonStudentUsers.filter(u => u.role === 'PRACTICE_HEAD' || u.role === 'PRACTICE_STAFF' || u.role === 'super_admin' || u.role === 'SUPER_ADMIN').length;
+  const deansAndSupervisorsCount = nonStudentUsers.filter(u => u.role === 'FACULTY_DEAN' || u.role === 'PRACTICE_SUPERVISOR' || u.role === 'dean' || u.role === 'supervisor').length;
+  const clinicResponsiblesCount = nonStudentUsers.filter(u => u.role === 'CLINIC_RESPONSIBLE' || u.role === 'clinic_responsible').length;
 
   return (
     <div className="space-y-6">

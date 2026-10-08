@@ -72,12 +72,12 @@ export function DailyJournalFormModal({
   const assignments = storageService.getPracticeAssignments();
   const allAttendance = storageService.getAttendance();
 
-  // Determine current student & practice
-  const currentStudent = students.find(s => s.userId === currentUser?.uid || s.id === currentUser?.studentId) || students[0];
-  const studentAssignment = assignments.find((a: PracticeAssignment) => a.studentId === currentStudent?.id) || assignments[0];
-  const activePractice = practices.find(p => p.id === studentAssignment?.practiceId) || practices[0];
-  const assignedPlace = practicePlaces.find(p => p.id === studentAssignment?.practicePlaceId) || practicePlaces[0];
-  const assignedSupervisor = supervisors.find(s => s.id === studentAssignment?.supervisorId) || supervisors[0];
+  // Determine current student & practice with robust fallbacks
+  const currentStudent = (students && students.find(s => s.userId === currentUser?.uid || s.id === currentUser?.studentId)) || students?.[0] || { id: 'std-1', fullName: 'Talaba', groupId: 'grp-401' };
+  const studentAssignment = (assignments && assignments.find((a: PracticeAssignment) => a?.studentId === currentStudent?.id)) || assignments?.[0] || { id: 'asg-1', practiceId: practices?.[0]?.id || 'prac-1', practicePlaceId: practicePlaces?.[0]?.id || 'place-1', supervisorId: supervisors?.[0]?.id || 'sup-1', departmentId: 'pdept-1', department: 'Terapiya', startDate: '2026-09-01', endDate: '2026-10-15' };
+  const activePractice = practices?.find(p => p.id === studentAssignment?.practiceId) || practices?.[0] || { id: 'prac-1', name: 'Klinik amaliyot', academicYear: '2025-2026' };
+  const assignedPlace = practicePlaces?.find(p => p.id === studentAssignment?.practicePlaceId) || practicePlaces?.[0] || { id: 'place-1', name: 'Klinika' };
+  const assignedSupervisor = supervisors?.find(s => s.id === studentAssignment?.supervisorId) || supervisors?.[0] || { id: 'sup-1', fullName: 'Rahbar' };
 
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>(
