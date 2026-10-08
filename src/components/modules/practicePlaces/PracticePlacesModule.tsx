@@ -173,23 +173,20 @@ export function PracticePlacesModule() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">
-            Amaliyot joylari va klinik bazalar
+            Amaliyot bazalari
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Universitet bilan rasmiy hamkorlik shartnomasiga ega bo'lgan shifoxonalar va tibbiyot muassasalari
+            Universitet bilan rasmiy hamkorlik shartnomasiga ega bo'lgan klinik bazalar, shifoxonalar va tibbiyot muassasalari
           </p>
         </div>
 
         <button
           type="button"
-          onClick={() => {
-            setPlaceToEdit(null);
-            setIsModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors shrink-0"
+          onClick={handleOpenAddModal}
+          className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>Yangi amaliyot joyi</span>
+          <span>Yangi amaliyot bazasi</span>
         </button>
       </div>
 
@@ -201,7 +198,7 @@ export function PracticePlacesModule() {
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Shifoxona nomi, manzili yoki mas'ul shaxs..."
+            placeholder="Baza nomi, manzili yoki mas'ul shaxs..."
             className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-50/50 focus:ring-2 focus:ring-blue-600"
           />
         </div>
@@ -216,7 +213,7 @@ export function PracticePlacesModule() {
             <button
               key={tab.id}
               onClick={() => setFilterType(tab.id)}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
                 filterType === tab.id
                   ? 'bg-white text-slate-900 shadow-2xs font-semibold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -231,10 +228,10 @@ export function PracticePlacesModule() {
       {/* Practice Places Grid */}
       {filteredPlaces.length === 0 ? (
         <EmptyState
-          title="Amaliyot joyi topilmadi"
-          description="Kiritilgan parametrlar bo'yicha tibbiyot bazalari mavjud emas."
+          title="Amaliyot bazasi topilmadi"
+          description="Kiritilgan parametrlar bo'yicha amaliyot bazalari mavjud emas."
           actionLabel="+ Yangi baza qo'shish"
-          onAction={() => setIsModalOpen(true)}
+          onAction={handleOpenAddModal}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -333,7 +330,7 @@ export function PracticePlacesModule() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={placeToEdit ? "Klinik bazani tahrirlash" : "Yangi amaliyot joyi qo'shish"}
+        title={placeToEdit ? "Amaliyot bazasini tahrirlash" : "Yangi amaliyot bazasi qo'shish"}
         subtitle="Universitet amaliyot bazalari reestriga kiritish"
         maxWidth="2xl"
       >
@@ -518,8 +515,8 @@ export function PracticePlacesModule() {
         isOpen={Boolean(placeToDelete)}
         onClose={() => setPlaceToDelete(null)}
         onConfirm={handleDeleteConfirm}
-        title="Amaliyot joyini o'chirish"
-        message={`Haqiqatan ham "${placeToDelete?.name}" bazasini o'chirmoqchimisiz?`}
+        title="Amaliyot bazasini o'chirish"
+        message={`Haqiqatan ham "${placeToDelete?.name}" amaliyot bazasini o'chirmoqchimisiz?`}
         confirmLabel="O'chirish"
         cancelLabel="Bekor qilish"
         isDestructive

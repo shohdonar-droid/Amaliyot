@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Practice, PracticeType, PracticeStatus } from '../../../types';
+import { Practice, PracticeType, PracticeStatus, PracticePlace } from '../../../types';
 import { storageService } from '../../../services/storageService';
+import { organizationService } from '../../../services/organizationService';
 import { Modal } from '../../common/Modal';
 
 interface PracticeFormModalProps {
@@ -27,7 +28,7 @@ export function PracticeFormModal({
   const faculties = storageService.getFaculties();
   const directions = storageService.getDirections();
   const groups = storageService.getGroups();
-  const places = storageService.getPracticePlaces();
+  const [places, setPlaces] = useState<PracticePlace[]>(() => storageService.getPracticePlaces());
   
   const [supervisors, setSupervisors] = useState(() => storageService.getSupervisors());
   const [clinicResponsibles, setClinicResponsibles] = useState(() => storageService.getClinicResponsibles());
@@ -54,6 +55,13 @@ export function PracticeFormModal({
 
   useEffect(() => {
     if (isOpen) {
+      const freshPlaces = storageService.getPracticePlaces();
+      setPlaces(freshPlaces);
+      organizationService.getOrganizations().then(fresh => {
+        if (fresh && fresh.length > 0) {
+          setPlaces(fresh);
+        }
+      });
       setSupervisors(storageService.getSupervisors());
       setClinicResponsibles(storageService.getClinicResponsibles());
     }
@@ -326,27 +334,33 @@ export function PracticeFormModal({
           </div>
         </div>
 
-        {/* Amaliyot joylari (Hospitals multi-select) */}
+        {/* Amaliyot bazalari (Hospitals multi-select) */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-            Amaliyot joylari / Shifoxonalar ({selectedPlaceIds.length} ta tanlandi)
+            Amaliyot bazalari / Klinik muassasalar ({selectedPlaceIds.length} ta tanlandi)
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 max-h-32 overflow-y-auto">
-            {places.map(place => {
-              const isChecked = selectedPlaceIds.includes(place.id);
-              return (
-                <label key={place.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggleSelection(place.id, selectedPlaceIds, setSelectedPlaceIds)}
-                    className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                  />
-                  <span className="truncate">{place.name} ({place.capacity} o'rin)</span>
-                </label>
-              );
-            })}
-          </div>
+          {places.length === 0 ? (
+            <div className="p-3 text-center text-xs text-amber-700 bg-amber-50 rounded-lg border border-amber-200">
+              Hozircha amaliyot bazalari mavjud emas. Avval "Amaliyot bazalari" bo'limidan yangi baza qo'shing.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 max-h-36 overflow-y-auto">
+              {places.map(place => {
+                const isChecked = selectedPlaceIds.includes(place.id);
+                return (
+                  <label key={place.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:bg-white p-1 rounded transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleSelection(place.id, selectedPlaceIds, setSelectedPlaceIds)}
+                      className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                    />
+                    <span className="truncate font-medium">{place.name} ({place.capacity} o'rin)</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Supervisors & Clinic Responsibles */}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   CalendarRange,
   Plus,
@@ -21,8 +21,9 @@ import {
   AlertTriangle,
   GraduationCap
 } from 'lucide-react';
-import { Practice, PracticeStatus, PracticeAssignment } from '../../../types';
+import { Practice, PracticeStatus, PracticeAssignment, PracticePlace } from '../../../types';
 import { storageService } from '../../../services/storageService';
+import { organizationService } from '../../../services/organizationService';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
 import { StatusBadge, StatusVariant } from '../../common/Badge';
@@ -52,9 +53,25 @@ export function PracticesModule() {
   const faculties = storageService.getFaculties();
   const directions = storageService.getDirections();
   const groups = storageService.getGroups();
-  const places = storageService.getPracticePlaces();
+  const [places, setPlaces] = useState<PracticePlace[]>(() => storageService.getPracticePlaces());
   const supervisors = storageService.getSupervisors();
   const allAssignments = storageService.getAssignments();
+
+  useEffect(() => {
+    organizationService.getOrganizations().then(fresh => {
+      if (fresh && fresh.length > 0) setPlaces(fresh);
+    });
+
+    const handleSync = () => {
+      setPractices(storageService.getPractices());
+      setPlaces(storageService.getPracticePlaces());
+      organizationService.getOrganizations().then(fresh => {
+        if (fresh && fresh.length > 0) setPlaces(fresh);
+      });
+    };
+    window.addEventListener('tma_state_changed', handleSync);
+    return () => window.removeEventListener('tma_state_changed', handleSync);
+  }, []);
 
   const studentDetails = useMemo(() => {
     if (!isStudent || !studentId) return null;
@@ -63,6 +80,7 @@ export function PracticesModule() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterPlaceId, setFilterPlaceId] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   // Modals state
@@ -147,6 +165,10 @@ export function PracticesModule() {
     const norm = getNormStatus(p.status);
     if (filterStatus !== 'all' && norm !== filterStatus.toUpperCase()) {
       return false;
+    }
+    if (filterPlaceId !== 'all') {
+      const matchPlace = (p.practicePlaceIds || []).includes(filterPlaceId);
+      if (!matchPlace) return false;
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -304,7 +326,22 @@ export function PracticesModule() {
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+          {/* Amaliyot bazasi filtri */}
+          <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg">
+            <Building2 className="w-3.5 h-3.5 text-slate-500" />
+            <select
+              value={filterPlaceId}
+              onChange={e => setFilterPlaceId(e.target.value)}
+              className="text-xs font-semibold text-slate-700 bg-transparent focus:outline-hidden cursor-pointer"
+            >
+              <option value="all">Barcha bazalar</option>
+              {places.map(pl => (
+                <option key={pl.id} value={pl.id}>{pl.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Segmented status controls: DRAFT, ACTIVE, PAUSED, COMPLETED, ARCHIVED */}
           <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg shrink-0">
             {[
@@ -375,7 +412,7 @@ export function PracticesModule() {
                   <th className="py-3 px-3 text-center">Kurs</th>
                   <th className="py-3 px-3">Muddatlari</th>
                   <th className="py-3 px-3 text-center">Talabalar</th>
-                  <th className="py-3 px-3 text-center">Joylar</th>
+                  <th className="py-3 px-3 text-center">Bazalar</th>
                   <th className="py-3 px-3 text-center">Rahbarlar</th>
                   <th className="py-3 px-3">Status</th>
                   <th className="py-3 px-3 text-right">Amallar</th>

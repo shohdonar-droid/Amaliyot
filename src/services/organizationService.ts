@@ -28,14 +28,35 @@ export function getNextOrganizationId(existingPlaces?: PracticePlace[]): string 
   return `TASH-${String(nextNum).padStart(6, '0')}`;
 }
 
+const DEMO_PLACE_IDS = ['place-1', 'place-2', 'place-3', 'place-4'];
+
 export const organizationService = {
   getOrganizations: async () => {
     try {
       const fsData = await firestoreService.queryDocuments(COLLECTION, []) as PracticePlace[];
-      const lsData = storageService.getPracticePlaces();
-      return mergeData(fsData, lsData, 'id');
+      const lsData = (storageService.getPracticePlaces() || []).filter(p => p && !DEMO_PLACE_IDS.includes(p.id));
+      const validFsData = (fsData || []).filter(p => 
+        p && 
+        !DEMO_PLACE_IDS.includes(p.id) &&
+        (p as any).status !== 'INACTIVE' && 
+        (p as any).status !== 'DELETED'
+      );
+      return mergeData(validFsData, lsData, 'id');
     } catch {
-      return storageService.getPracticePlaces();
+      return (storageService.getPracticePlaces() || []).filter(p => p && !DEMO_PLACE_IDS.includes(p.id));
+    }
+  },
+
+  clearAllOrganizations: async () => {
+    storageService.clearAllPracticePlaces();
+    if (db) {
+      try {
+        for (const id of DEMO_PLACE_IDS) {
+          await firestoreService.updateDocument(COLLECTION, id, { status: 'DELETED', updatedAt: Timestamp.now().toDate().toISOString() }).catch(() => {});
+        }
+      } catch (err) {
+        console.warn('Firestore clearAllOrganizations warning:', err);
+      }
     }
   },
 

@@ -290,96 +290,7 @@ const DEFAULT_GROUPS: Group[] = [
   }
 ];
 
-const DEFAULT_PRACTICE_PLACES: PracticePlace[] = [
-  {
-    id: 'place-1',
-    organizationCode: 'TASH-000125',
-    name: 'Chirchiq shahar tibbiyot birlashmasi',
-    type: 'Shifoxona',
-    city: 'Chirchiq shahri',
-    address: 'Chirchiq shahri, Tibbiyotchilar ko\'chasi, 12-uy',
-    phone: '+998 (70) 715-20-30',
-    email: 'chirchiq_ttb@minzdrav.uz',
-    capacity: 100,
-    activeStudentsCount: 42,
-    contactPerson: 'Dr. Karimov Rustam Baxtiyorovich',
-    contactPhone: '+998 (90) 123-45-67',
-    departments: ['Jarrohlik', 'Terapiya', 'Pediatriya', 'Qabul bo\'limi', 'Reanimatsiya'],
-    contractNumber: 'SH-2025/114',
-    contractDate: '2025-01-10',
-    contractExpiryDate: '2026-12-31',
-    latitude: 41.4689,
-    longitude: 69.5822,
-    allowedRadius: 300,
-    createdAt: '2025-01-10T00:00:00Z'
-  },
-  {
-    id: 'place-2',
-    organizationCode: 'TASH-000126',
-    name: 'Respublika Shoshilinch Tibbiy Yordam Ilmiy Markazi (RSHTYOIM)',
-    type: 'Ilmiy Markaz',
-    city: 'Toshkent shahri',
-    address: 'Kichik halqa yo\'li, 2-uy',
-    phone: '+998 (71) 277-95-00',
-    email: 'rshtyom@cardio.uz',
-    capacity: 50,
-    activeStudentsCount: 30,
-    contactPerson: 'Dr. Rahmonova Nargiza Anvarovna',
-    contactPhone: '+998 (97) 345-67-89',
-    departments: ['Kombustiologiya', 'Neyroxirurgiya', 'Toksikologiya', 'Shoshilinch terapiya', 'Travmatologiya'],
-    contractNumber: 'SH-2025/182',
-    contractDate: '2025-01-15',
-    contractExpiryDate: '2027-01-15',
-    latitude: 41.2825,
-    longitude: 69.2790,
-    allowedRadius: 300,
-    createdAt: '2025-01-15T00:00:00Z'
-  },
-  {
-    id: 'place-3',
-    organizationCode: 'TASH-000127',
-    name: '1-son Bolalar Klinik Shifoxonasi',
-    type: 'Shifoxona',
-    city: 'Toshkent shahri',
-    address: 'Olmazor tumani, Bobur ko\'chasi, 45-uy',
-    phone: '+998 (71) 244-12-33',
-    email: 'pediatriya_clinic@tashkent.uz',
-    capacity: 40,
-    activeStudentsCount: 22,
-    contactPerson: 'Dr. Qodirova Gulchehra Ilhomovna',
-    contactPhone: '+998 (93) 555-44-33',
-    departments: ['Chaqaloqlar patologiyasi', 'Pediatriya', 'Bolalar xirurgiyasi', 'Allergologiya'],
-    contractNumber: 'SH-2025/089',
-    contractDate: '2025-02-01',
-    contractExpiryDate: '2026-12-31',
-    latitude: 41.3415,
-    longitude: 69.2150,
-    allowedRadius: 250,
-    createdAt: '2025-02-01T00:00:00Z'
-  },
-  {
-    id: 'place-4',
-    organizationCode: 'TASH-000128',
-    name: '14-son Markaziy Ko\'p Tarmoqli Poliklinika',
-    type: 'Poliklinika',
-    city: 'Toshkent shahri',
-    address: 'Yakkasaroy tumani, Shota Rustaveli ko\'chasi, 78-uy',
-    phone: '+998 (71) 255-09-18',
-    email: 'poliklinika14@tashmed.uz',
-    capacity: 30,
-    activeStudentsCount: 16,
-    contactPerson: 'Dr. Ahmedov Sherzod Mansurovich',
-    contactPhone: '+998 (91) 987-65-43',
-    departments: ['Umumiy amaliyot shifokori', 'Kardiologiya', 'Nevrologiya', 'Profilaktika xonasi'],
-    contractNumber: 'SH-2025/067',
-    contractDate: '2025-01-20',
-    contractExpiryDate: '2026-12-31',
-    latitude: 41.2910,
-    longitude: 69.2610,
-    allowedRadius: 200,
-    createdAt: '2025-01-20T00:00:00Z'
-  }
-];
+const DEFAULT_PRACTICE_PLACES: PracticePlace[] = [];
 
 const DEFAULT_PRACTICE_DEPARTMENTS: PracticeDepartment[] = [
   { id: 'pdept-1', practicePlaceId: 'place-1', name: 'Jarrohlik', headDoctor: 'Dr. Mahmudov B.', bedCapacity: 40, activeStudentQuota: 15 },
@@ -2203,7 +2114,10 @@ class StorageServiceV2 {
     parsed.courses = parsed.courses && parsed.courses.length > 0 ? parsed.courses : DEFAULT_COURSES;
     parsed.groups = parsed.groups && parsed.groups.length > 0 ? parsed.groups : DEFAULT_GROUPS;
     parsed.students = parsed.students || [];
-    parsed.practicePlaces = parsed.practicePlaces && parsed.practicePlaces.length > 0 ? parsed.practicePlaces : DEFAULT_PRACTICE_PLACES;
+    parsed.practicePlaces = Array.isArray(parsed.practicePlaces) ? parsed.practicePlaces : [];
+    // Ensure legacy demo places are never revived
+    const DEMO_PLACE_IDS = ['place-1', 'place-2', 'place-3', 'place-4'];
+    parsed.practicePlaces = parsed.practicePlaces.filter((p: any) => p && !DEMO_PLACE_IDS.includes(p.id));
     parsed.practiceDepartments = parsed.practiceDepartments || [];
     parsed.supervisors = parsed.supervisors && parsed.supervisors.length > 0 ? parsed.supervisors : DEFAULT_SUPERVISORS;
     parsed.clinicResponsibles = parsed.clinicResponsibles && parsed.clinicResponsibles.length > 0 ? parsed.clinicResponsibles : DEFAULT_CLINIC_RESPONSIBLES;
@@ -2251,6 +2165,13 @@ class StorageServiceV2 {
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.users)) {
           this.memoryState = this.normalizeState(parsed);
+          // One-time clear of existing practice places if required
+          const PLACES_PURGED_FLAG = 'tma_practice_bases_cleared_prod_v2';
+          if (typeof window !== 'undefined' && !localStorage.getItem(PLACES_PURGED_FLAG)) {
+            this.memoryState.practicePlaces = [];
+            localStorage.setItem(PLACES_PURGED_FLAG, 'true');
+            this.saveState(this.memoryState);
+          }
           return this.memoryState;
         }
       } catch (err) {
@@ -2267,7 +2188,7 @@ class StorageServiceV2 {
       courses: DEFAULT_COURSES,
       groups: DEFAULT_GROUPS,
       students: [],
-      practicePlaces: DEFAULT_PRACTICE_PLACES,
+      practicePlaces: [],
       practiceDepartments: [],
       supervisors: DEFAULT_SUPERVISORS,
       clinicResponsibles: DEFAULT_CLINIC_RESPONSIBLES,
@@ -2963,11 +2884,12 @@ class StorageServiceV2 {
 
   // --- PRACTICE PLACES & DEPARTMENTS ---
   public getPracticePlaces(): PracticePlace[] {
-    return this.getState().practicePlaces;
+    return this.getState().practicePlaces || [];
   }
 
   public savePracticePlace(place: PracticePlace): void {
     const state = this.getState();
+    if (!state.practicePlaces) state.practicePlaces = [];
     const idx = state.practicePlaces.findIndex(p => p.id === place.id);
     if (idx >= 0) {
       state.practicePlaces[idx] = place;
@@ -2979,7 +2901,13 @@ class StorageServiceV2 {
 
   public deletePracticePlace(id: string): void {
     const state = this.getState();
-    state.practicePlaces = state.practicePlaces.filter(p => p.id !== id);
+    state.practicePlaces = (state.practicePlaces || []).filter(p => p.id !== id);
+    this.saveState(state);
+  }
+
+  public clearAllPracticePlaces(): void {
+    const state = this.getState();
+    state.practicePlaces = [];
     this.saveState(state);
   }
 

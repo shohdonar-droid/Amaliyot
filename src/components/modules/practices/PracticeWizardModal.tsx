@@ -30,6 +30,7 @@ import {
   ClinicResponsible
 } from '../../../types';
 import { storageService } from '../../../services/storageService';
+import { organizationService } from '../../../services/organizationService';
 import { Modal } from '../../common/Modal';
 import { StatusBadge } from '../../common/Badge';
 import { useToast } from '../../../context/ToastContext';
@@ -74,7 +75,7 @@ export function PracticeWizardModal({
   const courses = storageService.getCourses();
   const groups = storageService.getGroups();
   const allStudents = storageService.getStudents();
-  const allPlaces = storageService.getPracticePlaces();
+  const [allPlaces, setAllPlaces] = useState<PracticePlace[]>(() => storageService.getPracticePlaces());
 
   // Wizard current step: 1..5
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -84,10 +85,28 @@ export function PracticeWizardModal({
 
   useEffect(() => {
     if (isOpen) {
+      const placesNow = storageService.getPracticePlaces();
+      setAllPlaces(placesNow);
+      organizationService.getOrganizations().then(fresh => {
+        if (fresh && fresh.length > 0) {
+          setAllPlaces(fresh);
+        }
+      });
       setAllSupervisors(storageService.getSupervisors());
       setAllClinicResponsibles(storageService.getClinicResponsibles());
     }
   }, [isOpen, currentStep]);
+
+  useEffect(() => {
+    const handleSync = () => {
+      setAllPlaces(storageService.getPracticePlaces());
+      organizationService.getOrganizations().then(fresh => {
+        if (fresh && fresh.length > 0) setAllPlaces(fresh);
+      });
+    };
+    window.addEventListener('tma_state_changed', handleSync);
+    return () => window.removeEventListener('tma_state_changed', handleSync);
+  }, []);
 
   // STEP 1: Basic Information
   const [name, setName] = useState('');
@@ -453,7 +472,7 @@ export function PracticeWizardModal({
   const steps = [
     { num: 1, label: 'Asosiy ma\'lumotlar', icon: FileText },
     { num: 2, label: 'Talabalar tanlovi', icon: Users },
-    { num: 3, label: 'Amaliyot joylari', icon: Building2 },
+    { num: 3, label: 'Amaliyot bazalari', icon: Building2 },
     { num: 4, label: 'Rahbarlar', icon: UserCheck },
     { num: 5, label: 'Taqsimlash & Tasdiqlash', icon: CheckCircle2 }
   ];
@@ -845,19 +864,30 @@ export function PracticeWizardModal({
             </div>
           )}
 
-          {/* STEP 3: AMALIYOT JOYLARI (HOSPITALS & CAPACITY) */}
+          {/* STEP 3: AMALIYOT BAZALARI (HOSPITALS & CAPACITY) */}
           {currentStep === 3 && (
             <div className="space-y-4">
               <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3.5 flex items-start gap-3">
                 <Building2 className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
                 <div className="text-xs text-slate-600">
-                  <strong className="font-semibold text-slate-800">3-BOSQICH: Amaliyot joylari. </strong>
-                  Talabalar taqsimlanadigan klinik bazalar, poliklinikalar va ilmiy markazlarni tanlang.
+                  <strong className="font-semibold text-slate-800">3-BOSQICH: Amaliyot bazalari. </strong>
+                  Talabalar taqsimlanadigan klinik bazalar, poliklinikalar va tibbiyot markazlarini tanlang.
                   Har bir baza uchun umumiy sig'im, bandlik va mavjud bo'sh joylar monitoring qilinadi.
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {allPlaces.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <Building2 className="w-8 h-8 text-slate-400 mx-auto" />
+                  <p className="text-sm font-semibold text-slate-800">
+                    Tizimda hozircha amaliyot bazalari mavjud emas
+                  </p>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Amaliyot yaratish uchun avval "Amaliyot bazalari" bo'limidan yangi klinik baza (shifoxona) qo'shing.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {allPlaces.map(place => {
                   const isSelected = selectedPlaceIds.includes(place.id);
                   const availableSpots = Math.max(0, place.capacity - place.activeStudentsCount);
@@ -920,6 +950,7 @@ export function PracticeWizardModal({
                   );
                 })}
               </div>
+            )}
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center justify-between">
                 <span className="text-slate-600 font-medium">

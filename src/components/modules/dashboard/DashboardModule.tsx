@@ -57,7 +57,15 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
   // Master data from storageService
   const students = storageService.getStudents() || [];
   const practices = storageService.getPractices() || [];
-  const places = storageService.getPracticePlaces() || [];
+  const [places, setPlaces] = React.useState(() => storageService.getPracticePlaces() || []);
+
+  React.useEffect(() => {
+    const handleSync = () => {
+      setPlaces(storageService.getPracticePlaces() || []);
+    };
+    window.addEventListener('tma_state_changed', handleSync);
+    return () => window.removeEventListener('tma_state_changed', handleSync);
+  }, []);
   const supervisors = storageService.getSupervisors() || [];
   const assignments = storageService.getAssignments() || [];
   const attendance = storageService.getAttendance() || [];
@@ -701,7 +709,7 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
       { label: 'Amaliyotlar', count: practices.length, mod: 'practices' as ActiveModule, color: 'text-blue-600' },
       { label: 'Taqsimotlar', count: assignments.length, mod: 'allocation' as ActiveModule, color: 'text-indigo-600' },
       { label: 'Talabalar', count: students.length, mod: 'students' as ActiveModule, color: 'text-purple-600' },
-      { label: 'Tashkilotlar', count: places.length, mod: 'practice_places' as ActiveModule, color: 'text-teal-600' },
+      { label: 'Amaliyot bazalari', count: places.length, mod: 'practice_places' as ActiveModule, color: 'text-teal-600' },
       { label: 'Davomat', count: todayAttendance.length, mod: 'attendance' as ActiveModule, color: 'text-emerald-600' },
       { label: 'Hisobotlar', count: storageService.getVedomosts().length || 4, mod: 'reports' as ActiveModule, color: 'text-slate-700' }
     ];
@@ -745,7 +753,7 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
       { label: 'Amaliyotlar', mod: 'practices' as ActiveModule, icon: CalendarRange, color: 'bg-blue-600' },
       { label: 'Amaliyot taqsimoti', mod: 'allocation' as ActiveModule, icon: Split, color: 'bg-indigo-600' },
       { label: 'Talabalar', mod: 'students' as ActiveModule, icon: Users, color: 'bg-cyan-600' },
-      { label: 'Tashkilotlar', mod: 'practice_places' as ActiveModule, icon: Building2, color: 'bg-emerald-600' },
+      { label: 'Amaliyot bazalari', mod: 'practice_places' as ActiveModule, icon: Building2, color: 'bg-emerald-600' },
       { label: 'Rahbarlar', mod: 'supervisors' as ActiveModule, icon: UserCheck, color: 'bg-teal-600' },
       { label: 'Davomat', mod: 'attendance' as ActiveModule, icon: QrCode, color: 'bg-green-600' },
       { label: 'Kundaliklar', mod: 'daily_journal' as ActiveModule, icon: BookOpen, color: 'bg-amber-600' },
@@ -919,7 +927,7 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           onClick={() => onNavigate('practice_places')}
           className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs cursor-pointer hover:border-slate-300 transition-colors"
         >
-          <span className="text-[11px] font-bold text-slate-500 uppercase block">Tashkilotlar</span>
+          <span className="text-[11px] font-bold text-slate-500 uppercase block">Amaliyot bazalari</span>
           <span className="text-2xl font-black text-emerald-600 mt-1 block font-mono">{places.length}</span>
           <span className="text-[11px] text-emerald-700 font-semibold">Klinik bazalar</span>
         </div>
@@ -1020,7 +1028,7 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
             className="p-3.5 rounded-2xl bg-emerald-50/70 hover:bg-emerald-100 border border-emerald-200 text-left cursor-pointer transition-colors"
           >
             <Building2 className="w-5 h-5 text-emerald-600 mb-2" />
-            <span className="text-xs font-bold text-slate-900 block">Tashkilotlar</span>
+            <span className="text-xs font-bold text-slate-900 block">Amaliyot bazalari</span>
             <span className="text-[10px] text-emerald-700">Klinik bazalar</span>
           </button>
 

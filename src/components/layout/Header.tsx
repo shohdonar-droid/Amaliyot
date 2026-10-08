@@ -46,7 +46,7 @@ export function Header({
     students: { title: 'Talabalar ro\'yxati', subtitle: 'Barcha talabalar, ularning guruhlari va amaliyot holati' },
     academic: { title: 'Akademik tuzilma', subtitle: 'Fakultetlar, yo\'nalishlar, kurslar va guruhlar boshqaruvi' },
     practices: { title: 'Amaliyotlar', subtitle: 'O\'quv, malakaviy va klinik amaliyotlar buyruqlari' },
-    practice_places: { title: 'Amaliyot joylari', subtitle: 'Klinik bazalar, shifoxonalar va poliklinikalar' },
+    practice_places: { title: 'Amaliyot bazalari', subtitle: 'Klinik bazalar, shifoxonalar va tibbiyot markazlari' },
     supervisors: { title: 'Rahbarlar va mas\'ullar', subtitle: 'Universitet amaliyot rahbarlari va klinik mentorlar' },
     allocation: { title: 'Taqsimlash moduli', subtitle: 'Talabalarni shifoxonalar va bo\'limlarga biriktirish' },
     attendance: { title: 'Davomat tizimi', subtitle: 'Kundalik keldi-ketdi, QR qaydnomalar va hisobotlar' },

@@ -112,7 +112,7 @@ export function Sidebar({
     },
     {
       id: 'practice_places',
-      label: 'Amaliyot joylari',
+      label: 'Amaliyot bazalari',
       icon: Building2,
       allowedRoles: ['SUPER_ADMIN', 'PRACTICE_HEAD', 'PRACTICE_STAFF', 'FACULTY_DEAN', 'PRACTICE_SUPERVISOR', 'CLINIC_RESPONSIBLE', 'super_admin', 'dept_head', 'dept_staff', 'dean', 'supervisor', 'clinic_responsible']
     },
