@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sidebar, ActiveModule } from './Sidebar';
 import { Header } from './Header';
+import { BottomNavigation } from './BottomNavigation';
 import { storageService } from '../../services/storageService';
 import { UserProfileModal } from '../common/UserProfileModal';
 
@@ -48,12 +49,20 @@ export function Layout({
           onOpenProfile={() => setIsProfileModalOpen(true)}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 pb-24 lg:pb-8 max-w-7xl w-full mx-auto overflow-x-hidden">
           {children}
         </main>
       </div>
 
-      {/* User Profile Modal when opened from Sidebar */}
+      {/* Mobile Bottom Navigation */}
+      <BottomNavigation
+        activeModule={activeModule}
+        onSelectModule={onSelectModule}
+        onOpenMenu={() => setIsOpenMobile(true)}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
+      />
+
+      {/* User Profile Modal */}
       <UserProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
