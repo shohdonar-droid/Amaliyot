@@ -109,7 +109,7 @@ export function SkillReviewModal({
                 {student?.fullName || 'Talaba'}
               </h4>
               <p className="text-xs text-slate-500">
-                ID: {student?.studentId} · Guruh: {student?.groupId} · PINFL: {student?.pinfl}
+                ID: {student?.studentId} · Guruh: {student?.groupId}
               </p>
             </div>
             <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${

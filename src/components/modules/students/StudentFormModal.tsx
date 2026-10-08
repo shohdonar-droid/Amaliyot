@@ -23,7 +23,6 @@ export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: Stu
 
   const [fullName, setFullName] = useState('');
   const [hemisStudentId, setHemisStudentId] = useState('');
-  const [pinfl, setPinfl] = useState('');
   const [facultyId, setFacultyId] = useState('');
   const [directionId, setDirectionId] = useState('');
   const [courseId, setCourseId] = useState('');
@@ -37,7 +36,6 @@ export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: Stu
     if (studentToEdit) {
       setFullName(studentToEdit.fullName || '');
       setHemisStudentId(studentToEdit.hemisStudentId || studentToEdit.studentId || '');
-      setPinfl(studentToEdit.pinfl || '');
       setFacultyId(studentToEdit.facultyId || faculties[0]?.id || '');
       setDirectionId(studentToEdit.directionId || directions[0]?.id || '');
       setCourseId(studentToEdit.courseId || courses[0]?.id || '');
@@ -54,7 +52,6 @@ export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: Stu
 
       setFullName('');
       setHemisStudentId('');
-      setPinfl('');
       setFacultyId(defaultFac);
       setDirectionId(defaultDir);
       setCourseId(courses[0]?.id || '');
@@ -84,12 +81,6 @@ export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: Stu
       return;
     }
 
-    const cleanPinfl = pinfl.trim().replace(/\s+/g, '');
-    if (cleanPinfl.length !== 14 || !/^\d+$/.test(cleanPinfl)) {
-      showToast('warning', 'JSHSHIR xato', 'JSHSHIR (PINFL) aynan 14 ta raqamdan iborat bo\'lishi kerak.');
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -99,7 +90,6 @@ export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: Stu
           ...studentToEdit,
           fullName: fullName.trim(),
           hemisStudentId: hemisStudentId.trim(),
-          pinfl: cleanPinfl,
           facultyId,
           directionId,
           courseId,
@@ -131,7 +121,6 @@ export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: Stu
           studentId: autoStudentId,
           hemisStudentId: hemisStudentId.trim(),
           fullName: fullName.trim(),
-          pinfl: cleanPinfl,
           facultyId,
           directionId,
           courseId,
@@ -196,38 +185,21 @@ export function StudentFormModal({ isOpen, onClose, onSave, studentToEdit }: Stu
           </span>
         </div>
 
-        {/* JSHSHIR & Status */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              JSHSHIR (14 xonali PINFL) *
-            </label>
-            <input
-              type="text"
-              required
-              maxLength={14}
-              value={pinfl}
-              onChange={e => setPinfl(e.target.value.replace(/\D/g, ''))}
-              placeholder="31405991230045"
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-mono bg-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Holati (Status)
-            </label>
-            <select
-              value={status}
-              onChange={e => setStatus(e.target.value as StudentStatus)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white"
-            >
-              <option value="active">Faol (O'qimoqda)</option>
-              <option value="in_practice">Amaliyotda</option>
-              <option value="completed">Yakunlagan</option>
-              <option value="suspended">Chetlashtirilgan</option>
-            </select>
-          </div>
+        {/* Status */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            Holati (Status)
+          </label>
+          <select
+            value={status}
+            onChange={e => setStatus(e.target.value as StudentStatus)}
+            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white"
+          >
+            <option value="active">Faol (O'qimoqda)</option>
+            <option value="in_practice">Amaliyotda</option>
+            <option value="completed">Yakunlagan</option>
+            <option value="suspended">Chetlashtirilgan</option>
+          </select>
         </div>
 
         {/* Faculty & Direction */}

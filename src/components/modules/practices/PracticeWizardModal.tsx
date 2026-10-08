@@ -195,8 +195,7 @@ export function PracticeWizardModal({
     const q = studentSearchQuery.toLowerCase();
     return poolStudents.filter(s => 
       s.fullName.toLowerCase().includes(q) ||
-      s.studentId.toLowerCase().includes(q) ||
-      s.pinfl.includes(q)
+      s.studentId.toLowerCase().includes(q)
     );
   }, [poolStudents, studentSearchQuery]);
 
@@ -836,12 +835,6 @@ export function PracticeWizardModal({
                                 <span>{student.phone}</span>
                               </div>
                             </div>
-                          </div>
-
-                          <div className="text-right">
-                            <span className="text-[11px] font-mono text-slate-400">
-                              JSHSHIR: {student.pinfl}
-                            </span>
                           </div>
                         </label>
                       );

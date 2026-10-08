@@ -237,7 +237,6 @@ export function UsersModule() {
             login: finalLogin,
             studentCode: finalLogin,
             hemisStudentId: String(Math.floor(10000000 + Math.random() * 90000000)),
-            pinfl: '3140' + String(Math.floor(1000000000 + Math.random() * 9000000000)),
             fullName: userData.fullName,
             facultyId: formData.facultyId || faculties[0]?.id || '',
             directionId: directions[0]?.id || '',

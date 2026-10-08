@@ -117,8 +117,8 @@ export function SkillPassportPrintModal({
               <strong className="text-slate-900 block truncate">{student?.fullName || '—'}</strong>
             </div>
             <div>
-              <span className="text-[10px] text-slate-500 uppercase block">Talaba ID / PINFL:</span>
-              <span className="font-mono text-slate-800 block">{student?.studentId} · {student?.pinfl}</span>
+              <span className="text-[10px] text-slate-500 uppercase block">Talaba ID:</span>
+              <span className="font-mono text-slate-800 block">{student?.studentId}</span>
             </div>
             <div>
               <span className="text-[10px] text-slate-500 uppercase block">Fakultet va guruh:</span>

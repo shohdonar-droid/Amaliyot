@@ -179,7 +179,6 @@ export const ProblemStudentsView: React.FC<ProblemStudentsViewProps> = ({
                   const student = storageService.getStudents().find(s => s.id === p.studentId) || {
                     id: p.studentId,
                     studentId: 'STD',
-                    pinfl: '',
                     fullName: p.studentName,
                     facultyId: '',
                     directionId: '',

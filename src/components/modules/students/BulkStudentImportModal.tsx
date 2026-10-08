@@ -29,7 +29,6 @@ interface ParsedStudentRow {
   fullName: string;
   studentId: string;
   hemisStudentId?: string;
-  pinfl: string;
   groupName: string;
   phone: string;
   email: string;
@@ -62,10 +61,10 @@ export function BulkStudentImportModal({
   // Generate and download genuine Excel (.xlsx) template file
   const handleDownloadTemplate = () => {
     const wsData = [
-      ["F.I.SH (To'liq F.I.SH)", "HEMIS ID", "PINFL (14 xonali)", "Telefon raqami", "Email"],
-      ["Sobirov Jamshid Alisherovich", "382211100015", "31405991230099", "+998901234567", "jamshid@student.uz"],
-      ["Karimova Malika Nodir qizi", "382211100016", "32007011450077", "+998912345678", "malika@student.uz"],
-      ["Ergashev Odil Mirzayevich", "382211100017", "31508982340012", "+998933456789", "odil@student.uz"]
+      ["F.I.SH (To'liq F.I.SH)", "HEMIS ID", "Telefon raqami", "Email"],
+      ["Sobirov Jamshid Alisherovich", "382211100015", "+998901234567", "jamshid@student.uz"],
+      ["Karimova Malika Nodir qizi", "382211100016", "+998912345678", "malika@student.uz"],
+      ["Ergashev Odil Mirzayevich", "382211100017", "+998933456789", "odil@student.uz"]
     ];
 
     const wb = XLSX.utils.book_new();
@@ -74,7 +73,6 @@ export function BulkStudentImportModal({
     ws['!cols'] = [
       { wch: 32 }, // F.I.SH
       { wch: 16 }, // HEMIS ID
-      { wch: 18 }, // PINFL
       { wch: 18 }, // Telefon
       { wch: 25 }  // Email
     ];
@@ -108,9 +106,8 @@ export function BulkStudentImportModal({
       if (parts.length > 0 && parts[0]) {
         const fullName = parts[0] || '';
         const hemisStudentId = parts[1] || '';
-        const pinfl = (parts[2] || '').replace(/\D/g, '');
-        const phone = parts[3] || '+998 (90) 000-00-00';
-        const email = parts[4] || '';
+        const phone = parts[2] || '+998 (90) 000-00-00';
+        const email = parts[3] || '';
 
         const isValid = fullName.length >= 3;
 
@@ -118,7 +115,6 @@ export function BulkStudentImportModal({
           fullName,
           studentId: '',
           hemisStudentId,
-          pinfl,
           groupName: '',
           phone,
           email,
@@ -153,9 +149,8 @@ export function BulkStudentImportModal({
           if (!fullName) return;
 
           const hemisStudentId = String(row[1] || '').trim();
-          const pinfl = String(row[2] || '').replace(/\D/g, '');
-          const phone = String(row[3] || '').trim() || '+998 (90) 000-00-00';
-          const email = String(row[4] || '').trim();
+          const phone = String(row[2] || '').trim() || '+998 (90) 000-00-00';
+          const email = String(row[3] || '').trim();
 
           const isValid = fullName.length >= 3;
 
@@ -163,7 +158,6 @@ export function BulkStudentImportModal({
             fullName,
             studentId: '',
             hemisStudentId,
-            pinfl,
             groupName: '',
             phone,
             email,
@@ -219,7 +213,6 @@ export function BulkStudentImportModal({
           login: studentCode,
           password: 'password123',
           hemisStudentId: row.hemisStudentId || autoStudentId,
-          pinfl: row.pinfl,
           fullName: row.fullName,
           facultyId: selectedFacultyId,
           directionId: selectedDirectionId,
@@ -417,7 +410,6 @@ export function BulkStudentImportModal({
                     <th className="py-2 px-3">#</th>
                     <th className="py-2 px-3">F.I.SH</th>
                     <th className="py-2 px-3">Student ID</th>
-                    <th className="py-2 px-3">PINFL</th>
                     <th className="py-2 px-3">Aloqa</th>
                     <th className="py-2 px-3">Holat</th>
                   </tr>
@@ -428,7 +420,6 @@ export function BulkStudentImportModal({
                       <td className="py-2 px-3 text-slate-400 font-mono">{idx + 1}</td>
                       <td className="py-2 px-3 font-bold text-slate-900">{row.fullName}</td>
                       <td className="py-2 px-3 font-mono text-slate-600">{row.studentId}</td>
-                      <td className="py-2 px-3 font-mono text-slate-600">{row.pinfl}</td>
                       <td className="py-2 px-3 text-slate-500">{row.phone}</td>
                       <td className="py-2 px-3">
                         {row.isValid ? (

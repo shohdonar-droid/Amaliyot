@@ -113,7 +113,7 @@ export interface Student {
   login?: string;
   password?: string;
   studentCode?: string;
-  pinfl: string;
+  pinfl?: string;
   fullName: string;
   facultyId: string;
   directionId: string;

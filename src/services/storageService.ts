@@ -2697,7 +2697,6 @@ class StorageServiceV2 {
   public syncHemisStudent(hemisData: {
     hemisStudentId: string;
     fullName: string;
-    pinfl?: string;
     facultyId?: string;
     directionId?: string;
     courseId?: string;
@@ -2716,7 +2715,6 @@ class StorageServiceV2 {
       const updated: Student = {
         ...existing,
         fullName: hemisData.fullName || existing.fullName,
-        pinfl: hemisData.pinfl || existing.pinfl,
         facultyId: hemisData.facultyId || existing.facultyId,
         directionId: hemisData.directionId || existing.directionId,
         courseId: hemisData.courseId || existing.courseId,
@@ -2777,7 +2775,6 @@ class StorageServiceV2 {
         hemisStudentId: hemisData.hemisStudentId,
         studentId: hemisData.hemisStudentId,
         fullName: hemisData.fullName,
-        pinfl: hemisData.pinfl || '30000000000000',
         facultyId: hemisData.facultyId || state.faculties[0]?.id || 'fac-1',
         directionId: hemisData.directionId || state.directions[0]?.id || 'dir-1',
         courseId: hemisData.courseId || state.courses[0]?.id || 'course-4',
