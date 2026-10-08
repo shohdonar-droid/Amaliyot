@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as XLSX from 'xlsx';
 import {
   Upload,
   Download,
@@ -58,24 +59,30 @@ export function BulkStudentImportModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'paste' | 'file'>('paste');
 
-  // Generate and download CSV template file
+  // Generate and download genuine Excel (.xlsx) template file
   const handleDownloadTemplate = () => {
-    const csvContent = "\uFEFF" + [
-      "F.I.SH,HEMIS ID,PINFL,Telefon,Email",
-      "Sobirov Jamshid Alisherovich,382211100015,31405991230099,+998901234567,jamshid@student.uz",
-      "Karimova Malika Nodir qizi,382211100016,32007011450077,+998912345678,malika@student.uz",
-      "Ergashev Odil Mirzayevich,382211100017,31508982340012,+998933456789,odil@student.uz"
-    ].join("\n");
+    const wsData = [
+      ["F.I.SH (To'liq F.I.SH)", "HEMIS ID", "PINFL (14 xonali)", "Telefon raqami", "Email"],
+      ["Sobirov Jamshid Alisherovich", "382211100015", "31405991230099", "+998901234567", "jamshid@student.uz"],
+      ["Karimova Malika Nodir qizi", "382211100016", "32007011450077", "+998912345678", "malika@student.uz"],
+      ["Ergashev Odil Mirzayevich", "382211100017", "31508982340012", "+998933456789", "odil@student.uz"]
+    ];
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'namuna_talabalar_royxati.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast('info', 'Namuna yuklandi', 'namuna_talabalar_royxati.csv fayli yuklab olindi. Login va parol tizim tomonidan tartibli beriladi.');
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    ws['!cols'] = [
+      { wch: 32 }, // F.I.SH
+      { wch: 16 }, // HEMIS ID
+      { wch: 18 }, // PINFL
+      { wch: 18 }, // Telefon
+      { wch: 25 }  // Email
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "Talabalar");
+    XLSX.writeFile(wb, "talabalar_qoshish_namunasi.xlsx");
+    
+    showToast('info', 'Excel namuna yuklandi', 'talabalar_qoshish_namunasi.xlsx fayli yuklab olindi. Mos kataklarga ma\'lumotlarni kiritib yuklashingiz mumkin.');
   };
 
   // Parse raw text or file content
@@ -130,11 +137,49 @@ export function BulkStudentImportModal({
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const content = event.target?.result as string;
-      setRawPasteText(content);
-      parseRawContent(content);
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+
+        const rows: ParsedStudentRow[] = [];
+        jsonData.forEach((row: any, index: number) => {
+          if (index === 0) return; // skip header
+          if (!row || row.length === 0) return;
+
+          const fullName = String(row[0] || '').trim();
+          if (!fullName) return;
+
+          const hemisStudentId = String(row[1] || '').trim();
+          const pinfl = String(row[2] || '').replace(/\D/g, '');
+          const phone = String(row[3] || '').trim() || '+998 (90) 000-00-00';
+          const email = String(row[4] || '').trim();
+
+          const isValid = fullName.length >= 3;
+
+          rows.push({
+            fullName,
+            studentId: '',
+            hemisStudentId,
+            pinfl,
+            groupName: '',
+            phone,
+            email,
+            isValid,
+            error: isValid ? undefined : 'F.I.SH kamida 3 belgidan iborat bo\'lishi kerak'
+          });
+        });
+
+        setParsedRows(rows);
+        showToast('success', 'Excel fayl o\'qildi', `${rows.length} ta qator muvaffaqiyatli aniqlandi.`);
+      } catch (err: any) {
+        console.error("Error parsing excel file:", err);
+        showToast('error', 'Faylni o\'qishda xatolik', 'Excel fayl formatini tekshiring.');
+      }
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
   };
 
   const handleTextPasteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
