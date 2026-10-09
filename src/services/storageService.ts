@@ -2276,10 +2276,10 @@ class StorageServiceV2 {
 
   public getSystemSettings(): SystemSettings {
     const state = this.getState();
-    if (!state.systemSettings) {
+    if (!state.systemSettings || state.systemSettings.universityName === 'Toshkent Tibbiyot Akademiyasi') {
       state.systemSettings = {
-        universityName: 'Toshkent Tibbiyot Akademiyasi',
-        universityShortName: 'TMA',
+        universityName: 'Toshkent davlat tibbiyot universiteti Chirchiq filiali',
+        universityShortName: 'TDTU Chirchiq filiali',
         academicYear: '2025-2026',
         semester: 'Kuzgi',
         qrRadiusMeters: 150,
@@ -2292,7 +2292,7 @@ class StorageServiceV2 {
   }
 
   public getUniversityName(): string {
-    return this.getSystemSettings().universityName || 'Toshkent Tibbiyot Akademiyasi';
+    return this.getSystemSettings().universityName || 'Toshkent davlat tibbiyot universiteti Chirchiq filiali';
   }
 
   public updateSystemSettings(updates: Partial<SystemSettings>): SystemSettings {

@@ -37,7 +37,7 @@ export function SettingsModule() {
   const { role, canonicalRole, isSuperAdmin } = useAuth();
 
   const sysSettings = storageService.getSystemSettings();
-  const [univName, setUnivName] = useState(sysSettings.universityName || 'Toshkent Tibbiyot Akademiyasi');
+  const [univName, setUnivName] = useState(sysSettings.universityName || 'Toshkent davlat tibbiyot universiteti Chirchiq filiali');
   const [academicYear, setAcademicYear] = useState(sysSettings.academicYear || '2025-2026');
   const [semester, setSemester] = useState(sysSettings.semester || 'Kuzgi');
   const [qrRadius, setQrRadius] = useState(sysSettings.qrRadiusMeters || 150);

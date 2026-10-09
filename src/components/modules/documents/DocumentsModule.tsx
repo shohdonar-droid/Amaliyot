@@ -246,8 +246,8 @@ export function DocumentsModule() {
               <p className="text-xs uppercase tracking-widest font-bold text-slate-800">
                 O'zbekiston Respublikasi Sog'liqni Saqlash Vazirligi
               </p>
-              <h3 className="text-base font-extrabold uppercase mt-1 text-slate-900">
-                TIBBIYOT UNIVERSITETI
+              <h3 className="text-sm font-extrabold uppercase mt-1 text-slate-900 leading-tight">
+                Toshkent davlat tibbiyot universiteti Chirchiq filiali
               </h3>
               <p className="text-[11px] text-slate-500 font-sans mt-0.5">
                 O'quv-amaliyot bo'limi · Tel: +998 (71) 214-89-01 · Toshkent sh.
