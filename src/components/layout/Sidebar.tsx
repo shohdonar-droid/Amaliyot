@@ -71,10 +71,12 @@ export function Sidebar({
   const { role, canonicalRole, roleConfig, currentUser, logout, isSuperAdmin } = useAuth();
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [univName, setUnivName] = useState(() => storageService.getUniversityName());
+  const [univLogo, setUnivLogo] = useState(() => storageService.getUniversityLogo());
 
   useEffect(() => {
     const handleSettingsUpdate = () => {
       setUnivName(storageService.getUniversityName());
+      setUnivLogo(storageService.getUniversityLogo());
     };
     window.addEventListener('system_settings_updated', handleSettingsUpdate);
     return () => window.removeEventListener('system_settings_updated', handleSettingsUpdate);
@@ -212,8 +214,12 @@ export function Sidebar({
       >
         {/* Brand Header */}
         <div className="p-5 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-md shadow-blue-900/30 shrink-0">
-            <GraduationCap className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-md shadow-blue-900/30 shrink-0 overflow-hidden">
+            {univLogo ? (
+              <img src={univLogo} alt="University Logo" className="w-full h-full object-cover" />
+            ) : (
+              <GraduationCap className="w-6 h-6" />
+            )}
           </div>
           <div className="min-w-0">
             <h1 className="text-xs font-bold tracking-tight text-white leading-tight uppercase line-clamp-2">

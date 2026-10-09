@@ -94,8 +94,12 @@ export function LoginPage() {
       <div className="w-full max-w-sm sm:max-w-md mx-auto my-auto py-4">
         {/* University branding & Logo */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-600/25 mb-4 border border-blue-400/30">
-            <GraduationCap className="w-10 h-10" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-600/25 mb-4 border border-blue-400/30 overflow-hidden">
+            {storageService.getUniversityLogo() ? (
+              <img src={storageService.getUniversityLogo()} alt="University Logo" className="w-full h-full object-cover" />
+            ) : (
+              <GraduationCap className="w-10 h-10" />
+            )}
           </div>
 
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest leading-snug max-w-xs mx-auto">

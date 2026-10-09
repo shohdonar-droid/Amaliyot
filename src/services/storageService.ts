@@ -55,6 +55,7 @@ export type AppEnvironmentMode = 'DEVELOPMENT' | 'PRODUCTION';
 export interface SystemSettings {
   universityName: string;
   universityShortName?: string;
+  universityLogo?: string;
   academicYear: string;
   semester: string;
   qrRadiusMeters: number;
@@ -2293,6 +2294,10 @@ class StorageServiceV2 {
 
   public getUniversityName(): string {
     return this.getSystemSettings().universityName || 'Toshkent davlat tibbiyot universiteti Chirchiq filiali';
+  }
+
+  public getUniversityLogo(): string | undefined {
+    return this.getSystemSettings().universityLogo;
   }
 
   public updateSystemSettings(updates: Partial<SystemSettings>): SystemSettings {
