@@ -2166,11 +2166,21 @@ class StorageServiceV2 {
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.users)) {
           this.memoryState = this.normalizeState(parsed);
-          // One-time clear of existing practice places if required
-          const PLACES_PURGED_FLAG = 'tma_practice_bases_cleared_prod_v2';
-          if (typeof window !== 'undefined' && !localStorage.getItem(PLACES_PURGED_FLAG)) {
+          // Complete one-time demo data purge
+          const DEMO_PURGE_FLAG = 'tma_demo_completely_purged_v5';
+          if (typeof window !== 'undefined' && !localStorage.getItem(DEMO_PURGE_FLAG)) {
+            this.memoryState.faculties = [];
+            this.memoryState.directions = [];
+            this.memoryState.groups = [];
+            this.memoryState.students = [];
+            this.memoryState.practices = [];
+            this.memoryState.supervisors = [];
+            this.memoryState.clinicResponsibles = [];
             this.memoryState.practicePlaces = [];
-            localStorage.setItem(PLACES_PURGED_FLAG, 'true');
+            this.memoryState.practiceDepartments = [];
+            this.memoryState.practiceDistributions = [];
+            this.memoryState.practiceAssignments = [];
+            localStorage.setItem(DEMO_PURGE_FLAG, 'true');
             this.saveState(this.memoryState);
           }
           return this.memoryState;
@@ -2184,16 +2194,16 @@ class StorageServiceV2 {
       mode: 'PRODUCTION',
       users: [],
       academicYears: [],
-      faculties: DEFAULT_FACULTIES,
-      directions: DEFAULT_DIRECTIONS,
+      faculties: [],
+      directions: [],
       courses: DEFAULT_COURSES,
-      groups: DEFAULT_GROUPS,
+      groups: [],
       students: [],
       practicePlaces: [],
       practiceDepartments: [],
-      supervisors: DEFAULT_SUPERVISORS,
-      clinicResponsibles: DEFAULT_CLINIC_RESPONSIBLES,
-      practices: DEFAULT_PRACTICES_V2,
+      supervisors: [],
+      clinicResponsibles: [],
+      practices: [],
       practiceDistributions: [],
       practiceAssignments: [],
       attendance: [],
@@ -2277,9 +2287,9 @@ class StorageServiceV2 {
 
   public getSystemSettings(): SystemSettings {
     const state = this.getState();
-    if (!state.systemSettings || state.systemSettings.universityName === 'Toshkent Tibbiyot Akademiyasi') {
+    if (!state.systemSettings || state.systemSettings.universityName === 'Toshkent Tibbiyot Akademiyasi' || state.systemSettings.universityName === 'Toshkent davlat tibbiyot universiteti Chirchiq filiali') {
       state.systemSettings = {
-        universityName: 'Toshkent davlat tibbiyot universiteti Chirchiq filiali',
+        universityName: 'TOSHKENT DAVLAT TIBBIYOT UNIVERSITETI CHIRCHIQ FILIALI',
         universityShortName: 'TDTU Chirchiq filiali',
         academicYear: '2025-2026',
         semester: 'Kuzgi',
@@ -2293,7 +2303,7 @@ class StorageServiceV2 {
   }
 
   public getUniversityName(): string {
-    return this.getSystemSettings().universityName || 'Toshkent davlat tibbiyot universiteti Chirchiq filiali';
+    return this.getSystemSettings().universityName || 'TOSHKENT DAVLAT TIBBIYOT UNIVERSITETI CHIRCHIQ FILIALI';
   }
 
   public getUniversityLogo(): string | undefined {

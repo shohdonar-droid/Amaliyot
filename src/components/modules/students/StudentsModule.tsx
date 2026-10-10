@@ -142,6 +142,11 @@ export function StudentsModule() {
         if (!matchName && !matchId && !matchPinfl && !matchPhone && !matchLogin) return false;
       }
 
+      if (isSupervisor) {
+        const supGroupIds = groups.map(g => g.id);
+        if (!supGroupIds.includes(student.groupId)) return false;
+      }
+
       if (filterFaculty && student.facultyId !== filterFaculty) return false;
       if (filterDirection && student.directionId !== filterDirection) return false;
       if (filterCourse && student.courseId !== filterCourse) return false;
@@ -173,6 +178,8 @@ export function StudentsModule() {
   }, [
     students,
     searchQuery,
+    isSupervisor,
+    groups,
     filterFaculty,
     filterDirection,
     filterCourse,
@@ -476,9 +483,9 @@ export function StudentsModule() {
           />
         ) : (
           <>
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+            {/* Unified Horizontal Scrollable Table View */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs min-w-[950px]">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                     <th className="py-3 px-3 w-10 text-center">№</th>
@@ -490,7 +497,7 @@ export function StudentsModule() {
                     <th className="py-3 px-4">Guruhi</th>
                     <th className="py-3 px-4">Aloqa (Tel / TG)</th>
                     <th className="py-3 px-4">Login/Parol Status</th>
-                    <th className="py-3 px-4 text-right">Amallar</th>
+                    {!isSupervisor && <th className="py-3 px-4 text-right">Amallar</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -609,54 +616,56 @@ export function StudentsModule() {
                         </td>
 
                         {/* Amallar */}
-                        <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1">
-                            {/* Pasportni ko'rish */}
-                            <button
-                              type="button"
-                              onClick={() => setSelectedStudentForDetail(student)}
-                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                              title="Amaliyot pasportini ko'rish"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-
-                            {/* Birlamchi parolga qaytarish (Key icon) */}
-                            <button
-                              type="button"
-                              onClick={() => setStudentToResetPassword(student)}
-                              className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
-                              title="Parolni birlamchi holatga (password123) qaytarish"
-                            >
-                              <Key className="w-4 h-4" />
-                            </button>
-
-                            {/* Tahrirlash */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setStudentToEdit(student);
-                                setIsFormModalOpen(true);
-                              }}
-                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                              title="Tahrirlash"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-
-                            {/* O'chirish */}
-                            {canDeleteStudents && (
+                        {!isSupervisor && (
+                          <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              {/* Pasportni ko'rish */}
                               <button
                                 type="button"
-                                onClick={() => setStudentToDelete(student)}
-                                className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                title="O'chirish"
+                                onClick={() => setSelectedStudentForDetail(student)}
+                                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                title="Amaliyot pasportini ko'rish"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Eye className="w-4 h-4" />
                               </button>
-                            )}
-                          </div>
-                        </td>
+
+                              {/* Birlamchi parolga qaytarish (Key icon) */}
+                              <button
+                                type="button"
+                                onClick={() => setStudentToResetPassword(student)}
+                                className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                                title="Parolni birlamchi holatga (password123) qaytarish"
+                              >
+                                <Key className="w-4 h-4" />
+                              </button>
+
+                              {/* Tahrirlash */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setStudentToEdit(student);
+                                  setIsFormModalOpen(true);
+                                }}
+                                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                title="Tahrirlash"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+
+                              {/* O'chirish */}
+                              {canDeleteStudents && (
+                                <button
+                                  type="button"
+                                  onClick={() => setStudentToDelete(student)}
+                                  className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                  title="O'chirish"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
