@@ -34,6 +34,7 @@ import {
   HeartPulse,
   Layers
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../../context/AuthContext';
 import { storageService } from '../../../services/storageService';
 import { ActiveModule } from '../../layout/Sidebar';
@@ -787,6 +788,25 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           <span className="px-3.5 py-1.5 rounded-full bg-blue-50 text-blue-700 font-bold text-xs border border-blue-200 self-start sm:self-auto font-mono">
             {todayDate}
           </span>
+        </div>
+
+        {/* Statistics Chart */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+          <h3 className="text-lg font-black text-slate-900 mb-6">Umumiy statistika</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={[
+                { name: 'Faol amaliyotlar', value: practices.filter(p => p.status === 'active').length },
+                { name: 'Talabalar', value: new Set(assignments.map(a => a.studentId)).size },
+                { name: 'Kutilayotgan baholar', value: assessments.filter(a => (a.status || '').toUpperCase() === 'PENDING').length },
+              ]}>
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="value" fill="#3b82f6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Statistic Cards: Jami talabalar, Faol amaliyotlar, Bugungi davomat, Muammoli talabalar */}
