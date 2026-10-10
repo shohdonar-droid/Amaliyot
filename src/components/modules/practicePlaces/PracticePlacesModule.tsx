@@ -19,18 +19,36 @@ import {
 } from 'lucide-react';
 import { PracticePlace, PracticePlaceType } from '../../../types';
 import { organizationService, getNextOrganizationId } from '../../../services/organizationService';
+import { practiceAssignmentService } from '../../../services/practiceAssignmentService';
 import { useToast } from '../../../context/ToastContext';
 import { Modal } from '../../common/Modal';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
 import { EmptyState } from '../../common/EmptyState';
+import { useAuth } from '../../../context/AuthContext';
 
 export function PracticePlacesModule() {
   const { showToast } = useToast();
+  const { canonicalRole, currentUser } = useAuth();
   const [places, setPlaces] = useState<PracticePlace[]>([]);
   
   useEffect(() => {
-    organizationService.getOrganizations().then(setPlaces);
-  }, []);
+    const fetchData = async () => {
+      const allPlaces = await organizationService.getOrganizations();
+      if (canonicalRole === 'PRACTICE_SUPERVISOR') {
+        const supervisorId = currentUser?.supervisorId;
+        if (supervisorId) {
+          const assignments = await practiceAssignmentService.getPracticeAssignmentsBySupervisor(supervisorId);
+          const supervisorPlaceIds = new Set(assignments.map(a => a.practicePlaceId));
+          setPlaces(allPlaces.filter(p => supervisorPlaceIds.has(p.id)));
+        } else {
+          setPlaces([]);
+        }
+      } else {
+        setPlaces(allPlaces);
+      }
+    };
+    fetchData();
+  }, [canonicalRole, currentUser]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
 
@@ -180,14 +198,16 @@ export function PracticePlacesModule() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleOpenAddModal}
-          className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Yangi amaliyot bazasi</span>
-        </button>
+        {(canonicalRole === 'SUPER_ADMIN' || canonicalRole === 'PRACTICE_HEAD') && (
+          <button
+            type="button"
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Yangi amaliyot bazasi</span>
+          </button>
+        )}
       </div>
 
       {/* Filter and Search */}

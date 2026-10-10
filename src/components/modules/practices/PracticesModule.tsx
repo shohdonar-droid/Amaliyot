@@ -156,6 +156,11 @@ export function PracticesModule() {
 
   const filteredPractices = practices.filter(p => {
     const norm = getNormStatus(p.status);
+    if (canonicalRole === 'PRACTICE_SUPERVISOR') {
+      const supervisorId = currentUser?.supervisorId;
+      if (!supervisorId || !(p.supervisorIds || []).includes(supervisorId)) return false;
+    }
+
     if (filterStatus !== 'all' && norm !== filterStatus.toUpperCase()) {
       return false;
     }
@@ -294,7 +299,7 @@ export function PracticesModule() {
           </p>
         </div>
 
-        {!isStudent && (
+        {(canonicalRole === 'SUPER_ADMIN' || canonicalRole === 'PRACTICE_HEAD') && (
           <button
             type="button"
             onClick={() => setIsWizardOpen(true)}
