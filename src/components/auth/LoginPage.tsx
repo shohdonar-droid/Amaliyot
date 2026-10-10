@@ -75,27 +75,27 @@ export function LoginPage() {
           </div>
           <div>
             <p className="text-xs font-semibold text-blue-300 uppercase tracking-widest">
-              Oliy ta'lim muassasasi
+              OLIY TA'LIM MUASSASASI
             </p>
-            <p className="text-sm font-bold text-white">
-              TMA Chirchiq filiali
+            <p className="text-sm font-bold text-white uppercase tracking-tight">
+              TOSHKENT DAVLAT TIBBIYOT UNIVERSITETI CHIRCHIQ FILIALI
             </p>
           </div>
         </div>
 
         {/* Center Hero */}
-        <div className="relative z-10 my-auto py-12 space-y-6 max-w-lg">
+        <div className="relative z-10 my-auto py-12 space-y-6 max-w-xl">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-xs font-semibold tracking-wide">
             <ShieldCheck className="w-4 h-4 text-blue-400" />
             <span>Xavfsiz elektron ta'lim va amaliyot platformasi</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight whitespace-nowrap">
             Amaliyotni boshqaruv tizimi
           </h1>
 
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-            {univName}. Talabalar amaliyoti, kundaliklar, GPS/QR davomat, amaliy ko'nikmalar pasporti va baholash jarayonlarini raqamli boshqarish tizimi.
+            Talabalar amaliyoti, kundaliklar, GPS/QR davomat, amaliy ko'nikmalar pasporti va baholash jarayonlarini raqamli boshqarish tizimi.
           </p>
         </div>
 
