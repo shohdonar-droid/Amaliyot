@@ -147,14 +147,14 @@ function calcDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numb
   const isAbsent = (st?: string) => st?.toUpperCase() === 'ABSENT';
   const isExcused = (st?: string) => st?.toUpperCase() === 'EXCUSED';
 
-  const totalDays = Math.max(studentHistory.length, 22);
-  const presentCount = studentHistory.filter(a => isPresent(a.status)).length || 20;
-  const lateCount = studentHistory.filter(a => isLate(a.status)).length || 1;
-  const absentCount = studentHistory.filter(a => isAbsent(a.status)).length || 1;
+  const totalDays = studentHistory.length;
+  const presentCount = studentHistory.filter(a => isPresent(a.status)).length;
+  const lateCount = studentHistory.filter(a => isLate(a.status)).length;
+  const absentCount = studentHistory.filter(a => isAbsent(a.status)).length;
   const excusedCount = studentHistory.filter(a => isExcused(a.status)).length;
   const attendancePercent = totalDays > 0 
     ? Math.round(((presentCount + lateCount + excusedCount) / totalDays) * 100) 
-    : 95;
+    : 0;
 
   return (
     <div className="space-y-5 max-w-4xl mx-auto">
