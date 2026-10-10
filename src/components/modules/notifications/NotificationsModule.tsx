@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bell,
   CheckCircle,
@@ -23,6 +23,12 @@ export function NotificationsModule({ onNavigate }: NotificationsModuleProps) {
   const refreshList = () => {
     setNotifications(storageService.getNotifications());
   };
+
+  useEffect(() => {
+    const handleSync = () => refreshList();
+    window.addEventListener('tma_state_changed', handleSync);
+    return () => window.removeEventListener('tma_state_changed', handleSync);
+  }, []);
 
   const handleMarkAsRead = (id: string) => {
     storageService.markNotificationAsRead(id);

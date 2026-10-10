@@ -22,7 +22,14 @@ export function Layout({
 }: LayoutProps) {
   const [isOpenMobile, setIsOpenMobile] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const notifications = storageService.getNotifications();
+  const [notifications, setNotifications] = useState(() => storageService.getNotifications());
+  
+  useEffect(() => {
+    const handleSync = () => setNotifications(storageService.getNotifications());
+    window.addEventListener('tma_state_changed', handleSync);
+    return () => window.removeEventListener('tma_state_changed', handleSync);
+  }, []);
+
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (

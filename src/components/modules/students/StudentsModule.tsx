@@ -1,20 +1,15 @@
 import {
-  Users,
   Search,
-  Filter,
   Plus,
   Eye,
   Edit2,
   Trash2,
-  Download,
-  GraduationCap,
-  Building2,
-  X,
   FileSpreadsheet,
   CheckCircle2,
   Copy,
   Key,
-  RotateCcw
+  RotateCcw,
+  X
 } from 'lucide-react';
 import { Student } from '../../../types';
 import { studentService } from '../../../services/studentService';
@@ -58,14 +53,14 @@ export function StudentsModule() {
   const practices = storageService.getPractices() || [];
   const places = storageService.getPracticePlaces() || [];
 
-  // Search & Filter States (Sequential & Supervisor filters)
+  // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [filterFaculty, setFilterFaculty] = useState('');
   const [filterDirection, setFilterDirection] = useState('');
   const [filterCourse, setFilterCourse] = useState('');
   const [filterGroup, setFilterGroup] = useState('');
-  const [filterSupervisors, setFilterSupervisors] = useState<string[]>([]);
-  const [filterClinicResponsibles, setFilterClinicResponsibles] = useState<string[]>([]);
+  const [filterSupervisors] = useState<string[]>([]);
+  const [filterClinicResponsibles] = useState<string[]>([]);
   const [filterPractice, setFilterPractice] = useState('');
   const [filterPlace, setFilterPlace] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -104,21 +99,7 @@ export function StudentsModule() {
     }
   };
 
-  const allSupervisors = storageService.getSupervisors() || [];
-  const allClinicResponsibles = storageService.getClinicResponsibles() || [];
   const assignments = storageService.getAssignments() || [];
-
-  // Sequential cascading options
-  const availableDirections = directions.filter(d => 
-    !filterFaculty || d.facultyId === filterFaculty
-  );
-
-  const availableGroups = groups.filter(g => {
-    if (filterFaculty && g.facultyId !== filterFaculty) return false;
-    if (filterCourse && g.courseId !== filterCourse) return false;
-    if (filterDirection && g.directionId !== filterDirection) return false;
-    return true;
-  });
 
   // Filtered & Sequentially Sorted Students
   const filteredStudents = useMemo(() => {
@@ -195,13 +176,11 @@ export function StudentsModule() {
   const handleSaveStudent = async (saved: Student) => {
     try {
       if (saved.id && saved.id !== 'new') {
-        // Update existing
         setStudents(prev => prev.map(s => s.id === saved.id ? saved : s));
         storageService.saveStudent(saved);
         showToast('success', 'Muvaffaqiyatli saqlandi', `${saved.fullName} ma'lumotlari yangilandi.`);
         studentService.updateStudent(saved.id, saved).catch(console.warn);
       } else {
-        // Create new - INSTANT optimistic update
         const tempId = `st-${Date.now()}`;
         const newStudentRecord: Student = { ...saved, id: tempId };
         
@@ -210,10 +189,8 @@ export function StudentsModule() {
         setCreatedCredentialsModal({ student: newStudentRecord });
         showToast('success', 'Talaba yaratildi!', `${saved.fullName} uchun tartibli login (${saved.login}) va parol biriktirildi.`);
 
-        // Clear active search/filters so new student is immediately visible in list
         resetFilters();
 
-        // Asynchronous background persistence to Firestore
         (async () => {
           try {
             const actualId = await studentService.createStudent(saved as Omit<Student, 'id'>);
@@ -245,7 +222,6 @@ export function StudentsModule() {
       return;
     }
 
-    // Immediately remove from UI list
     setStudents(prev => prev.filter(s => s.id !== targetId));
     setStudentToDelete(null);
     showToast('success', 'Tizimdan o\'chirildi', `${targetName} talabasi tizimdan muvaffaqiyatli o'chirildi.`);
@@ -279,8 +255,6 @@ export function StudentsModule() {
     setFilterDirection('');
     setFilterCourse('');
     setFilterGroup('');
-    setFilterSupervisors([]);
-    setFilterClinicResponsibles([]);
     setFilterPractice('');
     setFilterPlace('');
     setFilterStatus('');
@@ -288,7 +262,7 @@ export function StudentsModule() {
 
   const hasActiveFilters = Boolean(
     searchQuery || filterFaculty || filterDirection || filterCourse || 
-    filterGroup || filterSupervisors.length > 0 || filterClinicResponsibles.length > 0 || filterPractice || filterPlace || filterStatus
+    filterGroup || filterPractice || filterPlace || filterStatus
   );
 
   const canEditStatus = canonicalRole === 'SUPER_ADMIN' || canonicalRole === 'PRACTICE_HEAD' || canonicalRole === 'PRACTICE_STAFF' || canonicalRole === 'FACULTY_DEAN';
@@ -372,11 +346,10 @@ export function StudentsModule() {
 
         {/* Deep Filters Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5 pt-1">
-          {/* Faculty */}
           <select
             value={filterFaculty}
             onChange={e => setFilterFaculty(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600"
+            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600 truncate"
           >
             <option value="">Barcha fakultetlar</option>
             {faculties.map(f => (
@@ -384,11 +357,10 @@ export function StudentsModule() {
             ))}
           </select>
 
-          {/* Direction */}
           <select
             value={filterDirection}
             onChange={e => setFilterDirection(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600"
+            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600 truncate"
           >
             <option value="">Barcha yo'nalishlar</option>
             {directions.map(d => (
@@ -396,11 +368,10 @@ export function StudentsModule() {
             ))}
           </select>
 
-          {/* Course */}
           <select
             value={filterCourse}
             onChange={e => setFilterCourse(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600"
+            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600 truncate"
           >
             <option value="">Barcha kurslar</option>
             {courses.map(c => (
@@ -408,11 +379,10 @@ export function StudentsModule() {
             ))}
           </select>
 
-          {/* Group */}
           <select
             value={filterGroup}
             onChange={e => setFilterGroup(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600"
+            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600 truncate"
           >
             <option value="">Barcha guruhlar</option>
             {groups.map(g => (
@@ -420,11 +390,10 @@ export function StudentsModule() {
             ))}
           </select>
 
-          {/* Practice */}
           <select
             value={filterPractice}
             onChange={e => setFilterPractice(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600"
+            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600 truncate"
           >
             <option value="">Amaliyot bo'yicha</option>
             {practices.map(p => (
@@ -432,11 +401,10 @@ export function StudentsModule() {
             ))}
           </select>
 
-          {/* Practice Place */}
           <select
             value={filterPlace}
             onChange={e => setFilterPlace(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600"
+            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600 truncate"
           >
             <option value="">Amaliyot joyi bo'yicha</option>
             {places.map(pl => (
@@ -444,11 +412,10 @@ export function StudentsModule() {
             ))}
           </select>
 
-          {/* Status */}
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600 font-medium"
+            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-blue-600 font-medium truncate"
           >
             <option value="">Holat (Barchasi)</option>
             <option value="in_practice">Amaliyotda</option>
@@ -463,7 +430,7 @@ export function StudentsModule() {
             <span>Filtrlar qo'llanilgan ({filteredStudents.length} ta natija)</span>
             <button
               onClick={resetFilters}
-              className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+              className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
               Filtrlarni tozalash
@@ -472,7 +439,7 @@ export function StudentsModule() {
         )}
       </div>
 
-      {/* Main Students Container */}
+      {/* Main Students Container with overflow-x-auto for horizontal scrolling */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         {filteredStudents.length === 0 ? (
           <EmptyState
@@ -482,208 +449,198 @@ export function StudentsModule() {
             onAction={resetFilters}
           />
         ) : (
-          <>
-            {/* Unified Horizontal Scrollable Table View */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs min-w-[950px]">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                    <th className="py-3 px-3 w-10 text-center">№</th>
-                    <th className="py-3 px-4">Id raqami</th>
-                    <th className="py-3 px-4">FISH</th>
-                    <th className="py-3 px-4">Hemis id</th>
-                    <th className="py-3 px-4">Kursi</th>
-                    <th className="py-3 px-4">Fakultet / yo'nalishi</th>
-                    <th className="py-3 px-4">Guruhi</th>
-                    <th className="py-3 px-4">Aloqa (Tel / TG)</th>
-                    <th className="py-3 px-4">Login/Parol Status</th>
-                    {!isSupervisor && <th className="py-3 px-4 text-right">Amallar</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredStudents.map((student, idx) => {
-                    const faculty = faculties.find(f => f.id === student.facultyId);
-                    const direction = directions.find(d => d.id === student.directionId);
-                    const course = courses.find(c => c.id === student.courseId);
-                    const group = groups.find(g => g.id === student.groupId);
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs min-w-[1050px]">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-3 w-10 text-center">№</th>
+                  <th className="py-3 px-4">Id raqami</th>
+                  <th className="py-3 px-4">FISH</th>
+                  <th className="py-3 px-4">Hemis id</th>
+                  <th className="py-3 px-4">Kursi</th>
+                  <th className="py-3 px-4">Fakultet / yo'nalishi</th>
+                  <th className="py-3 px-4">Guruhi</th>
+                  <th className="py-3 px-4">Aloqa (Tel / TG)</th>
+                  <th className="py-3 px-4">Login/Parol Status</th>
+                  {!isSupervisor && <th className="py-3 px-4 text-right">Amallar</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredStudents.map((student, idx) => {
+                  const faculty = faculties.find(f => f.id === student.facultyId);
+                  const direction = directions.find(d => d.id === student.directionId);
+                  const course = courses.find(c => c.id === student.courseId);
+                  const group = groups.find(g => g.id === student.groupId);
 
-                    const statusVariant = 
-                      student.status === 'in_practice' ? 'success' :
-                      student.status === 'active' ? 'info' :
-                      student.status === 'suspended' || student.status === 'dismissed' ? 'danger' : 'neutral';
+                  const statusVariant = 
+                    student.status === 'in_practice' ? 'success' :
+                    student.status === 'active' ? 'info' :
+                    student.status === 'suspended' || student.status === 'dismissed' ? 'danger' : 'neutral';
 
-                    const statusLabel = 
-                      student.status === 'in_practice' ? 'Amaliyotda' :
-                      student.status === 'active' ? 'Faol (O\'qimoqda)' :
-                      student.status === 'suspended' || student.status === 'dismissed' ? 'Chetlashtirilgan' : 'Yakunlagan';
+                  const statusLabel = 
+                    student.status === 'in_practice' ? 'Amaliyotda' :
+                    student.status === 'active' ? 'Faol (O\'qimoqda)' :
+                    student.status === 'suspended' || student.status === 'dismissed' ? 'Chetlashtirilgan' : 'Yakunlagan';
 
-                    const formattedId = student.studentId || (parseStudentCodeSequence(student.login || '') ? String(parseStudentCodeSequence(student.login || '')).padStart(5, '0') : '00001');
+                  return (
+                    <tr
+                      key={student.id}
+                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                      onClick={() => setSelectedStudentForDetail(student)}
+                    >
+                      {/* Order number */}
+                      <td className="py-3 px-3 text-center font-bold text-slate-400 whitespace-nowrap">
+                        {idx + 1}
+                      </td>
 
-                    return (
-                      <tr
-                        key={student.id}
-                        className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
-                        onClick={() => setSelectedStudentForDetail(student)}
-                      >
-                        {/* Order number */}
-                        <td className="py-3 px-3 text-center font-bold text-slate-400">
-                          {idx + 1}
-                        </td>
+                      {/* Id raqami */}
+                      <td className="py-3 px-4 font-mono font-bold text-slate-800 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">
+                          {student.login || student.studentCode || 'T00001'}
+                        </span>
+                      </td>
 
-                        {/* Id raqami */}
-                        <td className="py-3 px-4 font-mono font-bold text-slate-800">
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">
-                            {student.login || student.studentCode || 'T00001'}
-                          </span>
-                        </td>
-
-                        {/* FISH */}
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">
-                              {(student.fullName || 'T').charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <span className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors block">
-                                {student.fullName || 'Talaba'}
-                              </span>
-                              <span className="text-[10px] text-slate-400">
-                                {student.email || `${student.login || 'student'}@student.uz`}
-                              </span>
-                            </div>
+                      {/* FISH */}
+                      <td className="py-3 px-4 max-w-[220px]">
+                        <div className="flex items-center gap-2.5 truncate">
+                          <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">
+                            {(student.fullName || 'T').charAt(0).toUpperCase()}
                           </div>
-                        </td>
-
-                        {/* Hemis id */}
-                        <td className="py-3 px-4 font-mono text-slate-600">
-                          {student.hemisStudentId || student.studentId || '-'}
-                        </td>
-
-                        {/* Kursi */}
-                        <td className="py-3 px-4 text-slate-700 font-medium">
-                          {course?.name || '4-kurs'}
-                        </td>
-
-                        {/* Fakultet / yo'nalishi */}
-                        <td className="py-3 px-4">
-                          <div className="text-slate-800 font-medium line-clamp-1">
-                            {faculty?.name || 'Fakultet'}
+                          <div className="truncate">
+                            <span className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors block truncate">
+                              {student.fullName || 'Talaba'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 truncate block">
+                              {student.email || `${student.login || 'student'}@student.uz`}
+                            </span>
                           </div>
-                          <div className="text-[11px] text-slate-500 line-clamp-1">
-                            {direction?.name || 'Yo\'nalish'}
-                          </div>
-                        </td>
+                        </div>
+                      </td>
 
-                        {/* Guruhi */}
-                        <td className="py-3 px-4">
-                          <span className="font-bold text-slate-800">
-                            {group?.name || 'Guruh'}
-                          </span>
-                          <span className="text-[10px] text-slate-400 block">
-                            {group?.language ? `(${group.language})` : ''}
-                          </span>
-                        </td>
+                      {/* Hemis id */}
+                      <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">
+                        {student.hemisStudentId || student.studentId || '-'}
+                      </td>
 
-                        {/* Aloqa */}
-                        <td className="py-3 px-4 font-mono text-slate-700">
-                          <div>{student.phone || '—'}</div>
-                          <div className="text-[11px] text-blue-600 font-normal">
-                            {student.telegram || '—'}
-                          </div>
-                        </td>
+                      {/* Kursi */}
+                      <td className="py-3 px-4 text-slate-700 font-medium whitespace-nowrap">
+                        {course?.name || '4-kurs'}
+                      </td>
 
-                        {/* Login/Parol Status */}
-                        <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
-                          {canEditStatus ? (
-                            <select
-                              value={student.status}
-                              onChange={e => handleStudentStatusChange(student, e.target.value)}
-                              className={`px-2 py-1 rounded-lg text-[11px] font-bold border focus:outline-none focus:ring-2 focus:ring-blue-600 ${
-                                student.status === 'in_practice' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
-                                student.status === 'active' ? 'bg-blue-50 text-blue-800 border-blue-300' :
-                                student.status === 'suspended' || student.status === 'dismissed' ? 'bg-rose-50 text-rose-800 border-rose-300' :
-                                'bg-slate-100 text-slate-700 border-slate-300'
-                              }`}
-                            >
-                              <option value="active">Faol (O'qimoqda)</option>
-                              <option value="in_practice">Amaliyotda</option>
-                              <option value="completed">Yakunlagan</option>
-                              <option value="suspended">Chetlashtirilgan</option>
-                            </select>
-                          ) : (
-                            <StatusBadge label={statusLabel} variant={statusVariant} />
-                          )}
-                        </td>
+                      {/* Fakultet / yo'nalishi */}
+                      <td className="py-3 px-4 max-w-[200px]">
+                        <div className="text-slate-800 font-medium truncate">
+                          {faculty?.name || 'Fakultet'}
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate">
+                          {direction?.name || 'Yo\'nalish'}
+                        </div>
+                      </td>
 
-                        {/* Amallar */}
-                        {!isSupervisor && (
-                          <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1">
-                              {/* Pasportni ko'rish */}
-                              <button
-                                type="button"
-                                onClick={() => setSelectedStudentForDetail(student)}
-                                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                                title="Amaliyot pasportini ko'rish"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
+                      {/* Guruhi */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <span className="font-bold text-slate-800">
+                          {group?.name || 'Guruh'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          {group?.language ? `(${group.language})` : ''}
+                        </span>
+                      </td>
 
-                              {/* Birlamchi parolga qaytarish (Key icon) */}
-                              <button
-                                type="button"
-                                onClick={() => setStudentToResetPassword(student)}
-                                className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
-                                title="Parolni birlamchi holatga (password123) qaytarish"
-                              >
-                                <Key className="w-4 h-4" />
-                              </button>
+                      {/* Aloqa */}
+                      <td className="py-3 px-4 font-mono text-slate-700 whitespace-nowrap">
+                        <div className="truncate">{student.phone || '—'}</div>
+                        <div className="text-[11px] text-blue-600 font-normal truncate">
+                          {student.telegram || '—'}
+                        </div>
+                      </td>
 
-                              {/* Tahrirlash */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setStudentToEdit(student);
-                                  setIsFormModalOpen(true);
-                                }}
-                                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                                title="Tahrirlash"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-
-                              {/* O'chirish */}
-                              {canDeleteStudents && (
-                                <button
-                                  type="button"
-                                  onClick={() => setStudentToDelete(student)}
-                                  className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                  title="O'chirish"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
+                      {/* Login/Parol Status */}
+                      <td className="py-3 px-4 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                        {canEditStatus ? (
+                          <select
+                            value={student.status}
+                            onChange={e => handleStudentStatusChange(student, e.target.value)}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-bold border focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+                              student.status === 'in_practice' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                              student.status === 'active' ? 'bg-blue-50 text-blue-800 border-blue-300' :
+                              student.status === 'suspended' || student.status === 'dismissed' ? 'bg-rose-50 text-rose-800 border-rose-300' :
+                              'bg-slate-100 text-slate-700 border-slate-300'
+                            }`}
+                          >
+                            <option value="active">Faol (O'qimoqda)</option>
+                            <option value="in_practice">Amaliyotda</option>
+                            <option value="completed">Yakunlagan</option>
+                            <option value="suspended">Chetlashtirilgan</option>
+                          </select>
+                        ) : (
+                          <StatusBadge label={statusLabel} variant={statusVariant} />
                         )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
+                      </td>
+
+                      {/* Amallar */}
+                      {!isSupervisor && (
+                        <td className="py-3 px-4 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStudentForDetail(student)}
+                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              title="Amaliyot pasportini ko'rish"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setStudentToResetPassword(student)}
+                              className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                              title="Parolni birlamchi holatga (password123) qaytarish"
+                            >
+                              <Key className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStudentToEdit(student);
+                                setIsFormModalOpen(true);
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                              title="Tahrirlash"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+
+                            {canDeleteStudents && (
+                              <button
+                                type="button"
+                                onClick={() => setStudentToDelete(student)}
+                                className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                title="O'chirish"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* Student Detail Modal */}
+      {/* Modals */}
       <StudentDetailModal
         isOpen={Boolean(selectedStudentForDetail)}
         onClose={() => setSelectedStudentForDetail(null)}
         student={selectedStudentForDetail}
       />
 
-      {/* Add / Edit Student Modal */}
       <StudentFormModal
         isOpen={isFormModalOpen}
         onClose={() => {
@@ -694,14 +651,12 @@ export function StudentsModule() {
         studentToEdit={studentToEdit}
       />
 
-      {/* Bulk Student Import Modal */}
       <BulkStudentImportModal
         isOpen={isBulkModalOpen}
         onClose={() => setIsBulkModalOpen(false)}
         onSuccess={refreshList}
       />
 
-      {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={Boolean(studentToDelete)}
         onClose={() => setStudentToDelete(null)}
@@ -713,7 +668,6 @@ export function StudentsModule() {
         isDestructive
       />
 
-      {/* Reset All Students and Sequence Confirmation */}
       <ConfirmDialog
         isOpen={isResetConfirmOpen}
         onClose={() => setIsResetConfirmOpen(false)}
@@ -725,7 +679,6 @@ export function StudentsModule() {
         isDestructive
       />
 
-      {/* Created Student Credentials Modal */}
       {createdCredentialsModal && (
         <Modal
           isOpen={Boolean(createdCredentialsModal)}
@@ -747,11 +700,10 @@ export function StudentsModule() {
               </p>
             </div>
 
-            {/* Credentials Card */}
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 shadow-2xs">
               <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
                 <div>
-                  <span className="font-bold text-slate-900 text-sm block">
+                  <span className="font-bold text-slate-900 text-sm block truncate">
                     {createdCredentialsModal.student.fullName}
                   </span>
                   <span className="text-[11px] text-slate-500 font-medium font-mono">
@@ -764,7 +716,6 @@ export function StudentsModule() {
               </div>
 
               <div className="space-y-2 text-xs">
-                {/* Login Row */}
                 <div className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
                   <div>
                     <span className="text-[10px] text-slate-400 block font-semibold">Tizimdagi Tartibli Login:</span>
@@ -778,14 +729,13 @@ export function StudentsModule() {
                       navigator.clipboard.writeText(createdCredentialsModal.student.login || createdCredentialsModal.student.studentCode || '');
                       showToast('success', 'Nusxalandi', `${createdCredentialsModal.student.login} logini nusxalab olindi`);
                     }}
-                    className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors border border-slate-200"
+                    className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors border border-slate-200 cursor-pointer"
                     title="Login nusxalash"
                   >
                     <Copy className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                {/* Password Row */}
                 <div className="flex items-center justify-between p-2.5 bg-blue-50/60 rounded-xl border border-blue-200 shadow-2xs">
                   <div>
                     <span className="text-[10px] text-blue-700 block font-bold">Tizim Paroli:</span>
@@ -799,14 +749,13 @@ export function StudentsModule() {
                       navigator.clipboard.writeText(createdCredentialsModal.student.password || 'password123');
                       showToast('success', 'Nusxalandi', 'Parol nusxalab olindi');
                     }}
-                    className="p-1.5 bg-white hover:bg-blue-100 text-blue-700 rounded-lg transition-colors border border-blue-200 shadow-2xs"
+                    className="p-1.5 bg-white hover:bg-blue-100 text-blue-700 rounded-lg transition-colors border border-blue-200 shadow-2xs cursor-pointer"
                     title="Parolni nusxalash"
                   >
                     <Copy className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                {/* Email & Student ID */}
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div className="p-2 bg-white rounded-lg border border-slate-200">
                     <span className="text-[10px] text-slate-400 block font-semibold">Student ID (Sonli):</span>
@@ -828,7 +777,7 @@ export function StudentsModule() {
                   navigator.clipboard.writeText(txt);
                   showToast('success', 'Nusxalandi', 'Talabaning barcha kirish ma\'lumotlari nusxalab olindi');
                 }}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-1.5 transition-colors shadow-2xs"
+                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
               >
                 <Copy className="w-3.5 h-3.5 text-slate-500" />
                 <span>Nusxa olish</span>
@@ -837,7 +786,7 @@ export function StudentsModule() {
               <button
                 type="button"
                 onClick={() => setCreatedCredentialsModal(null)}
-                className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors"
+                className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors cursor-pointer"
               >
                 Tushunarli
               </button>
@@ -846,7 +795,6 @@ export function StudentsModule() {
         </Modal>
       )}
 
-      {/* Reset Student Password to Default Confirmation */}
       <ConfirmDialog
         isOpen={Boolean(studentToResetPassword)}
         onClose={() => setStudentToResetPassword(null)}
