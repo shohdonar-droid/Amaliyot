@@ -33,7 +33,7 @@ export function ClinicResponsibleAttendanceView({
   const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const todayDate = '2026-09-28';
+  const todayDate = new Date().toISOString().split('T')[0];
 
   const places = storageService.getPracticePlaces();
   const assignments = storageService.getAssignments();

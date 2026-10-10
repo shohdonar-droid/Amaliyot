@@ -78,7 +78,7 @@ export function AttendanceModule() {
 
   // Filter States (Section 1: Amaliyot, Sana, Fakultet, Yo'nalish, Kurs, Guruh, Amaliyot joyi, Bo'lim, Rahbar, Status)
   const [selectedPracticeId, setSelectedPracticeId] = useState<string>(practices[0]?.id || '');
-  const [selectedDate, setSelectedDate] = useState<string>('2026-09-28');
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedFacultyId, setSelectedFacultyId] = useState<string>('');
   const [selectedDirectionId, setSelectedDirectionId] = useState<string>('');
   const [selectedCourseLevel, setSelectedCourseLevel] = useState<string>('');

@@ -6,7 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss(), VitePWA({
+    plugins: [react(), tailwindcss(),     ...(process.env.NODE_ENV === 'production' ? [VitePWA({
       registerType: 'autoUpdate',
       manifest: {
         id: '/',
@@ -33,14 +33,10 @@ export default defineConfig(() => {
           },
         ],
       },
-      devOptions: {
-        enabled: true,
-        type: 'module',
-      },
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
-    })],
+    })] : [])],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

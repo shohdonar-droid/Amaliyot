@@ -25,37 +25,10 @@ export const PWAInstallButton: React.FC = () => {
     );
   }
 
-  // iOS Safari flow (beforeinstallprompt is not supported by WebKit)
-  if (isIOS) {
-    return (
-      <>
-        <button
-          onClick={() => setShowIOSGuide(true)}
-          className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-        >
-          iOS uchun o'rnatish
-        </button>
-
-        {showIOSGuide && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">iPhone / iPad uchun o'rnatish</h3>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                1. Safari menyusidagi <strong>Share</strong> (Ulashish) tugmasini bosing.<br />
-                2. Pastga tushib, <strong>Add to Home Screen</strong> (Ekran ga qo'shish) tugmasini bosing.
-              </p>
-              <button
-                onClick={() => setShowIOSGuide(false)}
-                className="mt-4 w-full rounded-lg bg-gray-100 py-2 text-sm font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200"
-              >
-                Yopish
-              </button>
-            </div>
-          </div>
-        )}
-      </>
-    );
-  }
-
-  return null;
+  // iOS Safari flow or other platforms (manual guide)
+  return (
+    <div className="text-xs text-slate-500 p-2 border border-dashed border-slate-700 rounded-lg">
+      <p>Ilovani o'rnatish uchun brauzer menyusidan "Add to Home Screen" ni tanlang.</p>
+    </div>
+  );
 };

@@ -35,7 +35,7 @@ export function SupervisorAttendanceView({
   const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const todayDate = '2026-09-28';
+  const todayDate = new Date().toISOString().split('T')[0];
 
   const students = storageService.getStudents();
   const assignments = storageService.getAssignments();

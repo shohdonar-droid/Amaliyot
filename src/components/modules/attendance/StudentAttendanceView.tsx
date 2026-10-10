@@ -40,7 +40,7 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
   const [isInsideGeofence, setIsInsideGeofence] = useState<boolean>(true);
   const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  const todayDate = '2026-09-28';
+  const todayDate = new Date().toISOString().split('T')[0];
 
   const practices = storageService.getPractices() || [];
   const places = storageService.getPracticePlaces() || [];

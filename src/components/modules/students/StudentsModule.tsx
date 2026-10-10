@@ -58,17 +58,19 @@ export function StudentsModule() {
   const practices = storageService.getPractices() || [];
   const places = storageService.getPracticePlaces() || [];
 
-  // Search & Filter States
+  // Search & Filter States (Sequential & Supervisor filters)
   const [searchQuery, setSearchQuery] = useState('');
   const [filterFaculty, setFilterFaculty] = useState('');
   const [filterDirection, setFilterDirection] = useState('');
   const [filterCourse, setFilterCourse] = useState('');
   const [filterGroup, setFilterGroup] = useState('');
+  const [filterSupervisors, setFilterSupervisors] = useState<string[]>([]);
+  const [filterClinicResponsibles, setFilterClinicResponsibles] = useState<string[]>([]);
   const [filterPractice, setFilterPractice] = useState('');
   const [filterPlace, setFilterPlace] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
-  // Modals
+  // Modals & Helpers
   const [selectedStudentForDetail, setSelectedStudentForDetail] = useState<Student | null>(null);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -102,7 +104,23 @@ export function StudentsModule() {
     }
   };
 
-  // Filtered & Sequentially Sorted Students (Appended in increasing sequence order)
+  const allSupervisors = storageService.getSupervisors() || [];
+  const allClinicResponsibles = storageService.getClinicResponsibles() || [];
+  const assignments = storageService.getAssignments() || [];
+
+  // Sequential cascading options
+  const availableDirections = directions.filter(d => 
+    !filterFaculty || d.facultyId === filterFaculty
+  );
+
+  const availableGroups = groups.filter(g => {
+    if (filterFaculty && g.facultyId !== filterFaculty) return false;
+    if (filterCourse && g.courseId !== filterCourse) return false;
+    if (filterDirection && g.directionId !== filterDirection) return false;
+    return true;
+  });
+
+  // Filtered & Sequentially Sorted Students
   const filteredStudents = useMemo(() => {
     if (!Array.isArray(students)) return [];
 
@@ -114,7 +132,6 @@ export function StudentsModule() {
       const sPhone = String(student.phone || '');
       const sLogin = String(student.login || student.studentCode || '');
 
-      // Search by name, studentId, pinfl, phone, or login
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchName = sFullName.toLowerCase().includes(q);
@@ -129,6 +146,17 @@ export function StudentsModule() {
       if (filterDirection && student.directionId !== filterDirection) return false;
       if (filterCourse && student.courseId !== filterCourse) return false;
       if (filterGroup && student.groupId !== filterGroup) return false;
+
+      if (filterSupervisors.length > 0) {
+        const asg = assignments.find(a => a.studentId === student.id);
+        if (!asg || !filterSupervisors.includes(asg.supervisorId)) return false;
+      }
+
+      if (filterClinicResponsibles.length > 0) {
+        const asg = assignments.find(a => a.studentId === student.id);
+        if (!asg || !asg.clinicResponsibleId || !filterClinicResponsibles.includes(asg.clinicResponsibleId)) return false;
+      }
+
       if (filterStatus && student.status !== filterStatus) return false;
       if (filterPractice && student.currentPracticeId !== filterPractice) return false;
       if (filterPlace && student.currentPracticePlaceId !== filterPlace) return false;
@@ -149,9 +177,12 @@ export function StudentsModule() {
     filterDirection,
     filterCourse,
     filterGroup,
+    filterSupervisors,
+    filterClinicResponsibles,
     filterPractice,
     filterPlace,
-    filterStatus
+    filterStatus,
+    assignments
   ]);
 
   const handleSaveStudent = async (saved: Student) => {
@@ -241,6 +272,8 @@ export function StudentsModule() {
     setFilterDirection('');
     setFilterCourse('');
     setFilterGroup('');
+    setFilterSupervisors([]);
+    setFilterClinicResponsibles([]);
     setFilterPractice('');
     setFilterPlace('');
     setFilterStatus('');
@@ -248,7 +281,7 @@ export function StudentsModule() {
 
   const hasActiveFilters = Boolean(
     searchQuery || filterFaculty || filterDirection || filterCourse || 
-    filterGroup || filterPractice || filterPlace || filterStatus
+    filterGroup || filterSupervisors.length > 0 || filterClinicResponsibles.length > 0 || filterPractice || filterPlace || filterStatus
   );
 
   const canEditStatus = canonicalRole === 'SUPER_ADMIN' || canonicalRole === 'PRACTICE_HEAD' || canonicalRole === 'PRACTICE_STAFF' || canonicalRole === 'FACULTY_DEAN';

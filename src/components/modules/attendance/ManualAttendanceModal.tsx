@@ -43,7 +43,7 @@ export function ManualAttendanceModal({
 
   const [selectedStudentId, setSelectedStudentId] = useState<string>(studentId || students[0]?.id || '');
   const [selectedPracticeId, setSelectedPracticeId] = useState<string>(practiceId || practices[0]?.id || '');
-  const [selectedDate, setSelectedDate] = useState<string>(date || '2026-09-28');
+  const [selectedDate, setSelectedDate] = useState<string>(date || new Date().toISOString().split('T')[0]);
   const [status, setStatus] = useState<AttendanceStatus>('PRESENT');
   const [checkInTime, setCheckInTime] = useState<string>('08:30');
   const [checkOutTime, setCheckOutTime] = useState<string>('14:30');
@@ -54,7 +54,7 @@ export function ManualAttendanceModal({
     if (attendanceRecord) {
       setSelectedStudentId(attendanceRecord.studentId || '');
       setSelectedPracticeId(attendanceRecord.practiceId || '');
-      setSelectedDate(attendanceRecord.date || '2026-09-28');
+      setSelectedDate(attendanceRecord.date || new Date().toISOString().split('T')[0]);
       setStatus(attendanceRecord.status.toUpperCase() as AttendanceStatus);
       setCheckInTime(attendanceRecord.checkInTime || '08:30');
       setCheckOutTime(attendanceRecord.checkOutTime || '14:30');

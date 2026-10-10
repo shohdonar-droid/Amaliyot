@@ -79,7 +79,7 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
   const notifications = storageService.getNotifications() || [];
   const unreadNotifCount = notifications.filter(n => !n.isRead).length;
 
-  const todayDate = '2026-09-28';
+  const todayDate = new Date().toISOString().split('T')[0];
 
   // Common helpers
   const todayAttendance = attendance.filter(a => a?.date === todayDate);

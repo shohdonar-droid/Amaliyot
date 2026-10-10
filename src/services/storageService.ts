@@ -2844,9 +2844,29 @@ class StorageServiceV2 {
 
   public deletePractice(id: string): void {
     const state = this.getState();
+    // 1. Remove the practice
     state.practices = state.practices.filter(p => p.id !== id);
+
+    // 2. Find assignments belonging to this practice
+    const removedAssignments = state.practiceAssignments.filter(a => a.practiceId === id);
+    const affectedStudentIds = removedAssignments.map(a => a.studentId);
+
+    // 3. Remove assignments, attendance, journals, exams, assessments related to this practice
     state.practiceAssignments = state.practiceAssignments.filter(a => a.practiceId !== id);
     state.attendance = state.attendance.filter(a => a.practiceId !== id);
+    state.dailyJournals = (state.dailyJournals || []).filter(j => j.practiceId !== id);
+    state.finalExams = (state.finalExams || []).filter(e => e.practiceId !== id);
+    state.assessments = (state.assessments || []).filter(ast => ast.practiceId !== id);
+
+    // 4. Unassign students from this practice
+    for (const student of state.students) {
+      if (student.currentPracticeId === id || affectedStudentIds.includes(student.id)) {
+        student.currentPracticeId = undefined;
+        student.currentPracticePlaceId = undefined;
+        student.status = 'active';
+      }
+    }
+
     this.saveState(state);
   }
 
@@ -2995,7 +3015,25 @@ class StorageServiceV2 {
 
   public deleteSupervisor(id: string): void {
     const state = this.getState();
-    state.supervisors = state.supervisors.filter(s => s.id !== id);
+    const sup = (state.supervisors || []).find(s => s.id === id);
+    state.supervisors = (state.supervisors || []).filter(s => s.id !== id);
+    if (sup && sup.userId) {
+      state.users = (state.users || []).filter(u => u.id !== sup.userId && u.uid !== sup.userId && u.id !== id);
+    } else {
+      state.users = (state.users || []).filter(u => u.id !== id && u.uid !== id);
+    }
+    this.saveState(state);
+  }
+
+  public deleteClinicResponsible(id: string): void {
+    const state = this.getState();
+    const cr = (state.clinicResponsibles || []).find(c => c.id === id);
+    state.clinicResponsibles = (state.clinicResponsibles || []).filter(c => c.id !== id);
+    if (cr && cr.userId) {
+      state.users = (state.users || []).filter(u => u.id !== cr.userId && u.uid !== cr.userId && u.id !== id);
+    } else {
+      state.users = (state.users || []).filter(u => u.id !== id && u.uid !== id);
+    }
     this.saveState(state);
   }
 
