@@ -23,6 +23,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { PWAInstallButton } from '../pwa/PWAInstallButton';
 
 export type ActiveModule = 
   | 'dashboard'
@@ -282,7 +283,8 @@ export function Sidebar({
         </div>
 
         {/* User Card in Footer */}
-        <div className="p-3 border-t border-slate-800 bg-slate-950/60">
+        <div className="p-3 border-t border-slate-800 bg-slate-950/60 space-y-3">
+          <PWAInstallButton />
           <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-900/80 border border-slate-800">
             <button
               type="button"
