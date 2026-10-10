@@ -303,88 +303,9 @@ const DEFAULT_PRACTICE_DEPARTMENTS: PracticeDepartment[] = [
   { id: 'pdept-7', practicePlaceId: 'place-3', name: 'Pediatriya', headDoctor: 'Dr. Qodirova G.', bedCapacity: 45, activeStudentQuota: 20 }
 ];
 
-const DEFAULT_SUPERVISORS: Supervisor[] = [
-  {
-    id: 'sup-1',
-    userId: 'user-sup',
-    fullName: 'Prof. Sobirov Alisher Tolipovich',
-    department: 'Gospital terapiya kafedrasi',
-    academicDegree: 't.f.d., professor',
-    phone: '+998 (90) 811-22-33',
-    email: 'sobirov.a@tma.uz',
-    type: 'university',
-    assignedStudentsCount: 22,
-    createdAt: '2026-08-01T00:00:00Z'
-  },
-  {
-    id: 'sup-2',
-    fullName: 'Dots. Ismoilova Shahnoza Baxtiyorovna',
-    department: 'Fakultet va gospital xirurgiya kafedrasi',
-    academicDegree: 't.f.n., dotsent',
-    phone: '+998 (91) 404-55-66',
-    email: 'ismoilova.sh@tma.uz',
-    type: 'university',
-    assignedStudentsCount: 20,
-    createdAt: '2026-08-01T00:00:00Z'
-  },
-  {
-    id: 'sup-3',
-    fullName: 'Dots. Abdullayev Jasur Ergashevich',
-    department: 'Gospital pediatriya va neonatologiya kafedrasi',
-    academicDegree: 'PhD, dotsent',
-    phone: '+998 (93) 712-33-44',
-    email: 'abdullayev.j@tma.uz',
-    type: 'university',
-    assignedStudentsCount: 24,
-    createdAt: '2026-08-01T00:00:00Z'
-  },
-  {
-    id: 'sup-4',
-    fullName: 'Dr. Ergashev Nodir Komilovich',
-    department: 'Kardioreanimatsiya bo\'limi',
-    academicDegree: 'Oliy toifali vrach-kardiolog',
-    phone: '+998 (94) 600-70-80',
-    email: 'ergashev.cardio@gmail.com',
-    type: 'clinic',
-    practicePlaceId: 'place-1',
-    assignedStudentsCount: 18,
-    createdAt: '2026-08-01T00:00:00Z'
-  }
-];
+const DEFAULT_SUPERVISORS: Supervisor[] = [];
 
-const DEFAULT_CLINIC_RESPONSIBLES: ClinicResponsible[] = [
-  {
-    id: 'cresp-1',
-    userId: 'user-clinic',
-    fullName: 'Dr. Karimov Rustam Baxtiyorovich',
-    practicePlaceId: 'place-1',
-    position: 'Bosh shifokor davolash ishlari bo\'yicha o\'rinbosari',
-    department: 'Ma\'muriyat',
-    phone: '+998 (90) 123-45-67',
-    email: 'karimov.rksh1@minzdrav.uz',
-    createdAt: '2026-08-01T00:00:00Z'
-  },
-  {
-    id: 'cresp-2',
-    fullName: 'Dr. Rahmonova Nargiza Anvarovna',
-    practicePlaceId: 'place-2',
-    position: 'Ilmiy-amaliy tayyorgarlik bo\'limi mudiri',
-    department: 'O\'quv bo\'limi',
-    phone: '+998 (97) 345-67-89',
-    email: 'rahmonova.rshtyom@gmail.com',
-    createdAt: '2026-08-01T00:00:00Z'
-  },
-  {
-    id: 'cresp-3',
-    fullName: 'Dr. Qodirova Gulchehra Ilhomovna',
-    practicePlaceId: 'place-3',
-    position: 'Bosh vrach muovini',
-    department: 'Pediatriya xizmati',
-    phone: '+998 (93) 555-44-33',
-    email: 'qodirova.ped@tashkent.uz',
-    createdAt: '2026-08-01T00:00:00Z'
-  }
-];
+const DEFAULT_CLINIC_RESPONSIBLES: ClinicResponsible[] = [];
 
 const DEFAULT_STUDENTS_V2: Student[] = [
   {
@@ -2110,21 +2031,26 @@ class StorageServiceV2 {
   private normalizeState(parsed: any): DatabaseStateV2 {
     parsed.users = parsed.users || [];
     parsed.academicYears = parsed.academicYears || [];
-    parsed.faculties = parsed.faculties && parsed.faculties.length > 0 ? parsed.faculties : DEFAULT_FACULTIES;
-    parsed.directions = parsed.directions && parsed.directions.length > 0 ? parsed.directions : DEFAULT_DIRECTIONS;
+    parsed.faculties = Array.isArray(parsed.faculties) ? parsed.faculties : [];
+    parsed.directions = Array.isArray(parsed.directions) ? parsed.directions : [];
     parsed.courses = parsed.courses && parsed.courses.length > 0 ? parsed.courses : DEFAULT_COURSES;
-    parsed.groups = parsed.groups && parsed.groups.length > 0 ? parsed.groups : DEFAULT_GROUPS;
+    parsed.groups = Array.isArray(parsed.groups) ? parsed.groups : [];
     parsed.students = parsed.students || [];
     parsed.practicePlaces = Array.isArray(parsed.practicePlaces) ? parsed.practicePlaces : [];
     // Ensure legacy demo places are never revived
     const DEMO_PLACE_IDS = ['place-1', 'place-2', 'place-3', 'place-4'];
     parsed.practicePlaces = parsed.practicePlaces.filter((p: any) => p && !DEMO_PLACE_IDS.includes(p.id));
-    parsed.practiceDepartments = parsed.practiceDepartments || [];
-    parsed.supervisors = parsed.supervisors && parsed.supervisors.length > 0 ? parsed.supervisors : DEFAULT_SUPERVISORS;
-    parsed.clinicResponsibles = parsed.clinicResponsibles && parsed.clinicResponsibles.length > 0 ? parsed.clinicResponsibles : DEFAULT_CLINIC_RESPONSIBLES;
-    parsed.practices = parsed.practices && parsed.practices.length > 0 ? parsed.practices : DEFAULT_PRACTICES_V2;
-    parsed.practiceDistributions = parsed.practiceDistributions || [];
-    parsed.practiceAssignments = parsed.practiceAssignments || [];
+    parsed.practiceDepartments = Array.isArray(parsed.practiceDepartments) ? parsed.practiceDepartments : [];
+    
+    parsed.deletedSupervisorIds = parsed.deletedSupervisorIds || [];
+    parsed.deletedClinicResponsibleIds = parsed.deletedClinicResponsibleIds || [];
+    parsed.deletedPracticeIds = parsed.deletedPracticeIds || [];
+
+    parsed.supervisors = Array.isArray(parsed.supervisors) ? parsed.supervisors.filter((s: any) => !parsed.deletedSupervisorIds.includes(s.id) && !parsed.deletedSupervisorIds.includes(s.userId)) : [];
+    parsed.clinicResponsibles = Array.isArray(parsed.clinicResponsibles) ? parsed.clinicResponsibles.filter((c: any) => !parsed.deletedClinicResponsibleIds.includes(c.id) && !parsed.deletedClinicResponsibleIds.includes(c.userId)) : [];
+    parsed.practices = Array.isArray(parsed.practices) ? parsed.practices.filter((p: any) => !parsed.deletedPracticeIds.includes(p.id)) : [];
+    parsed.practiceDistributions = Array.isArray(parsed.practiceDistributions) ? parsed.practiceDistributions.filter((d: any) => !parsed.deletedPracticeIds.includes(d.practiceId)) : [];
+    parsed.practiceAssignments = Array.isArray(parsed.practiceAssignments) ? parsed.practiceAssignments.filter((a: any) => !parsed.deletedPracticeIds.includes(a.practiceId)) : [];
     parsed.attendance = parsed.attendance || [];
     parsed.attendanceSessions = parsed.attendanceSessions || [];
     parsed.dailyJournals = parsed.dailyJournals || [];
@@ -2855,21 +2781,28 @@ class StorageServiceV2 {
   public deletePractice(id: string): void {
     const state = this.getState();
     // 1. Remove the practice
-    state.practices = state.practices.filter(p => p.id !== id);
+    state.practices = (state.practices || []).filter(p => p.id !== id);
 
-    // 2. Find assignments belonging to this practice
-    const removedAssignments = state.practiceAssignments.filter(a => a.practiceId === id);
+    // 2. Remove all related distributions
+    state.practiceDistributions = (state.practiceDistributions || []).filter(d => d.practiceId !== id);
+
+    // 3. Track deleted practice IDs
+    if (!state.deletedPracticeIds) state.deletedPracticeIds = [];
+    if (!state.deletedPracticeIds.includes(id)) state.deletedPracticeIds.push(id);
+
+    // 4. Find assignments belonging to this practice
+    const removedAssignments = (state.practiceAssignments || []).filter(a => a.practiceId === id);
     const affectedStudentIds = removedAssignments.map(a => a.studentId);
 
-    // 3. Remove assignments, attendance, journals, exams, assessments related to this practice
-    state.practiceAssignments = state.practiceAssignments.filter(a => a.practiceId !== id);
-    state.attendance = state.attendance.filter(a => a.practiceId !== id);
+    // 5. Remove assignments, attendance, journals, exams, assessments related to this practice
+    state.practiceAssignments = (state.practiceAssignments || []).filter(a => a.practiceId !== id);
+    state.attendance = (state.attendance || []).filter(a => a.practiceId !== id);
     state.dailyJournals = (state.dailyJournals || []).filter(j => j.practiceId !== id);
     state.finalExams = (state.finalExams || []).filter(e => e.practiceId !== id);
     state.assessments = (state.assessments || []).filter(ast => ast.practiceId !== id);
 
-    // 4. Unassign students from this practice
-    for (const student of state.students) {
+    // 6. Unassign students from this practice
+    for (const student of (state.students || [])) {
       if (student.currentPracticeId === id || affectedStudentIds.includes(student.id)) {
         student.currentPracticeId = undefined;
         student.currentPracticePlaceId = undefined;
@@ -2953,42 +2886,8 @@ class StorageServiceV2 {
   // --- SUPERVISORS & CLINIC RESPONSIBLES ---
   public getSupervisors(): Supervisor[] {
     const state = this.getState();
-    const supervisors = [...(state.supervisors || [])];
-    const supervisorUsers = (state.users || []).filter(u => {
-      const r = (u.role || '').toUpperCase();
-      return (
-        r !== 'STUDENT' &&
-        r !== 'TALABA' &&
-        r !== 'CLINIC_RESPONSIBLE' &&
-        r !== 'CLINIC' &&
-        r !== 'SUPERVISOR_CLINIC'
-      );
-    });
-
-    for (const u of supervisorUsers) {
-      const exists = supervisors.some(s => 
-        s.id === `sup-${u.id}` ||
-        s.id === u.id ||
-        s.userId === u.uid ||
-        s.userId === u.id ||
-        (s.fullName && u.fullName && s.fullName.trim().toLowerCase() === u.fullName.trim().toLowerCase())
-      );
-      if (!exists) {
-        supervisors.unshift({
-          id: `sup-${u.id || u.uid}`,
-          userId: u.uid || u.id,
-          fullName: u.fullName,
-          phone: u.phone || '+998 (90) 000-00-00',
-          email: u.email || `${u.login || 'user'}@tma.uz`,
-          type: 'university',
-          department: 'Kafedra / Dekanat',
-          academicDegree: 'O\'qituvchi / Rahbar',
-          assignedStudentsCount: 0,
-          status: 'ACTIVE'
-        });
-      }
-    }
-    return supervisors;
+    const deletedIds = state.deletedSupervisorIds || [];
+    return (state.supervisors || []).filter(s => !deletedIds.includes(s.id) && !deletedIds.includes(s.userId || ''));
   }
 
   public saveSupervisor(supervisor: Supervisor): void {
@@ -3026,58 +2925,39 @@ class StorageServiceV2 {
   public deleteSupervisor(id: string): void {
     const state = this.getState();
     const sup = (state.supervisors || []).find(s => s.id === id);
-    state.supervisors = (state.supervisors || []).filter(s => s.id !== id);
-    if (sup && sup.userId) {
-      state.users = (state.users || []).filter(u => u.id !== sup.userId && u.uid !== sup.userId && u.id !== id);
-    } else {
-      state.users = (state.users || []).filter(u => u.id !== id && u.uid !== id);
-    }
+    const userId = sup?.userId || id.replace(/^sup-/, '');
+    
+    state.supervisors = (state.supervisors || []).filter(s => s.id !== id && s.userId !== userId);
+    state.users = (state.users || []).filter(u => u.id !== id && u.uid !== id && u.id !== userId && u.uid !== userId && u.id !== sup?.id);
+
+    if (!state.deletedSupervisorIds) state.deletedSupervisorIds = [];
+    if (!state.deletedSupervisorIds.includes(id)) state.deletedSupervisorIds.push(id);
+    if (userId && !state.deletedSupervisorIds.includes(userId)) state.deletedSupervisorIds.push(userId);
+    if (sup?.userId && !state.deletedSupervisorIds.includes(sup.userId)) state.deletedSupervisorIds.push(sup.userId);
+
     this.saveState(state);
   }
 
   public deleteClinicResponsible(id: string): void {
     const state = this.getState();
     const cr = (state.clinicResponsibles || []).find(c => c.id === id);
-    state.clinicResponsibles = (state.clinicResponsibles || []).filter(c => c.id !== id);
-    if (cr && cr.userId) {
-      state.users = (state.users || []).filter(u => u.id !== cr.userId && u.uid !== cr.userId && u.id !== id);
-    } else {
-      state.users = (state.users || []).filter(u => u.id !== id && u.uid !== id);
-    }
+    const userId = cr?.userId || id.replace(/^cr-/, '');
+
+    state.clinicResponsibles = (state.clinicResponsibles || []).filter(c => c.id !== id && c.userId !== userId);
+    state.users = (state.users || []).filter(u => u.id !== id && u.uid !== id && u.id !== userId && u.uid !== userId && u.id !== cr?.id);
+
+    if (!state.deletedClinicResponsibleIds) state.deletedClinicResponsibleIds = [];
+    if (!state.deletedClinicResponsibleIds.includes(id)) state.deletedClinicResponsibleIds.push(id);
+    if (userId && !state.deletedClinicResponsibleIds.includes(userId)) state.deletedClinicResponsibleIds.push(userId);
+    if (cr?.userId && !state.deletedClinicResponsibleIds.includes(cr.userId)) state.deletedClinicResponsibleIds.push(cr.userId);
+
     this.saveState(state);
   }
 
   public getClinicResponsibles(): ClinicResponsible[] {
     const state = this.getState();
-    const responsibles = [...(state.clinicResponsibles || [])];
-    const clinicUsers = (state.users || []).filter(u => {
-      const r = (u.role || '').toUpperCase();
-      return r === 'CLINIC_RESPONSIBLE' || r === 'CLINIC' || r === 'SUPERVISOR_CLINIC' || r === 'CLINIC_RESPONSIBLE_HOSPITAL';
-    });
-
-    for (const u of clinicUsers) {
-      const exists = responsibles.some(c => 
-        c.id === `cr-${u.id}` || 
-        c.id === u.id || 
-        c.userId === u.uid || 
-        c.userId === u.id ||
-        (c.fullName && u.fullName && c.fullName.trim().toLowerCase() === u.fullName.trim().toLowerCase())
-      );
-      if (!exists) {
-        responsibles.unshift({
-          id: `cr-${u.id || u.uid}`,
-          userId: u.uid || u.id,
-          fullName: u.fullName,
-          phone: u.phone || '+998 (90) 000-00-00',
-          email: u.email || `${u.login || 'clinic'}@tma.uz`,
-          practicePlaceId: u.practicePlaceId || state.practicePlaces?.[0]?.id || 'place-1',
-          position: 'Shifoxona mas\'uli',
-          department: 'Shifoxona bo\'limi',
-          status: 'ACTIVE'
-        });
-      }
-    }
-    return responsibles;
+    const deletedIds = state.deletedClinicResponsibleIds || [];
+    return (state.clinicResponsibles || []).filter(c => !deletedIds.includes(c.id) && !deletedIds.includes(c.userId || ''));
   }
 
   // --- PRACTICE DISTRIBUTIONS (AMALIYOT TAQSIMOTI) ---
@@ -4051,7 +3931,7 @@ class StorageServiceV2 {
   } {
     const state = this.getState();
     const now = new Date();
-    const todayStr = '2026-09-28';
+    const todayStr = new Date().toISOString().split('T')[0];
     const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     // 1. Find student assignment
@@ -7585,7 +7465,55 @@ class StorageServiceV2 {
 
     return issues;
   }
+
+  public async hardResetCloudAndLocalState(actorUserId = 'system', actorRole = 'SUPER_ADMIN'): Promise<void> {
+    const state = this.getState();
+    state.practices = [];
+    state.practiceDistributions = [];
+    state.practiceAssignments = [];
+    state.attendance = [];
+    state.attendanceSessions = [];
+    state.dailyJournals = [];
+    state.students = [];
+    state.supervisors = [];
+    state.clinicResponsibles = [];
+    state.practicePlaces = [];
+    state.practiceDepartments = [];
+    state.vedomosts = [];
+    state.assessments = [];
+    state.finalExams = [];
+    state.deletedPracticeIds = [];
+    state.deletedSupervisorIds = [];
+    state.deletedClinicResponsibleIds = [];
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: actorRole,
+      action: 'databaseHardReset',
+      entity: 'system',
+      entityId: 'hard-reset',
+      metadata: JSON.stringify({ description: 'Hard-delete of all practices, allocations, and demo data triggered by admin.' })
+    });
+
+    this.saveState(state);
+
+    if (typeof window !== 'undefined' && db) {
+      try {
+        const docRef = doc(db, 'appState', 'v2');
+        const cleanState = JSON.parse(JSON.stringify(state));
+        await setDoc(docRef, cleanState);
+        console.log('Successfully hard-reset Firestore and local database state.');
+      } catch (err) {
+        console.error('Error hard-resetting Firestore state:', err);
+        throw err;
+      }
+    }
+  }
 }
 
 export const storageService = new StorageServiceV2();
+
+export async function hardResetDatabaseState(actorUserId?: string, actorRole?: string): Promise<void> {
+  return storageService.hardResetCloudAndLocalState(actorUserId, actorRole);
+}
 

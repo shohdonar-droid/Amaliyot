@@ -7,11 +7,11 @@ import { resolveLoginToCandidateEmails } from '../../services/loginGeneratorServ
 import { storageService } from '../../services/storageService';
 
 export function LoginPage() {
-  const { login, forgotPassword } = useAuth();
+  const { login, forgotPassword, switchRole } = useAuth();
   const { showToast } = useToast();
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('T00001');
+  const [password, setPassword] = useState('password123');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +39,17 @@ export function LoginPage() {
     }
   };
 
+  const handleRoleQuickSwitch = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (!val) return;
+    try {
+      switchRole(val);
+      showToast('success', 'Rol almashtirildi', `Tezkor rejim: ${val}`);
+    } catch (err: any) {
+      showToast('error', 'Xatolik', 'Rolni almashtirishda xatolik');
+    }
+  };
+
   const handlePasswordRecovery = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -59,75 +70,44 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex lg:flex-row flex-col bg-slate-50">
-      {/* Left Branding Panel */}
-      <div className="lg:w-1/2 bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900 text-white flex flex-col justify-between p-8 sm:p-12 lg:p-16 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]" />
-        
-        {/* Top Header */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-blue-400 shadow-xl shadow-blue-950/50">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-blue-900 text-white flex flex-col justify-between p-4 sm:p-8 relative overflow-x-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#3b82f6_1.5px,transparent_1.5px)] [background-size:20px_20px] pointer-events-none" />
+
+      <div className="max-w-md w-full mx-auto my-auto py-8 space-y-6 relative z-10">
+        {/* Top Header & Logo */}
+        <div className="text-center space-y-4">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full bg-white/10 backdrop-blur-md border-2 border-white/25 flex items-center justify-center text-blue-400 shadow-2xl shadow-blue-950/80">
             {univLogo ? (
-              <img src={univLogo} alt="Logo" className="w-full h-full object-cover rounded-2xl" />
+              <img src={univLogo} alt="Logo" className="w-full h-full object-cover rounded-full" />
             ) : (
-              <GraduationCap className="w-7 h-7 text-blue-400" />
+              <GraduationCap className="w-10 h-10 text-blue-300" />
             )}
           </div>
-          <div>
-            <p className="text-xs font-semibold text-blue-300 uppercase tracking-widest">
-              OLIY TA'LIM MUASSASASI
-            </p>
-            <p className="text-sm font-bold text-white uppercase tracking-tight">
-              TOSHKENT DAVLAT TIBBIYOT UNIVERSITETI CHIRCHIQ FILIALI
+
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              Amaliyotni boshqaruv tizimi
+            </h1>
+            <p className="text-xs sm:text-sm font-semibold text-blue-200 tracking-wide uppercase px-2">
+              {univName}
             </p>
           </div>
         </div>
 
-        {/* Center Hero */}
-        <div className="relative z-10 my-auto py-12 space-y-6 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-xs font-semibold tracking-wide">
-            <ShieldCheck className="w-4 h-4 text-blue-400" />
-            <span>Xavfsiz elektron ta'lim va amaliyot platformasi</span>
-          </div>
-
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight whitespace-nowrap">
-            Amaliyotni boshqaruv tizimi
-          </h1>
-
-          <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-            Talabalar amaliyoti, kundaliklar, GPS/QR davomat, amaliy ko'nikmalar pasporti va baholash jarayonlarini raqamli boshqarish tizimi.
-          </p>
-        </div>
-
-        {/* Footer */}
-        <div className="relative z-10 text-xs text-slate-400 font-medium">
-          &copy; {new Date().getFullYear()} Barcha huquqlar himoyalangan.
-        </div>
-      </div>
-
-      {/* Right Login Form Panel */}
-      <div className="lg:w-1/2 flex items-center justify-center p-6 sm:p-12 lg:p-16">
-        <div className="w-full max-w-md bg-white p-8 sm:p-10 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 space-y-6">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-950">
-              Tizimga kirish
-            </h2>
-            <p className="text-xs text-slate-500">
-              Universitet tomonidan berilgan login va parolingizni kiriting
-            </p>
-          </div>
-
+        {/* Elevated Form Card */}
+        <div className="bg-white text-slate-900 p-6 sm:p-8 rounded-3xl shadow-2xl shadow-blue-950/50 border border-slate-100 space-y-5">
           {errorMessage && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-center gap-2.5 animate-shake">
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Login / Talaba ID / Email
+            <div className="space-y-1">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                Login
               </label>
               <div className="relative">
                 <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -136,25 +116,16 @@ export function LoginPage() {
                   required
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  placeholder="Masalan: T00001 yoki admin"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all font-mono"
+                  placeholder="T00001 yoki admin"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all font-mono font-medium"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                  Parol
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setIsForgotModalOpen(true)}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-                >
-                  Parolni unutdingizmi?
-                </button>
-              </div>
+            <div className="space-y-1">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                Parol
+              </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
@@ -163,7 +134,7 @@ export function LoginPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-3 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all font-mono"
+                  className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all font-mono font-medium"
                 />
                 <button
                   type="button"
@@ -178,19 +149,55 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
             >
               {isLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Tekshirilmoqda...</span>
+                  <span>Kirilmoqda...</span>
                 </>
               ) : (
-                <span>Tizimga kirish</span>
+                <span>Kirish</span>
               )}
             </button>
           </form>
+
+          <div className="text-center pt-1">
+            <button
+              type="button"
+              onClick={() => setIsForgotModalOpen(true)}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              Parolni unutdingizmi?
+            </button>
+          </div>
+
+          {/* Role Switcher Section (as seen in reference mockup) */}
+          <div className="pt-4 border-t border-slate-100 space-y-1.5">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Rollarni almashtirish (Tezkor demo)
+            </label>
+            <select
+              onChange={handleRoleQuickSwitch}
+              defaultValue=""
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:ring-2 focus:ring-blue-600 cursor-pointer"
+            >
+              <option value="" disabled>Rolni tanlang...</option>
+              <option value="SUPER_ADMIN">Super Admin</option>
+              <option value="PRACTICE_HEAD">Amaliyot bo‘limi boshlig‘i</option>
+              <option value="PRACTICE_STAFF">Amaliyot bo‘limi xodimi</option>
+              <option value="FACULTY_DEAN">Fakultet dekani</option>
+              <option value="PRACTICE_SUPERVISOR">Amaliyot rahbari</option>
+              <option value="CLINIC_RESPONSIBLE">Klinika / Shifoxona mas’uli</option>
+              <option value="STUDENT">Talaba (T00001)</option>
+            </select>
+          </div>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="relative z-10 text-center text-[11px] text-slate-400 font-medium py-4">
+        &copy; {new Date().getFullYear()} TOSHKENT DAVLAT TIBBIYOT UNIVERSITETI CHIRCHIQ FILIALI. Barcha huquqlar himoyalangan.
       </div>
 
       {/* Forgot Password Modal */}

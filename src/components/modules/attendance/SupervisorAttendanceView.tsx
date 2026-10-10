@@ -35,6 +35,14 @@ export function SupervisorAttendanceView({
   const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const handleSync = () => setTick(t => t + 1);
+    window.addEventListener('tma_state_changed', handleSync);
+    return () => window.removeEventListener('tma_state_changed', handleSync);
+  }, []);
+
   const todayDate = new Date().toISOString().split('T')[0];
 
   const students = storageService.getStudents();

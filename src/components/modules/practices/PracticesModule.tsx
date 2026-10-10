@@ -115,14 +115,7 @@ export function PracticesModule() {
     showToast('info', 'Amaliyot holati o\'zgartirildi', statusLabels[newStatus] || newStatus);
   };
 
-  // Duplicate practice
-  const handleDuplicate = (id: string) => {
-    const duplicated = storageService.duplicatePractice(id);
-    if (duplicated) {
-      refreshList();
-      showToast('success', 'Amaliyot nusxalandi', `"${duplicated.name}" yangi loyiha sifatida yaratildi.`);
-    }
-  };
+
 
   // Safe edit check
   const handleInitiateEdit = (practice: Practice) => {
@@ -537,15 +530,7 @@ export function PracticesModule() {
                             <Edit2 className="w-4 h-4" />
                           </button>
 
-                          {/* Duplicate */}
-                          <button
-                            type="button"
-                            onClick={() => handleDuplicate(practice.id)}
-                            className="p-1.5 text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors cursor-pointer"
-                            title="Nusxalash"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
+
 
                           {/* Status Actions */}
                           {norm !== 'ACTIVE' && norm !== 'ARCHIVED' && (
@@ -739,14 +724,7 @@ export function PracticesModule() {
                   </div>
 
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleDuplicate(practice.id)}
-                      className="p-1.5 text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors cursor-pointer"
-                      title="Nusxalash"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
+
                     <button
                       type="button"
                       onClick={() => handleInitiateEdit(practice)}
