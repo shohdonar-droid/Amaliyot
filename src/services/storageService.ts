@@ -2786,9 +2786,7 @@ class StorageServiceV2 {
     // 2. Remove all related distributions
     state.practiceDistributions = (state.practiceDistributions || []).filter(d => d.practiceId !== id);
 
-    // 3. Track deleted practice IDs
-    if (!state.deletedPracticeIds) state.deletedPracticeIds = [];
-    if (!state.deletedPracticeIds.includes(id)) state.deletedPracticeIds.push(id);
+    // 3. REMOVED: Track deleted practice IDs - this was causing re-appearance issues
 
     // 4. Find assignments belonging to this practice
     const removedAssignments = (state.practiceAssignments || []).filter(a => a.practiceId === id);
