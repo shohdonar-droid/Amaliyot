@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar, ActiveModule } from './Sidebar';
 import { Header } from './Header';
 import { BottomNavigation } from './BottomNavigation';
