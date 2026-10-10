@@ -93,7 +93,7 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
 
   const todayAttendanceRate = todayAttendance.length > 0
     ? Math.round(((presentToday + lateToday) / todayAttendance.length) * 100)
-    : 96;
+    : 0;
 
   const pendingJournalsCount = journals.filter(j => {
     const s = (j?.status || '').toUpperCase();
