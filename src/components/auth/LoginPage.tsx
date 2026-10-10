@@ -76,7 +76,7 @@ export function LoginPage() {
 
       <div className="max-w-md w-full mx-auto my-auto py-8 space-y-6 relative z-10">
         {/* Top Header & Logo */}
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-3">
           <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full bg-white/10 backdrop-blur-md border-2 border-white/25 flex items-center justify-center text-blue-400 shadow-2xl shadow-blue-950/80">
             {univLogo ? (
               <img src={univLogo} alt="Logo" className="w-full h-full object-cover rounded-full" />
@@ -84,12 +84,9 @@ export function LoginPage() {
               <GraduationCap className="w-10 h-10 text-blue-300" />
             )}
           </div>
-
+          
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Amaliyotni boshqaruv tizimi
-            </h1>
-            <p className="text-xs sm:text-sm font-semibold text-blue-200 tracking-wide uppercase px-2">
+            <p className="text-sm font-bold text-white tracking-wide uppercase px-2">
               {univName}
             </p>
           </div>
@@ -97,6 +94,9 @@ export function LoginPage() {
 
         {/* Elevated Form Card */}
         <div className="bg-white text-slate-900 p-6 sm:p-8 rounded-3xl shadow-2xl shadow-blue-950/50 border border-slate-100 space-y-5">
+          <h1 className="text-lg font-black tracking-tight text-slate-800 text-center">
+            Amaliyotni boshqaruv tizimi
+          </h1>
           {errorMessage && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -116,7 +116,7 @@ export function LoginPage() {
                   required
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  placeholder="T00001 yoki admin"
+                  placeholder="T00001"
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all font-mono font-medium"
                 />
               </div>
@@ -170,27 +170,6 @@ export function LoginPage() {
             >
               Parolni unutdingizmi?
             </button>
-          </div>
-
-          {/* Role Switcher Section (as seen in reference mockup) */}
-          <div className="pt-4 border-t border-slate-100 space-y-1.5">
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Rollarni almashtirish (Tezkor demo)
-            </label>
-            <select
-              onChange={handleRoleQuickSwitch}
-              defaultValue=""
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:ring-2 focus:ring-blue-600 cursor-pointer"
-            >
-              <option value="" disabled>Rolni tanlang...</option>
-              <option value="SUPER_ADMIN">Super Admin</option>
-              <option value="PRACTICE_HEAD">Amaliyot bo‘limi boshlig‘i</option>
-              <option value="PRACTICE_STAFF">Amaliyot bo‘limi xodimi</option>
-              <option value="FACULTY_DEAN">Fakultet dekani</option>
-              <option value="PRACTICE_SUPERVISOR">Amaliyot rahbari</option>
-              <option value="CLINIC_RESPONSIBLE">Klinika / Shifoxona mas’uli</option>
-              <option value="STUDENT">Talaba (T00001)</option>
-            </select>
           </div>
         </div>
       </div>
