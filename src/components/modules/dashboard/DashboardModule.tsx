@@ -158,46 +158,53 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           </div>
         </div>
 
-        {/* Katta status card: 🟢 AMALIYOTDA */}
-        <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 rounded-3xl p-6 text-white shadow-xl border border-blue-900/60 relative overflow-hidden">
-          <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+        {/* Katta status card: AMALIYOT HOLATI */}
+        {myAssignment ? (
+          <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 rounded-3xl p-6 text-white shadow-xl border border-blue-900/60 relative overflow-hidden">
+            <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
 
-          <div className="flex items-center justify-between mb-4">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-black uppercase tracking-wider">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              🟢 AMALIYOTDA
-            </span>
+            <div className="flex items-center justify-between mb-4">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-black uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                🟢 AMALIYOTDA
+              </span>
 
-            <span className="text-xs font-mono text-blue-200/90 font-semibold">
-              {myPractice?.academicYear || '2025-2026'}
-            </span>
+              <span className="text-xs font-mono text-blue-200/90 font-semibold">
+                {myPractice?.academicYear || '2025-2026'}
+              </span>
+            </div>
+
+            <h2 className="text-lg sm:text-xl font-extrabold text-white mb-4">
+              {myPractice?.name || 'Klinik amaliyot'}
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white/5 p-4 rounded-2xl border border-white/10">
+              <div>
+                <p className="text-[10px] text-blue-300 uppercase font-bold">Tashkilot (Klinik baza)</p>
+                <p className="font-semibold text-white mt-0.5">{myClinicPlace?.name || 'Ma\'lumot kiritilmagan'}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-blue-300 uppercase font-bold">Amaliyot rahbari</p>
+                <p className="font-semibold text-white mt-0.5">{mySupervisor?.fullName || 'Belgilanmagan'}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-blue-300 uppercase font-bold">Bo‘lim</p>
+                <p className="font-semibold text-white mt-0.5">{myAssignment?.department || 'Belgilanmagan'}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-blue-300 uppercase font-bold">Amaliyot muddati va vaqti</p>
+                <p className="font-semibold text-white mt-0.5 font-mono">
+                  {myPractice?.startDate || ''} — {myPractice?.endDate || ''}
+                </p>
+              </div>
+            </div>
           </div>
-
-          <h2 className="text-lg sm:text-xl font-extrabold text-white mb-4">
-            {myPractice?.name || 'Klinik amaliyot'}
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white/5 p-4 rounded-2xl border border-white/10">
-            <div>
-              <p className="text-[10px] text-blue-300 uppercase font-bold">Tashkilot (Klinik baza)</p>
-              <p className="font-semibold text-white mt-0.5">{myClinicPlace?.name || 'Toshkent shahar 1-son klinik shifoxonasi'}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-blue-300 uppercase font-bold">Amaliyot rahbari</p>
-              <p className="font-semibold text-white mt-0.5">{mySupervisor?.fullName || 'Prof. Sobirov Alisher Tolipovich'}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-blue-300 uppercase font-bold">Bo‘lim</p>
-              <p className="font-semibold text-white mt-0.5">{myAssignment?.department || 'Terapiya va kardiologiya'}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-blue-300 uppercase font-bold">Amaliyot muddati va vaqti</p>
-              <p className="font-semibold text-white mt-0.5 font-mono">
-                {myPractice?.startDate || '05.10.2026'} — {myPractice?.endDate || '30.10.2026'} · Du–Ju (08:00 — 14:00)
-              </p>
-            </div>
+        ) : (
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm text-center">
+            <h2 className="text-lg font-bold text-slate-700">Amaliyot hali belgilanmagan</h2>
+            <p className="text-sm text-slate-500 mt-2">Siz hozirda hech qanday faol amaliyotga biriktirilmagansiz.</p>
           </div>
-        </div>
+        )}
 
         {/* 4 ta katta quick action: DAVOMAT, KUNDALIK, KO‘NIKMALAR, NATIJALAR */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
