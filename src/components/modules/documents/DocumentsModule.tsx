@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
+import jsPDF from 'jspdf';
 import {
   FileText,
   Plus,
@@ -275,12 +277,16 @@ export function DocumentsModule() {
 
             <div className="pt-6 flex items-center justify-between text-xs font-sans">
               <div>
-                <p className="font-bold">O'quv ishlari bo'yicha prorektor:</p>
-                <p className="text-slate-500 mt-4">Prof. Karimov B.Sh. (Imzo, Muhr)</p>
+                <p className="font-bold">Amaliyot bo'limi boshlig'i:</p>
+                <p className="text-slate-500 mt-4">{storageService.getUsers().find(u => u.role === 'PRACTICE_HEAD')?.fullName || 'Amaliyot bo\'limi boshlig\'i'} (Imzo)</p>
+              </div>
+              <div className="flex flex-col items-center">
+                <QRCodeSVG value={`http://tma.uz/referral/${referralStudent?.id}`} size={60} />
+                <p className="text-[10px] mt-1">Tekshirish kodi</p>
               </div>
               <div className="text-right">
-                <p className="font-bold">Amaliyot bo'limi boshlig'i:</p>
-                <p className="text-slate-500 mt-4">Dr. Erkinov F.M. (Imzo)</p>
+                <p className="font-bold">Klinika mas'uli:</p>
+                <p className="text-slate-500 mt-4">(Imzo)</p>
               </div>
             </div>
           </div>
@@ -295,11 +301,15 @@ export function DocumentsModule() {
             </button>
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={() => {
+                const doc = new jsPDF();
+                doc.text(`Yo'llanma: ${referralStudent?.fullName}`, 10, 10);
+                doc.save(`yollanma_${referralStudent?.fullName}.pdf`);
+              }}
               className="px-4 py-2 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs flex items-center gap-1.5"
             >
-              <Printer className="w-4 h-4" />
-              <span>Chop etish (Print)</span>
+              <Download className="w-4 h-4" />
+              <span>PDF yuklab olish</span>
             </button>
           </div>
         </div>
