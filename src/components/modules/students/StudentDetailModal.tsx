@@ -134,7 +134,7 @@ export function StudentDetailModal({
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          Davomat ({attendance.length})
+          Davomat ({currentPractice ? attendance.length : 0})
         </button>
         <button
           onClick={() => setActiveTab('journals')}
@@ -247,7 +247,11 @@ export function StudentDetailModal({
 
         {activeTab === 'attendance' && (
           <div className="space-y-3">
-            {attendance.length === 0 ? (
+            {!currentPractice ? (
+              <p className="text-xs text-slate-500 text-center py-8">
+                Talaba hozirda hech qanday amaliyotga biriktirilmagan, shuning uchun davomat mavjud emas.
+              </p>
+            ) : attendance.length === 0 ? (
               <p className="text-xs text-slate-500 text-center py-8">
                 Davomat yozuvlari topilmadi.
               </p>

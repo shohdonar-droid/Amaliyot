@@ -70,21 +70,27 @@ export function PracticeWizardModal({
 }: PracticeWizardModalProps) {
   const { showToast } = useToast();
 
-  const faculties = storageService.getFaculties();
-  const directions = storageService.getDirections();
-  const courses = storageService.getCourses();
-  const groups = storageService.getGroups();
-  const allStudents = storageService.getStudents();
-  const [allPlaces, setAllPlaces] = useState<PracticePlace[]>(() => storageService.getPracticePlaces());
-
   // Wizard current step: 1..5
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [faculties, setFaculties] = useState(() => storageService.getFaculties());
+  const [directions, setDirections] = useState(() => storageService.getDirections());
+  const [courses, setCourses] = useState(() => storageService.getCourses());
+  const [groups, setGroups] = useState(() => storageService.getGroups());
+  const [allStudents, setAllStudents] = useState(() => storageService.getStudents());
+  const [allPlaces, setAllPlaces] = useState<PracticePlace[]>(() => storageService.getPracticePlaces());
+
 
   const [allSupervisors, setAllSupervisors] = useState(() => storageService.getSupervisors());
   const [allClinicResponsibles, setAllClinicResponsibles] = useState(() => storageService.getClinicResponsibles());
 
   useEffect(() => {
     if (isOpen) {
+      setFaculties(storageService.getFaculties());
+      setDirections(storageService.getDirections());
+      setCourses(storageService.getCourses());
+      setGroups(storageService.getGroups());
+      setAllStudents(storageService.getStudents());
+      
       const placesNow = storageService.getPracticePlaces();
       setAllPlaces(placesNow);
       organizationService.getOrganizations().then(fresh => {
