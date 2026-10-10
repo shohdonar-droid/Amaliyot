@@ -72,8 +72,9 @@ export function StudentDetailModal({
     student.status === 'suspended' ? 'danger' : 'neutral';
 
   const statusLabel = 
-    student.status === 'in_practice' ? 'Amaliyotda' :
+    (student.status === 'in_practice' && student.currentPracticeId) ? 'Amaliyotda' :
     student.status === 'active' ? 'Boshlanmagan' :
+    student.status === 'in_practice' ? 'Amaliyotdan chiqmagan' :
     student.status === 'suspended' ? 'Chetlashtirilgan' : 'Yakunlagan';
 
   return (

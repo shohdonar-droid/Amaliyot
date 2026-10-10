@@ -69,6 +69,7 @@ export const studentService = {
       ...data,
       id: studentId,
       login: studentLogin,
+      status: data.status || 'active',
       createdAt: timestamp,
       updatedAt: timestamp
     };
