@@ -97,6 +97,9 @@ export interface DatabaseStateV2 {
   documents: DocumentRecord[];
   notifications: AppNotification[];
   auditLogs: AuditLog[];
+  deletedPracticeIds?: string[];
+  deletedSupervisorIds?: string[];
+  deletedClinicResponsibleIds?: string[];
 }
 
 const DEFAULT_USERS_V2: User[] = [

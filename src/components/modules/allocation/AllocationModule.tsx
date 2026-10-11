@@ -41,6 +41,7 @@ import {
 } from '../../../types';
 import { storageService } from '../../../services/storageService';
 import { practiceAssignmentService } from '../../../services/practiceAssignmentService';
+import { organizationService } from '../../../services/organizationService';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
 import { StatusBadge } from '../../common/Badge';
@@ -55,13 +56,21 @@ export function AllocationModule() {
   // Core Data
   const [distributions, setDistributions] = useState<PracticeDistribution[]>(() => storageService.getDistributions());
   const [assignments, setAssignments] = useState<PracticeAssignment[]>([]);
+  const [places, setPlaces] = useState<PracticePlace[]>([]);
   
   useEffect(() => {
-    practiceAssignmentService.getPracticeAssignments().then(setAssignments);
+    async function loadData() {
+      const [asg, orgs] = await Promise.all([
+        practiceAssignmentService.getPracticeAssignments(),
+        organizationService.getOrganizations()
+      ]);
+      setAssignments(asg);
+      setPlaces(orgs);
+    }
+    loadData();
   }, [canonicalRole, currentUser, supervisorId]);
 
   const practices = storageService.getPractices();
-  const places = storageService.getPracticePlaces();
   const supervisors = storageService.getSupervisors();
   const students = storageService.getStudents();
   const groups = storageService.getGroups();
@@ -70,8 +79,12 @@ export function AllocationModule() {
 
   const refreshData = async () => {
     setDistributions(storageService.getDistributions());
-    const updatedAssignments = await practiceAssignmentService.getPracticeAssignments();
+    const [updatedAssignments, orgs] = await Promise.all([
+      practiceAssignmentService.getPracticeAssignments(),
+      organizationService.getOrganizations()
+    ]);
     setAssignments(updatedAssignments);
+    setPlaces(orgs);
   };
 
   // ==========================================
@@ -878,7 +891,7 @@ export function AllocationModule() {
                     onChange={e => setFilterOrgId(e.target.value)}
                     className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white"
                   >
-                    <option value="all">Barcha shifoxonalar</option>
+                    <option value="all">Barcha amaliyot bazalari</option>
                     {places.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
@@ -895,7 +908,7 @@ export function AllocationModule() {
                         <th className="py-2.5 px-3">Taqsimot ID</th>
                         <th className="py-2.5 px-3">Amaliyot va O'quv Yili</th>
                         <th className="py-2.5 px-3">Kurs & Guruh</th>
-                        <th className="py-2.5 px-3">Tashkilot (Klinik Baza)</th>
+                        <th className="py-2.5 px-3">Tashkilot (Amaliyot baza)</th>
                         <th className="py-2.5 px-3">Amaliyot Rahbari</th>
                         <th className="py-2.5 px-3">Muddat va Vaqt</th>
                         <th className="py-2.5 px-3">Talabalar</th>
@@ -1213,7 +1226,7 @@ export function AllocationModule() {
       >
         <form onSubmit={handleCreateDistribution} className="space-y-4 text-xs">
           <div className="bg-blue-50/60 p-3 rounded-xl border border-blue-200 text-blue-900">
-            <span className="font-bold">Ketma-ketlik:</span> Amaliyot → Kurs → Yo'nalish → Guruh → Tashkilot (Shifoxona) → Amaliyot rahbari (Guruh kesimida)
+            <span className="font-bold">Ketma-ketlik:</span> Amaliyot → Kurs → Yo'nalish → Guruh → Tashkilot (Amaliyot baza) → Amaliyot rahbari (Guruh kesimida)
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1291,7 +1304,7 @@ export function AllocationModule() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Tashkilot (Klinik baza) *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Tashkilot (amaliyot baza) *</label>
               <select
                 value={formOrgId}
                 onChange={e => setFormOrgId(e.target.value)}

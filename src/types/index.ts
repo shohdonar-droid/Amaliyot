@@ -915,6 +915,7 @@ export type AuditAction =
   | 'problemResolved'
   | 'hemisSyncCreated'
   | 'hemisSyncUpdated'
+  | 'databaseHardReset'
   | 'systemReset';
 
 export interface AuditLog {
