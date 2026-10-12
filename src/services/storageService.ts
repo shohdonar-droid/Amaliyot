@@ -1332,6 +1332,63 @@ class StorageServiceV2 {
     parsed.documents = parsed.documents || [];
     parsed.notifications = parsed.notifications || [];
     parsed.auditLogs = parsed.auditLogs || [];
+
+    // Ensure all supervisors have corresponding active users with valid supervisorId
+    (parsed.supervisors || []).forEach((sup: any) => {
+      const existingUser = (parsed.users || []).find((u: any) =>
+        u.id === sup.userId || u.uid === sup.userId || u.id === sup.id || u.supervisorId === sup.id ||
+        (sup.email && u.email && u.email.toLowerCase() === sup.email.toLowerCase()) ||
+        (sup.fullName && u.fullName && sup.fullName.toLowerCase().trim() === u.fullName.toLowerCase().trim())
+      );
+      if (existingUser) {
+        existingUser.supervisorId = sup.id;
+        if (!sup.userId) sup.userId = existingUser.id || existingUser.uid;
+      } else {
+        const loginStr = sup.email ? sup.email.split('@')[0] : `rahbar_${sup.id.replace(/[^a-zA-Z0-9]/g, '')}`;
+        parsed.users.unshift({
+          id: sup.userId || `user-${sup.id}`,
+          uid: sup.userId || `uid-${sup.id}`,
+          fullName: sup.fullName,
+          login: loginStr,
+          password: 'password123',
+          role: 'PRACTICE_SUPERVISOR',
+          email: sup.email || `${loginStr}@tma.uz`,
+          phone: sup.phone || '+998 (90) 000-00-00',
+          status: 'ACTIVE',
+          supervisorId: sup.id,
+          createdAt: new Date().toISOString()
+        });
+      }
+    });
+
+    // Ensure all users with role PRACTICE_SUPERVISOR have supervisorId and matching supervisor record
+    (parsed.users || []).forEach((u: any) => {
+      const r = (u.role || '').toUpperCase();
+      if (r === 'PRACTICE_SUPERVISOR' || r === 'SUPERVISOR' || r === 'SUPERVISOR_UNIVERSITY' || r === 'PRACTICE_LEADER_UNI') {
+        let matchingSup = (parsed.supervisors || []).find((s: any) =>
+          s.id === u.supervisorId || s.id === u.id || s.userId === u.id || s.userId === u.uid ||
+          (u.email && s.email && s.email.toLowerCase() === u.email.toLowerCase()) ||
+          (u.fullName && s.fullName && s.fullName.toLowerCase().trim() === u.fullName.toLowerCase().trim())
+        );
+        if (!matchingSup) {
+          const supId = u.supervisorId || `sup-${u.id}`;
+          matchingSup = {
+            id: supId,
+            userId: u.id || u.uid,
+            fullName: u.fullName,
+            phone: u.phone || '+998 (90) 000-00-00',
+            email: u.email || `${u.login || 'supervisor'}@tma.uz`,
+            type: 'university',
+            department: 'Kafedra',
+            academicDegree: 'Dotsent / O\'qituvchi',
+            status: 'ACTIVE'
+          };
+          parsed.supervisors.push(matchingSup);
+        }
+        u.supervisorId = matchingSup.id;
+      }
+    });
+
     return parsed as DatabaseStateV2;
   }
 
@@ -1586,9 +1643,9 @@ class StorageServiceV2 {
     );
     if (isSupervisorUser) {
       if (!state.supervisors) state.supervisors = [];
-      const supIdx = state.supervisors.findIndex(s => s.id === `sup-${user.id}` || s.userId === user.uid || s.userId === user.id);
+      const supIdx = state.supervisors.findIndex(s => s.id === `sup-${user.id}` || s.userId === user.uid || s.userId === user.id || s.id === user.supervisorId);
       const supervisorObj: Supervisor = {
-        id: supIdx >= 0 ? state.supervisors[supIdx].id : `sup-${user.id || user.uid}`,
+        id: supIdx >= 0 ? state.supervisors[supIdx].id : (user.supervisorId || `sup-${user.id || user.uid}`),
         userId: user.uid || user.id,
         fullName: user.fullName,
         phone: user.phone || '+998 (90) 000-00-00',
@@ -1603,6 +1660,11 @@ class StorageServiceV2 {
         state.supervisors[supIdx] = supervisorObj;
       } else {
         state.supervisors.unshift(supervisorObj);
+      }
+      // Guarantee supervisorId is set on user
+      const userRefIdx = state.users.findIndex(u => u.id === user.id || u.uid === user.uid);
+      if (userRefIdx >= 0) {
+        state.users[userRefIdx].supervisorId = supervisorObj.id;
       }
     }
 
@@ -2160,8 +2222,19 @@ class StorageServiceV2 {
 
     // Also ensure matching user account exists in state.users for login and user management
     if (!state.users) state.users = [];
-    const userExists = state.users.some(u => u.id === supervisor.userId || u.uid === supervisor.userId || u.id === supervisor.id);
-    if (!userExists) {
+    const userIdx = state.users.findIndex(u => 
+      u.id === supervisor.userId || 
+      u.uid === supervisor.userId || 
+      u.id === supervisor.id ||
+      u.supervisorId === supervisor.id ||
+      (supervisor.email && u.email && u.email.toLowerCase() === supervisor.email.toLowerCase()) ||
+      (supervisor.fullName && u.fullName && supervisor.fullName.toLowerCase().trim() === u.fullName.toLowerCase().trim())
+    );
+
+    if (userIdx >= 0) {
+      state.users[userIdx].supervisorId = supervisor.id;
+      if (!state.users[userIdx].fullName) state.users[userIdx].fullName = supervisor.fullName;
+    } else {
       const loginStr = supervisor.email ? supervisor.email.split('@')[0] : `rahbar_${Date.now()}`;
       state.users.unshift({
         id: supervisor.userId || `user-${supervisor.id}`,
@@ -2173,11 +2246,97 @@ class StorageServiceV2 {
         email: supervisor.email || `${loginStr}@tma.uz`,
         phone: supervisor.phone || '+998 (90) 000-00-00',
         status: 'ACTIVE',
+        supervisorId: supervisor.id,
         createdAt: new Date().toISOString()
       });
     }
 
     this.saveState(state);
+  }
+
+  public getSupervisorForUser(user: User | null): Supervisor | null {
+    if (!user) return null;
+    const supervisors = this.getSupervisors();
+    if (supervisors.length === 0) return null;
+
+    // 1. Direct match by supervisorId
+    if (user.supervisorId) {
+      const bySupId = supervisors.find(s => s.id === user.supervisorId);
+      if (bySupId) return bySupId;
+    }
+
+    // 2. Match by id, userId or uid
+    const byUserId = supervisors.find(s => 
+      s.id === user.id ||
+      s.userId === user.id ||
+      (user.uid && s.userId === user.uid) ||
+      s.id === `sup-${user.id}`
+    );
+    if (byUserId) return byUserId;
+
+    // 3. Match by email
+    if (user.email) {
+      const uEmail = user.email.toLowerCase().trim();
+      const byEmail = supervisors.find(s => s.email && s.email.toLowerCase().trim() === uEmail);
+      if (byEmail) return byEmail;
+    }
+
+    // 4. Match by full name
+    if (user.fullName) {
+      const uName = user.fullName.toLowerCase().trim();
+      const byName = supervisors.find(s => s.fullName && s.fullName.toLowerCase().trim() === uName);
+      if (byName) return byName;
+    }
+
+    // 5. If user's role is PRACTICE_SUPERVISOR, fallback to first supervisor
+    const rUpper = (user.role || '').toUpperCase();
+    if (rUpper === 'PRACTICE_SUPERVISOR' || rUpper === 'SUPERVISOR') {
+      return supervisors[0];
+    }
+
+    return null;
+  }
+
+  public getSupervisorIdsForUser(user: User | null): string[] {
+    if (!user) return [];
+    const ids = new Set<string>();
+    if (user.supervisorId) ids.add(user.supervisorId);
+    if (user.id) ids.add(user.id);
+    if (user.uid) ids.add(user.uid);
+
+    const sup = this.getSupervisorForUser(user);
+    if (sup) {
+      ids.add(sup.id);
+      if (sup.userId) ids.add(sup.userId);
+    }
+
+    return Array.from(ids);
+  }
+
+  public getPracticesForSupervisor(supervisorIdOrIds: string | string[]): Practice[] {
+    const state = this.getState();
+    const ids = Array.isArray(supervisorIdOrIds) ? supervisorIdOrIds : [supervisorIdOrIds];
+    if (ids.length === 0) return [];
+
+    return (state.practices || []).filter(p => {
+      // 1. Practice has any of supervisor IDs
+      const pSupIds = p.supervisorIds || [];
+      if (pSupIds.some(id => ids.includes(id))) return true;
+
+      // 2. Any distribution belongs to this supervisor
+      const hasDist = (state.practiceDistributions || []).some(
+        d => d.practiceId === p.id && ids.includes(d.supervisorId)
+      );
+      if (hasDist) return true;
+
+      // 3. Any assignment belongs to this supervisor
+      const hasAsg = (state.practiceAssignments || []).some(
+        a => a.practiceId === p.id && ids.includes(a.supervisorId)
+      );
+      if (hasAsg) return true;
+
+      return false;
+    });
   }
 
   public deleteSupervisor(id: string): void {
