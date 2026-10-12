@@ -33,25 +33,52 @@ export function StudentsModule() {
   const isSupervisor = canonicalRole === 'PRACTICE_SUPERVISOR';
   const supervisorId = currentUser?.supervisorId || (isSupervisor ? 'sup-1' : undefined);
 
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<Student[]>(() => storageService.getStudents() || []);
   
   useEffect(() => {
+    // Immediate refresh from local state
+    setStudents(storageService.getStudents() || []);
+
     studentService.getStudents().then(data => {
-      setStudents(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length > 0) {
+        setStudents(data);
+      }
     }).catch(err => {
-      console.warn("Failed to load students:", err);
-      setStudents(storageService.getStudents() || []);
+      console.warn("Failed to load students from Firestore:", err);
     });
+
+    const handleSync = () => {
+      setStudents(storageService.getStudents() || []);
+    };
+    window.addEventListener('tma_state_changed', handleSync);
+    return () => window.removeEventListener('tma_state_changed', handleSync);
   }, []);
 
-  const faculties = storageService.getFaculties() || [];
-  const directions = storageService.getDirections() || [];
-  const courses = storageService.getCourses() || [];
-  const groups = (isSupervisor && supervisorId 
-    ? storageService.getGroupsForSupervisor(supervisorId)
-    : storageService.getGroups()) || [];
-  const practices = storageService.getPractices() || [];
-  const places = storageService.getPracticePlaces() || [];
+  const [faculties, setFaculties] = useState<any[]>(() => storageService.getFaculties() || []);
+  const [directions, setDirections] = useState<any[]>(() => storageService.getDirections() || []);
+  const [courses, setCourses] = useState<any[]>(() => storageService.getCourses() || []);
+  const [groups, setGroups] = useState<any[]>(() => {
+    return (isSupervisor && supervisorId 
+      ? storageService.getGroupsForSupervisor(supervisorId)
+      : storageService.getGroups()) || [];
+  });
+  const [practices, setPractices] = useState<any[]>(() => storageService.getPractices() || []);
+  const [places, setPlaces] = useState<any[]>(() => storageService.getPracticePlaces() || []);
+
+  useEffect(() => {
+    const handleAcademicSync = () => {
+      setFaculties(storageService.getFaculties() || []);
+      setDirections(storageService.getDirections() || []);
+      setCourses(storageService.getCourses() || []);
+      setGroups(isSupervisor && supervisorId 
+        ? storageService.getGroupsForSupervisor(supervisorId)
+        : storageService.getGroups() || []);
+      setPractices(storageService.getPractices() || []);
+      setPlaces(storageService.getPracticePlaces() || []);
+    };
+    window.addEventListener('tma_state_changed', handleAcademicSync);
+    return () => window.removeEventListener('tma_state_changed', handleAcademicSync);
+  }, [isSupervisor, supervisorId]);
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');

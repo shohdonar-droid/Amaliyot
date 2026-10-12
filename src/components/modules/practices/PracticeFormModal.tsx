@@ -104,7 +104,7 @@ export function PracticeFormModal({
       setDescription('');
       setTotalHours(180);
       setCredits(6);
-      setStatus('draft');
+      setStatus('active');
     }
   }, [practiceToEdit, isOpen]);
 

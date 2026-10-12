@@ -1323,23 +1323,6 @@ class StorageServiceV2 {
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.users)) {
           this.memoryState = this.normalizeState(parsed);
-          // Complete one-time demo data purge
-          const DEMO_PURGE_FLAG = 'tma_demo_completely_purged_v5';
-          if (typeof window !== 'undefined' && !localStorage.getItem(DEMO_PURGE_FLAG)) {
-            this.memoryState.faculties = [];
-            this.memoryState.directions = [];
-            this.memoryState.groups = [];
-            this.memoryState.students = [];
-            this.memoryState.practices = [];
-            this.memoryState.supervisors = [];
-            this.memoryState.clinicResponsibles = [];
-            this.memoryState.practicePlaces = [];
-            this.memoryState.practiceDepartments = [];
-            this.memoryState.practiceDistributions = [];
-            this.memoryState.practiceAssignments = [];
-            localStorage.setItem(DEMO_PURGE_FLAG, 'true');
-            this.saveState(this.memoryState);
-          }
           return this.memoryState;
         }
       } catch (err) {
@@ -1659,7 +1642,10 @@ class StorageServiceV2 {
 
   public deleteFaculty(id: string): void {
     const state = this.getState();
-    state.faculties = state.faculties.filter(f => f.id !== id);
+    state.faculties = (state.faculties || []).filter(f => f.id !== id);
+    const removedDirectionIds = (state.directions || []).filter(d => d.facultyId === id).map(d => d.id);
+    state.directions = (state.directions || []).filter(d => d.facultyId !== id);
+    state.groups = (state.groups || []).filter(g => g.facultyId !== id && !removedDirectionIds.includes(g.directionId));
     this.saveState(state);
   }
 
@@ -1681,7 +1667,8 @@ class StorageServiceV2 {
 
   public deleteDirection(id: string): void {
     const state = this.getState();
-    state.directions = state.directions.filter(d => d.id !== id);
+    state.directions = (state.directions || []).filter(d => d.id !== id);
+    state.groups = (state.groups || []).filter(g => g.directionId !== id);
     this.saveState(state);
   }
 
@@ -1708,7 +1695,7 @@ class StorageServiceV2 {
 
   public deleteGroup(id: string): void {
     const state = this.getState();
-    state.groups = state.groups.filter(g => g.id !== id);
+    state.groups = (state.groups || []).filter(g => g.id !== id);
     this.saveState(state);
   }
 

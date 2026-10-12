@@ -47,6 +47,14 @@ export function AcademicStructureModule() {
     setGroups(storageService.getGroups());
   };
 
+  React.useEffect(() => {
+    const handleSync = () => {
+      refreshAll();
+    };
+    window.addEventListener('tma_state_changed', handleSync);
+    return () => window.removeEventListener('tma_state_changed', handleSync);
+  }, []);
+
   // Faculty form handler
   const handleSaveFaculty = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

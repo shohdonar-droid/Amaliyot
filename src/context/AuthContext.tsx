@@ -142,7 +142,12 @@ const CURRENT_USER_KEY = 'tibbiyot_amaliyot_auth_user_v2';
 const AUTH_TYPE_KEY = 'tma_auth_type';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem(CURRENT_USER_KEY)) {
+      return false; // Render immediately if user is cached in local storage
+    }
+    return true;
+  });
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isFirebaseAuthenticated, setIsFirebaseAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -171,6 +176,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+
+    // Safety timeout: Never let "Tizim yuklanmoqda" hang for more than 1.5 seconds
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 1500);
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
@@ -282,7 +292,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {

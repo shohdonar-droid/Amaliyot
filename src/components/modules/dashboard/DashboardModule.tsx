@@ -55,30 +55,49 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
   const isHead = canonicalRole === 'PRACTICE_HEAD' || userRoleStr === 'PRACTICE_HEAD' || userRoleStr === 'DEPT_HEAD';
   const isSuperAdmin = canonicalRole === 'SUPER_ADMIN' || userRoleStr === 'SUPER_ADMIN' || !role;
 
-  // Master data from storageService
-  const students = storageService.getStudents() || [];
-  const practices = storageService.getPractices() || [];
+  // Master data state reactive to storage updates
+  const [students, setStudents] = React.useState(() => storageService.getStudents() || []);
+  const [practices, setPractices] = React.useState(() => storageService.getPractices() || []);
   const [places, setPlaces] = React.useState(() => storageService.getPracticePlaces() || []);
+  const [supervisors, setSupervisors] = React.useState(() => storageService.getSupervisors() || []);
+  const [assignments, setAssignments] = React.useState(() => storageService.getAssignments() || []);
+  const [attendance, setAttendance] = React.useState(() => storageService.getAttendance() || []);
+  const [journals, setJournals] = React.useState(() => storageService.getDailyJournals() || []);
+  const [assessments, setAssessments] = React.useState(() => storageService.getAssessments() || []);
+  const [groups, setGroups] = React.useState(() => storageService.getGroups() || []);
+  const [faculties, setFaculties] = React.useState(() => storageService.getFaculties() || []);
+  const [directions, setDirections] = React.useState(() => storageService.getDirections() || []);
+  const [courses, setCourses] = React.useState(() => storageService.getCourses() || []);
+  const [auditLogs, setAuditLogs] = React.useState(() => storageService.getAuditLogs() || []);
+  const [notifications, setNotifications] = React.useState(() => storageService.getNotifications() || []);
 
   React.useEffect(() => {
     const handleSync = () => {
+      setStudents(storageService.getStudents() || []);
+      setPractices(storageService.getPractices() || []);
       setPlaces(storageService.getPracticePlaces() || []);
+      setSupervisors(storageService.getSupervisors() || []);
+      setAssignments(storageService.getAssignments() || []);
+      setAttendance(storageService.getAttendance() || []);
+      setJournals(storageService.getDailyJournals() || []);
+      setAssessments(storageService.getAssessments() || []);
+      setGroups(storageService.getGroups() || []);
+      setFaculties(storageService.getFaculties() || []);
+      setDirections(storageService.getDirections() || []);
+      setCourses(storageService.getCourses() || []);
+      setAuditLogs(storageService.getAuditLogs() || []);
+      setNotifications(storageService.getNotifications() || []);
     };
     window.addEventListener('tma_state_changed', handleSync);
     return () => window.removeEventListener('tma_state_changed', handleSync);
   }, []);
-  const supervisors = storageService.getSupervisors() || [];
-  const assignments = storageService.getAssignments() || [];
-  const attendance = storageService.getAttendance() || [];
-  const journals = storageService.getDailyJournals() || [];
-  const assessments = storageService.getAssessments() || [];
-  const groups = storageService.getGroups() || [];
-  const faculties = storageService.getFaculties() || [];
-  const directions = storageService.getDirections() || [];
-  const courses = storageService.getCourses() || [];
-  const auditLogs = storageService.getAuditLogs() || [];
-  const notifications = storageService.getNotifications() || [];
+
   const unreadNotifCount = notifications.filter(n => !n.isRead).length;
+  const isPracticeActive = (status?: string) => {
+    const s = String(status || '').toLowerCase();
+    return s === 'active';
+  };
+  const activePracticesCount = practices.filter(p => isPracticeActive(p.status)).length;
 
   const todayDate = new Date().toISOString().split('T')[0];
 
@@ -796,7 +815,7 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={[
-                { name: 'Faol amaliyotlar', value: practices.filter(p => p.status === 'active').length },
+                { name: 'Faol amaliyotlar', value: activePracticesCount },
                 { name: 'Talabalar', value: new Set(assignments.map(a => a.studentId)).size },
                 { name: 'Kutilayotgan baholar', value: assessments.filter(a => (a.status || '').toUpperCase() === 'PENDING').length },
               ]}>
@@ -819,7 +838,7 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
 
           <div onClick={() => onNavigate('practices')} className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs cursor-pointer">
             <span className="text-[11px] font-bold text-slate-500 uppercase block">Faol amaliyotlar</span>
-            <span className="text-2xl font-black text-blue-600 mt-1 block font-mono">{practices.filter(p => p.status === 'active').length}</span>
+            <span className="text-2xl font-black text-blue-600 mt-1 block font-mono">{activePracticesCount}</span>
             <span className="text-[11px] text-slate-500">Davom etmoqda</span>
           </div>
 
@@ -946,7 +965,7 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs cursor-pointer hover:border-slate-300 transition-colors"
         >
           <span className="text-[11px] font-bold text-slate-500 uppercase block">Faol amaliyotlar</span>
-          <span className="text-2xl font-black text-purple-600 mt-1 block font-mono">{practices.filter(p => p.status === 'active').length}</span>
+          <span className="text-2xl font-black text-purple-600 mt-1 block font-mono">{activePracticesCount}</span>
           <span className="text-[11px] text-purple-700 font-semibold">Rektorat buyrug‘i</span>
         </div>
 
