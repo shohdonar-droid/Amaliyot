@@ -54,20 +54,55 @@ export function AllocationModule() {
   const supervisorId = currentUser?.supervisorId || (isSupervisor ? 'sup-1' : undefined);
 
   // Core Data
-  const [distributions, setDistributions] = useState<PracticeDistribution[]>(() => storageService.getDistributions());
-  const [assignments, setAssignments] = useState<PracticeAssignment[]>([]);
-  const [places, setPlaces] = useState<PracticePlace[]>([]);
+  const [distributions, setDistributions] = useState<PracticeDistribution[]>(() => storageService.getDistributions() || []);
+  const [assignments, setAssignments] = useState<PracticeAssignment[]>(() => storageService.getAssignments() || []);
+  const [places, setPlaces] = useState<PracticePlace[]>(() => storageService.getPracticePlaces() || []);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   useEffect(() => {
+    let isMounted = true;
     async function loadData() {
-      const [asg, orgs] = await Promise.all([
-        practiceAssignmentService.getPracticeAssignments(),
-        organizationService.getOrganizations()
-      ]);
-      setAssignments(asg);
-      setPlaces(orgs);
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const [asg, orgs] = await Promise.all([
+          practiceAssignmentService.getPracticeAssignments().catch(err => {
+            console.warn('Assignments fetch warning:', err);
+            return storageService.getAssignments() || [];
+          }),
+          organizationService.getOrganizations().catch(err => {
+            console.warn('Organizations fetch warning:', err);
+            return storageService.getPracticePlaces() || [];
+          })
+        ]);
+        if (isMounted) {
+          setAssignments(asg);
+          setPlaces(orgs);
+          setDistributions(storageService.getDistributions() || []);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setLoadError(err?.message || 'Ma\'lumotlarni yuklashda xatolik yuz berdi');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
     }
     loadData();
+
+    const handleSync = () => {
+      setDistributions(storageService.getDistributions() || []);
+      setAssignments(storageService.getAssignments() || []);
+      setPlaces(storageService.getPracticePlaces() || []);
+    };
+    window.addEventListener('tma_state_changed', handleSync);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('tma_state_changed', handleSync);
+    };
   }, [canonicalRole, currentUser, supervisorId]);
 
   const practices = storageService.getPractices();
@@ -78,13 +113,21 @@ export function AllocationModule() {
   const courses = storageService.getCourses();
 
   const refreshData = async () => {
-    setDistributions(storageService.getDistributions());
-    const [updatedAssignments, orgs] = await Promise.all([
-      practiceAssignmentService.getPracticeAssignments(),
-      organizationService.getOrganizations()
-    ]);
-    setAssignments(updatedAssignments);
-    setPlaces(orgs);
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      setDistributions(storageService.getDistributions() || []);
+      const [updatedAssignments, orgs] = await Promise.all([
+        practiceAssignmentService.getPracticeAssignments(),
+        organizationService.getOrganizations()
+      ]);
+      setAssignments(updatedAssignments);
+      setPlaces(orgs);
+    } catch (err: any) {
+      setLoadError(err?.message || 'Ma\'lumotlarni yangilashda xatolik yuz berdi');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // ==========================================
@@ -861,6 +904,12 @@ export function AllocationModule() {
           {/* TAB 1: DISTRIBUTIONS (TAQ-2026-XXXXX) */}
           {headActiveTab === 'distributions' && (
             <div className="space-y-4">
+              {loadError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center justify-between">
+                  <span>{loadError}</span>
+                  <button onClick={refreshData} className="font-semibold underline ml-2">Qayta urinish</button>
+                </div>
+              )}
               {/* Filter bar */}
               <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="relative flex-1 max-w-sm">

@@ -16,6 +16,7 @@ import { UserRole } from '../../types';
 import { storageService } from '../../services/storageService';
 import { ActiveModule } from './Sidebar';
 import { UserProfileModal } from '../common/UserProfileModal';
+import { SyncBadge } from '../common/LoadingState';
 
 interface HeaderProps {
   activeModule: ActiveModule;
@@ -104,12 +105,15 @@ export function Header({
         </div>
       </div>
 
-      {/* Zone 2: Middle Academic Context */}
-      <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100/70 border border-slate-200 text-xs font-medium text-slate-600">
-        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-        <span>2025-2026 o'quv yili</span>
-        <span aria-hidden="true">·</span>
-        <span className="text-slate-500">Kuzgi semestr</span>
+      {/* Zone 2: Middle Academic Context & Sync Status */}
+      <div className="hidden md:flex items-center gap-2.5">
+        <SyncBadge />
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100/70 border border-slate-200 text-xs font-medium text-slate-600">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>2025-2026 o'quv yili</span>
+          <span aria-hidden="true">·</span>
+          <span className="text-slate-500">Kuzgi semestr</span>
+        </div>
       </div>
 
       {/* Zone 3: Interactive Role Switcher & User Actions */}

@@ -17,9 +17,10 @@ import {
   Copy,
   CheckCircle2
 } from 'lucide-react';
-import { PracticePlace, PracticePlaceType } from '../../../types';
+import { PracticePlace, PracticePlaceType, PracticeAssignment } from '../../../types';
 import { organizationService, getNextOrganizationId } from '../../../services/organizationService';
 import { practiceAssignmentService } from '../../../services/practiceAssignmentService';
+import { storageService } from '../../../services/storageService';
 import { useToast } from '../../../context/ToastContext';
 import { Modal } from '../../common/Modal';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
@@ -29,25 +30,72 @@ import { useAuth } from '../../../context/AuthContext';
 export function PracticePlacesModule() {
   const { showToast } = useToast();
   const { canonicalRole, currentUser } = useAuth();
-  const [places, setPlaces] = useState<PracticePlace[]>([]);
+  const [places, setPlaces] = useState<PracticePlace[]>(() => {
+    const cached = storageService.getPracticePlaces() || [];
+    if (canonicalRole === 'PRACTICE_SUPERVISOR') {
+      const supervisorId = currentUser?.supervisorId;
+      if (supervisorId) {
+        const assignments = storageService.getAssignments().filter((a: PracticeAssignment) => a.supervisorId === supervisorId);
+        const supervisorPlaceIds = new Set(assignments.map((a: PracticeAssignment) => a.practicePlaceId));
+        return cached.filter((p: PracticePlace) => supervisorPlaceIds.has(p.id));
+      }
+      return [];
+    }
+    return cached;
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   useEffect(() => {
+    let isMounted = true;
     const fetchData = async () => {
-      const allPlaces = await organizationService.getOrganizations();
-      if (canonicalRole === 'PRACTICE_SUPERVISOR') {
-        const supervisorId = currentUser?.supervisorId;
-        if (supervisorId) {
-          const assignments = await practiceAssignmentService.getPracticeAssignmentsBySupervisor(supervisorId);
-          const supervisorPlaceIds = new Set(assignments.map(a => a.practicePlaceId));
-          setPlaces(allPlaces.filter(p => supervisorPlaceIds.has(p.id)));
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const allPlaces = await organizationService.getOrganizations();
+        if (!isMounted) return;
+        if (canonicalRole === 'PRACTICE_SUPERVISOR') {
+          const supervisorId = currentUser?.supervisorId;
+          if (supervisorId) {
+            const assignments = await practiceAssignmentService.getPracticeAssignmentsBySupervisor(supervisorId);
+            const supervisorPlaceIds = new Set(assignments.map((a: PracticeAssignment) => a.practicePlaceId));
+            setPlaces(allPlaces.filter((p: PracticePlace) => supervisorPlaceIds.has(p.id)));
+          } else {
+            setPlaces([]);
+          }
         } else {
-          setPlaces([]);
+          setPlaces(allPlaces);
         }
-      } else {
-        setPlaces(allPlaces);
+      } catch (err: any) {
+        if (isMounted) {
+          setLoadError(err?.message || 'Amaliyot bazalarini yuklashda xatolik');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
     fetchData();
+
+    const handleSync = () => {
+      const fresh = storageService.getPracticePlaces() || [];
+      if (canonicalRole === 'PRACTICE_SUPERVISOR') {
+        const supervisorId = currentUser?.supervisorId;
+        if (supervisorId) {
+          const assignments = storageService.getAssignments().filter((a: PracticeAssignment) => a.supervisorId === supervisorId);
+          const supervisorPlaceIds = new Set(assignments.map((a: PracticeAssignment) => a.practicePlaceId));
+          setPlaces(fresh.filter((p: PracticePlace) => supervisorPlaceIds.has(p.id)));
+          return;
+        }
+      }
+      setPlaces(fresh);
+    };
+    window.addEventListener('tma_state_changed', handleSync);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('tma_state_changed', handleSync);
+    };
   }, [canonicalRole, currentUser]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -209,6 +257,13 @@ export function PracticePlacesModule() {
           </button>
         )}
       </div>
+
+      {loadError && (
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center justify-between">
+          <span>{loadError}</span>
+          <button onClick={refreshList} className="font-semibold underline ml-2 cursor-pointer">Qayta urinish</button>
+        </div>
+      )}
 
       {/* Filter and Search */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-white rounded-xl border border-slate-200">

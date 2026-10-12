@@ -1221,9 +1221,26 @@ class StorageServiceV2 {
   private memoryState: DatabaseStateV2 | null = null;
   private saveDebounceTimer: any = null;
   private isSyncingFromCloud: boolean = false;
+  private syncStatus: 'synced' | 'syncing' | 'error' = 'synced';
+  private lastSyncError: string | null = null;
+  private pendingCloudSyncPromise: Promise<void> | null = null;
 
   constructor() {
     this.initCloudSync();
+  }
+
+  public getSyncStatus(): { status: 'synced' | 'syncing' | 'error'; lastError: string | null } {
+    return { status: this.syncStatus, lastError: this.lastSyncError };
+  }
+
+  private setSyncStatus(status: 'synced' | 'syncing' | 'error', error: string | null = null) {
+    this.syncStatus = status;
+    this.lastSyncError = error;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tma_sync_status_changed', {
+        detail: { status, error, timestamp: Date.now() }
+      }));
+    }
   }
 
   private initCloudSync(): void {
@@ -1242,20 +1259,26 @@ class StorageServiceV2 {
               console.warn('Failed to save cloud state to localStorage:', e);
             }
             this.isSyncingFromCloud = false;
+            this.setSyncStatus('synced');
             window.dispatchEvent(new CustomEvent('tma_state_changed', { detail: this.memoryState }));
           }
         } else {
           // If document does not exist in Firestore, write current local state
           const initialState = this.getState();
-          setDoc(docRef, JSON.parse(JSON.stringify(initialState))).catch(err => {
+          setDoc(docRef, JSON.parse(JSON.stringify(initialState))).then(() => {
+            this.setSyncStatus('synced');
+          }).catch(err => {
             console.warn('Failed to initialize cloud database state:', err);
+            this.setSyncStatus('error', err?.message || 'Cloud init failed');
           });
         }
       }, (err) => {
         console.warn('Firestore onSnapshot error:', err);
+        this.setSyncStatus('error', err?.message || 'Firestore connection issue');
       });
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Could not initialize cloud database sync:', err);
+      this.setSyncStatus('error', err?.message || 'Sync initialization error');
     }
   }
 
@@ -1398,20 +1421,39 @@ class StorageServiceV2 {
     }
 
     if (!this.isSyncingFromCloud && db) {
+      this.setSyncStatus('syncing');
       if (this.saveDebounceTimer) {
         clearTimeout(this.saveDebounceTimer);
       }
       this.saveDebounceTimer = setTimeout(() => {
-        try {
-          const docRef = doc(db, 'appState', 'v2');
-          const cleanState = JSON.parse(JSON.stringify(state));
-          setDoc(docRef, cleanState).catch(err => {
-            console.warn('Error persisting state to Firestore:', err);
-          });
-        } catch (e) {
-          console.warn('Error preparing state for Firestore:', e);
-        }
-      }, 150);
+        this.flushCloudSync().catch(err => {
+          console.warn('Error during debounced cloud sync:', err);
+        });
+      }, 100);
+    }
+  }
+
+  /**
+   * Atomic flush: guarantees that all in-memory changes are immediately persisted
+   * to Firestore, returning a promise that resolves once Firestore accepts the write.
+   */
+  public async flushCloudSync(): Promise<boolean> {
+    if (!db) {
+      this.setSyncStatus('synced');
+      return true;
+    }
+    const state = this.memoryState || this.getState();
+    try {
+      this.setSyncStatus('syncing');
+      const docRef = doc(db, 'appState', 'v2');
+      const cleanState = JSON.parse(JSON.stringify(state));
+      await setDoc(docRef, cleanState);
+      this.setSyncStatus('synced');
+      return true;
+    } catch (err: any) {
+      console.warn('Atomic persistence flush to Firestore failed:', err);
+      this.setSyncStatus('error', err?.message || 'Sync failed');
+      return false;
     }
   }
 
