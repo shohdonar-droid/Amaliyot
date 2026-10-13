@@ -13,11 +13,17 @@ export const practiceAssignmentService = {
     return mergeData(fsData, lsData, 'id');
   },
 
-  getPracticeAssignmentsBySupervisor: async (supervisorId: string) => {
-    const constraints: QueryConstraint[] = [where('supervisorId', '==', supervisorId)];
-    const fsData = await firestoreService.queryDocuments(COLLECTION, constraints) as PracticeAssignment[];
-    const lsData = storageService.getAssignments().filter(a => a.supervisorId === supervisorId);
-    return mergeData(fsData, lsData, 'id');
+  getPracticeAssignmentsBySupervisor: async (supervisorIdOrIds: string | string[]) => {
+    const ids = Array.isArray(supervisorIdOrIds) ? supervisorIdOrIds : [supervisorIdOrIds];
+    if (ids.length === 0) return [];
+    const lsData = storageService.getAssignments().filter(a => ids.includes(a.supervisorId));
+    try {
+      const fsData = await firestoreService.queryDocuments(COLLECTION, []) as PracticeAssignment[];
+      const matchedFs = fsData.filter(a => ids.includes(a.supervisorId));
+      return mergeData(matchedFs, lsData, 'id');
+    } catch {
+      return lsData;
+    }
   },
 
   getPracticeAssignmentsByGroup: async (groupId: string) => {

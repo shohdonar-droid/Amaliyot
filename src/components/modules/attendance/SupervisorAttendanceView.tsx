@@ -53,9 +53,10 @@ export function SupervisorAttendanceView({
   const attendance = storageService.getAttendance();
 
   // Filter only students assigned to this supervisor (Section 13 & 18 security isolation)
-  const myAssignments = assignments.filter(a => a.supervisorId === supervisorId);
+  const supIds = storageService.getSupervisorIdsForUser(currentUser || (supervisorId ? { id: supervisorId, role: 'PRACTICE_SUPERVISOR' } as any : null));
+  const myAssignments = assignments.filter(a => supIds.includes(a.supervisorId));
   const myStudentIds = new Set(myAssignments.map(a => a.studentId));
-  const myStudents = students.filter(s => myStudentIds.has(s.id));
+  const myStudents = students.filter(s => myStudentIds.has(s.id) || myStudentIds.has(s.studentId));
 
   const isPresent = (st?: string) => st?.toUpperCase() === 'PRESENT';
   const isLate = (st?: string) => st?.toUpperCase() === 'LATE';
@@ -64,12 +65,13 @@ export function SupervisorAttendanceView({
 
   // Compute metrics for each assigned student
   const studentRows = myStudents.map(student => {
-    const studentAssignment = myAssignments.find(a => a.studentId === student.id);
+    const studentAssignment = myAssignments.find(a => a.studentId === student.id || a.studentId === student.studentId);
     const place = places.find(p => p.id === studentAssignment?.practicePlaceId);
     const group = groups.find(g => g.id === student.groupId);
     const practice = practices.find(p => p.id === studentAssignment?.practiceId);
 
-    const studentAtt = attendance.filter(a => a.studentId === student.id);
+    const sIds = storageService.getStudentIdsForUser(student);
+    const studentAtt = attendance.filter(a => sIds.includes(a.studentId) || a.studentId === student.id || a.studentId === student.studentId);
     const todayAtt = studentAtt.find(a => a.date === todayDate);
 
     const absentDays = studentAtt.filter(a => isAbsent(a.status)).length;

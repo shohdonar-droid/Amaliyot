@@ -72,25 +72,34 @@ function calcDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numb
   // Geolocation lookup
   useEffect(() => {
     if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+      if (!place?.latitude || !place?.longitude) {
+        setIsInsideGeofence(false);
+        setDistanceMeters(0);
+        return;
+      }
       navigator.geolocation.getCurrentPosition(
         pos => {
           const uLat = pos.coords.latitude;
           const uLng = pos.coords.longitude;
           setCurrentCoords({ lat: uLat, lng: uLng });
 
-          const placeLat = place?.latitude || 41.2995;
-          const placeLng = place?.longitude || 69.2401;
+          const placeLat = place.latitude!;
+          const placeLng = place.longitude!;
+          const allowedRadius = place.allowedRadius || 200;
 
           const distM = calcDistanceMeters(uLat, uLng, placeLat, placeLng);
           setDistanceMeters(distM);
-          setIsInsideGeofence(distM <= 500);
+          setIsInsideGeofence(distM <= allowedRadius);
         },
-        _err => {
-          setDistanceMeters(85);
-          setIsInsideGeofence(true);
+        err => {
+          console.warn('Geolocation error:', err);
+          setIsInsideGeofence(false);
+          setDistanceMeters(0);
         },
-        { enableHighAccuracy: true, timeout: 5000 }
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
       );
+    } else {
+      setIsInsideGeofence(false);
     }
   }, [place]);
 
@@ -105,8 +114,19 @@ function calcDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numb
 
   // Handle GPS attendance confirmation
   const handleConfirmGpsAttendance = async () => {
-    if (!isInsideGeofence) {
-      showToast('error', 'Hududdan tashqarida', `Siz amaliyot joyidan ${distanceMeters} metr uzoqdasiz. Amaliyot hududiga kiring.`);
+    if (!place?.latitude || !place?.longitude) {
+      showToast('error', 'Koordinatalar mavjud emas', `Amaliyot bazasi (${place?.name || 'Tashkilot'}) uchun GPS koordinatalari kiritilmagan.`);
+      return;
+    }
+
+    if (!currentCoords) {
+      showToast('error', 'GPS xatoligi', 'Sizning joriy koordinatalaringiz aniqlanmadi. Iltimos GPS ruxsatini tekshiring.');
+      return;
+    }
+
+    const allowedRadius = place.allowedRadius || 200;
+    if (!isInsideGeofence || distanceMeters > allowedRadius) {
+      showToast('error', 'Hududdan tashqarida', `Siz amaliyot joyidan ${distanceMeters} metr uzoqdasiz. Ruxsat etilgan radius: ${allowedRadius} metr.`);
       return;
     }
 
@@ -114,8 +134,8 @@ function calcDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numb
     try {
       const res = storageService.recordGPSAttendance({
         studentId: student.id,
-        latitude: currentCoords?.lat || 41.2995,
-        longitude: currentCoords?.lng || 69.2401
+        latitude: currentCoords.lat,
+        longitude: currentCoords.lng
       });
 
       if (res.success) {

@@ -74,9 +74,9 @@ export function PracticesModule() {
   }, []);
 
   const studentDetails = useMemo(() => {
-    if (!isStudent || !studentId) return null;
-    return storageService.getStudentActivePracticeDetails(studentId);
-  }, [isStudent, studentId, practices, allAssignments]);
+    if (!isStudent) return null;
+    return storageService.getStudentActivePracticeDetails(currentUser || studentId);
+  }, [isStudent, currentUser, studentId, practices, allAssignments]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -157,8 +157,9 @@ export function PracticesModule() {
   const filteredPractices = practices.filter(p => {
     const norm = getNormStatus(p.status);
     if (canonicalRole === 'PRACTICE_SUPERVISOR') {
-      const supervisorId = currentUser?.supervisorId;
-      if (!supervisorId || !(p.supervisorIds || []).includes(supervisorId)) return false;
+      const supIds = storageService.getSupervisorIdsForUser(currentUser);
+      const matchedPractices = storageService.getPracticesForSupervisor(supIds);
+      if (!matchedPractices.some(mp => mp.id === p.id)) return false;
     }
 
     if (filterStatus !== 'all' && norm !== filterStatus.toUpperCase()) {

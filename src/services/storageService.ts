@@ -1333,59 +1333,26 @@ class StorageServiceV2 {
     parsed.notifications = parsed.notifications || [];
     parsed.auditLogs = parsed.auditLogs || [];
 
-    // Ensure all supervisors have corresponding active users with valid supervisorId
+    // Ensure strict ID-based linkage between supervisors and users
     (parsed.supervisors || []).forEach((sup: any) => {
       const existingUser = (parsed.users || []).find((u: any) =>
-        u.id === sup.userId || u.uid === sup.userId || u.id === sup.id || u.supervisorId === sup.id ||
-        (sup.email && u.email && u.email.toLowerCase() === sup.email.toLowerCase()) ||
-        (sup.fullName && u.fullName && sup.fullName.toLowerCase().trim() === u.fullName.toLowerCase().trim())
+        u.id === sup.userId || u.uid === sup.userId || u.id === sup.id || u.supervisorId === sup.id
       );
       if (existingUser) {
         existingUser.supervisorId = sup.id;
         if (!sup.userId) sup.userId = existingUser.id || existingUser.uid;
-      } else {
-        const loginStr = sup.email ? sup.email.split('@')[0] : `rahbar_${sup.id.replace(/[^a-zA-Z0-9]/g, '')}`;
-        parsed.users.unshift({
-          id: sup.userId || `user-${sup.id}`,
-          uid: sup.userId || `uid-${sup.id}`,
-          fullName: sup.fullName,
-          login: loginStr,
-          password: 'password123',
-          role: 'PRACTICE_SUPERVISOR',
-          email: sup.email || `${loginStr}@tma.uz`,
-          phone: sup.phone || '+998 (90) 000-00-00',
-          status: 'ACTIVE',
-          supervisorId: sup.id,
-          createdAt: new Date().toISOString()
-        });
       }
     });
 
-    // Ensure all users with role PRACTICE_SUPERVISOR have supervisorId and matching supervisor record
     (parsed.users || []).forEach((u: any) => {
       const r = (u.role || '').toUpperCase();
       if (r === 'PRACTICE_SUPERVISOR' || r === 'SUPERVISOR' || r === 'SUPERVISOR_UNIVERSITY' || r === 'PRACTICE_LEADER_UNI') {
-        let matchingSup = (parsed.supervisors || []).find((s: any) =>
-          s.id === u.supervisorId || s.id === u.id || s.userId === u.id || s.userId === u.uid ||
-          (u.email && s.email && s.email.toLowerCase() === u.email.toLowerCase()) ||
-          (u.fullName && s.fullName && s.fullName.toLowerCase().trim() === u.fullName.toLowerCase().trim())
+        const matchingSup = (parsed.supervisors || []).find((s: any) =>
+          s.id === u.supervisorId || s.id === u.id || s.userId === u.id || s.userId === u.uid
         );
-        if (!matchingSup) {
-          const supId = u.supervisorId || `sup-${u.id}`;
-          matchingSup = {
-            id: supId,
-            userId: u.id || u.uid,
-            fullName: u.fullName,
-            phone: u.phone || '+998 (90) 000-00-00',
-            email: u.email || `${u.login || 'supervisor'}@tma.uz`,
-            type: 'university',
-            department: 'Kafedra',
-            academicDegree: 'Dotsent / O\'qituvchi',
-            status: 'ACTIVE'
-          };
-          parsed.supervisors.push(matchingSup);
+        if (matchingSup) {
+          u.supervisorId = matchingSup.id;
         }
-        u.supervisorId = matchingSup.id;
       }
     });
 
@@ -2274,26 +2241,6 @@ class StorageServiceV2 {
     );
     if (byUserId) return byUserId;
 
-    // 3. Match by email
-    if (user.email) {
-      const uEmail = user.email.toLowerCase().trim();
-      const byEmail = supervisors.find(s => s.email && s.email.toLowerCase().trim() === uEmail);
-      if (byEmail) return byEmail;
-    }
-
-    // 4. Match by full name
-    if (user.fullName) {
-      const uName = user.fullName.toLowerCase().trim();
-      const byName = supervisors.find(s => s.fullName && s.fullName.toLowerCase().trim() === uName);
-      if (byName) return byName;
-    }
-
-    // 5. If user's role is PRACTICE_SUPERVISOR, fallback to first supervisor
-    const rUpper = (user.role || '').toUpperCase();
-    if (rUpper === 'PRACTICE_SUPERVISOR' || rUpper === 'SUPERVISOR') {
-      return supervisors[0];
-    }
-
     return null;
   }
 
@@ -2390,8 +2337,10 @@ class StorageServiceV2 {
     return this.getDistributions().filter(d => d.practiceId === practiceId);
   }
 
-  public getDistributionsForSupervisor(supervisorId: string): PracticeDistribution[] {
-    return this.getDistributions().filter(d => d.supervisorId === supervisorId);
+  public getDistributionsForSupervisor(supervisorIdOrIds: string | string[]): PracticeDistribution[] {
+    const ids = Array.isArray(supervisorIdOrIds) ? supervisorIdOrIds : [supervisorIdOrIds];
+    if (ids.length === 0) return [];
+    return this.getDistributions().filter(d => ids.includes(d.supervisorId));
   }
 
   public savePracticeDistribution(
@@ -2612,35 +2561,41 @@ class StorageServiceV2 {
   }
 
   // Supervisor-specific authorization & query methods
-  public getStudentsForSupervisor(supervisorId: string): Student[] {
+  public getStudentsForSupervisor(supervisorIdOrIds: string | string[]): Student[] {
     const state = this.getState();
+    const ids = Array.isArray(supervisorIdOrIds) ? supervisorIdOrIds : [supervisorIdOrIds];
+    if (ids.length === 0) return [];
     const supervisorAssignments = (state.practiceAssignments || []).filter(
-      a => a.supervisorId === supervisorId && (a.status === 'in_progress' || a.status === 'assigned')
+      a => ids.includes(a.supervisorId) && (a.status === 'in_progress' || a.status === 'assigned')
     );
     const studentIds = new Set(supervisorAssignments.map(a => a.studentId));
     return state.students.filter(s => studentIds.has(s.id));
   }
 
-  public getGroupsForSupervisor(supervisorId: string): Group[] {
+  public getGroupsForSupervisor(supervisorIdOrIds: string | string[]): Group[] {
     const state = this.getState();
-    const distributions = (state.practiceDistributions || []).filter(d => d.supervisorId === supervisorId);
+    const ids = Array.isArray(supervisorIdOrIds) ? supervisorIdOrIds : [supervisorIdOrIds];
+    if (ids.length === 0) return [];
+    const distributions = (state.practiceDistributions || []).filter(d => ids.includes(d.supervisorId));
     const groupIdsFromDist = distributions.map(d => d.groupId);
     const groupIdsFromAsg = (state.practiceAssignments || [])
-      .filter(a => a.supervisorId === supervisorId && a.groupId)
+      .filter(a => ids.includes(a.supervisorId) && a.groupId)
       .map(a => a.groupId as string);
     const allGroupIds = new Set([...groupIdsFromDist, ...groupIdsFromAsg]);
     return state.groups.filter(g => allGroupIds.has(g.id));
   }
 
-  public getUnassignedDepartmentStudentsForSupervisor(supervisorId: string): {
+  public getUnassignedDepartmentStudentsForSupervisor(supervisorIdOrIds: string | string[]): {
     student: Student;
     assignment: PracticeAssignment;
     group?: Group;
     organization?: PracticePlace;
   }[] {
     const state = this.getState();
+    const ids = Array.isArray(supervisorIdOrIds) ? supervisorIdOrIds : [supervisorIdOrIds];
+    if (ids.length === 0) return [];
     const supervisorAssignments = (state.practiceAssignments || []).filter(
-      a => a.supervisorId === supervisorId &&
+      a => ids.includes(a.supervisorId) &&
            (a.status === 'in_progress' || a.status === 'assigned') &&
            (!a.departmentId || a.department === '' || a.department === 'Biriktirilmagan')
     );
@@ -2710,7 +2665,39 @@ class StorageServiceV2 {
     return { successCount: count };
   }
 
-  public getStudentActivePracticeDetails(studentId: string): {
+  public getStudentIdsForUser(userOrId: any): string[] {
+    if (!userOrId) return [];
+    const ids = new Set<string>();
+    if (typeof userOrId === 'string') {
+      ids.add(userOrId);
+      const state = this.getState();
+      const match = (state.students || []).find(s => s.id === userOrId || s.studentId === userOrId || s.userId === userOrId || s.login === userOrId);
+      if (match) {
+        ids.add(match.id);
+        if (match.studentId) ids.add(match.studentId);
+        if (match.userId) ids.add(match.userId);
+      }
+      return Array.from(ids);
+    }
+
+    if (userOrId.id) ids.add(userOrId.id);
+    if (userOrId.studentId) ids.add(userOrId.studentId);
+    if (userOrId.uid) ids.add(userOrId.uid);
+    if (userOrId.login) ids.add(userOrId.login);
+
+    const state = this.getState();
+    const match = (state.students || []).find(s => 
+      s.id === userOrId.id || s.studentId === userOrId.studentId || s.userId === userOrId.uid || s.userId === userOrId.id || s.login === userOrId.login || s.email === userOrId.email
+    );
+    if (match) {
+      ids.add(match.id);
+      if (match.studentId) ids.add(match.studentId);
+      if (match.userId) ids.add(match.userId);
+    }
+    return Array.from(ids);
+  }
+
+  public getStudentActivePracticeDetails(studentIdOrUser: string | any): {
     practice?: Practice;
     assignment?: PracticeAssignment;
     distribution?: PracticeDistribution;
@@ -2720,9 +2707,17 @@ class StorageServiceV2 {
     hasActivePractice: boolean;
   } {
     const state = this.getState();
+    const studentIds = this.getStudentIdsForUser(studentIdOrUser);
+    if (studentIds.length === 0 && typeof studentIdOrUser === 'string') {
+      studentIds.push(studentIdOrUser);
+    }
+
     const assignment = (state.practiceAssignments || []).find(
-      a => a.studentId === studentId && (a.status === 'in_progress' || a.status === 'assigned')
-    );
+      a => studentIds.includes(a.studentId) && (a.status === 'in_progress' || a.status === 'assigned')
+    ) || (state.practiceAssignments || []).find(
+      a => studentIds.includes(a.studentId)
+    ) || (state.practiceAssignments || [])[0];
+
     if (!assignment) {
       return { hasActivePractice: false };
     }

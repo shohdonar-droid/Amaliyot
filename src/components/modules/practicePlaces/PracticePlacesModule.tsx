@@ -33,13 +33,19 @@ export function PracticePlacesModule() {
   const [places, setPlaces] = useState<PracticePlace[]>(() => {
     const cached = storageService.getPracticePlaces() || [];
     if (canonicalRole === 'PRACTICE_SUPERVISOR') {
-      const supervisorId = currentUser?.supervisorId;
-      if (supervisorId) {
-        const assignments = storageService.getAssignments().filter((a: PracticeAssignment) => a.supervisorId === supervisorId);
-        const supervisorPlaceIds = new Set(assignments.map((a: PracticeAssignment) => a.practicePlaceId));
-        return cached.filter((p: PracticePlace) => supervisorPlaceIds.has(p.id));
+      const supIds = storageService.getSupervisorIdsForUser(currentUser);
+      if (supIds.length > 0) {
+        const assignedPractices = storageService.getPracticesForSupervisor(supIds);
+        const supervisorPlaceIds = new Set<string>();
+        assignedPractices.forEach(p => (p.practicePlaceIds || []).forEach(id => supervisorPlaceIds.add(id)));
+        const assignments = storageService.getAssignments().filter((a: PracticeAssignment) => supIds.includes(a.supervisorId));
+        assignments.forEach(a => {
+          if (a.practicePlaceId) supervisorPlaceIds.add(a.practicePlaceId);
+        });
+        const filtered = cached.filter((p: PracticePlace) => supervisorPlaceIds.has(p.id));
+        return filtered.length > 0 ? filtered : cached;
       }
-      return [];
+      return cached;
     }
     return cached;
   });
@@ -55,13 +61,19 @@ export function PracticePlacesModule() {
         const allPlaces = await organizationService.getOrganizations();
         if (!isMounted) return;
         if (canonicalRole === 'PRACTICE_SUPERVISOR') {
-          const supervisorId = currentUser?.supervisorId;
-          if (supervisorId) {
-            const assignments = await practiceAssignmentService.getPracticeAssignmentsBySupervisor(supervisorId);
-            const supervisorPlaceIds = new Set(assignments.map((a: PracticeAssignment) => a.practicePlaceId));
-            setPlaces(allPlaces.filter((p: PracticePlace) => supervisorPlaceIds.has(p.id)));
+          const supIds = storageService.getSupervisorIdsForUser(currentUser);
+          if (supIds.length > 0) {
+            const assignedPractices = storageService.getPracticesForSupervisor(supIds);
+            const supervisorPlaceIds = new Set<string>();
+            assignedPractices.forEach(p => (p.practicePlaceIds || []).forEach(id => supervisorPlaceIds.add(id)));
+            const assignments = await practiceAssignmentService.getPracticeAssignmentsBySupervisor(supIds);
+            assignments.forEach((a: PracticeAssignment) => {
+              if (a.practicePlaceId) supervisorPlaceIds.add(a.practicePlaceId);
+            });
+            const filtered = allPlaces.filter((p: PracticePlace) => supervisorPlaceIds.has(p.id));
+            setPlaces(filtered.length > 0 ? filtered : allPlaces);
           } else {
-            setPlaces([]);
+            setPlaces(allPlaces);
           }
         } else {
           setPlaces(allPlaces);
@@ -81,11 +93,17 @@ export function PracticePlacesModule() {
     const handleSync = () => {
       const fresh = storageService.getPracticePlaces() || [];
       if (canonicalRole === 'PRACTICE_SUPERVISOR') {
-        const supervisorId = currentUser?.supervisorId;
-        if (supervisorId) {
-          const assignments = storageService.getAssignments().filter((a: PracticeAssignment) => a.supervisorId === supervisorId);
-          const supervisorPlaceIds = new Set(assignments.map((a: PracticeAssignment) => a.practicePlaceId));
-          setPlaces(fresh.filter((p: PracticePlace) => supervisorPlaceIds.has(p.id)));
+        const supIds = storageService.getSupervisorIdsForUser(currentUser);
+        if (supIds.length > 0) {
+          const assignedPractices = storageService.getPracticesForSupervisor(supIds);
+          const supervisorPlaceIds = new Set<string>();
+          assignedPractices.forEach(p => (p.practicePlaceIds || []).forEach(id => supervisorPlaceIds.add(id)));
+          const assignments = storageService.getAssignments().filter((a: PracticeAssignment) => supIds.includes(a.supervisorId));
+          assignments.forEach(a => {
+            if (a.practicePlaceId) supervisorPlaceIds.add(a.practicePlaceId);
+          });
+          const filtered = fresh.filter((p: PracticePlace) => supervisorPlaceIds.has(p.id));
+          setPlaces(filtered.length > 0 ? filtered : fresh);
           return;
         }
       }

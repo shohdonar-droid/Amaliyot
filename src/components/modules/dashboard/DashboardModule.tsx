@@ -373,12 +373,12 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
   // 7. KAFEDRA AMALIYOT RAHBARI (PRACTICE_SUPERVISOR)
   // =========================================================================
   if (isSupervisor) {
-    const supervisorId = currentUser?.supervisorId || 'sup-1';
-    const mySupervisorStudents = storageService.getStudentsForSupervisor(supervisorId) || [];
-    const myGroups = storageService.getGroupsForSupervisor(supervisorId) || groups.slice(0, 2);
+    const supIds = storageService.getSupervisorIdsForUser(currentUser);
+    const mySupervisorStudents = storageService.getStudentsForSupervisor(supIds) || [];
+    const myGroups = storageService.getGroupsForSupervisor(supIds) || groups.slice(0, 2);
     const supervisorPendingJournals = journals.filter(j =>
       (j?.status || '').toUpperCase() === 'PENDING' &&
-      (j?.supervisorId === supervisorId || mySupervisorStudents.some(s => s.id === j?.studentId))
+      (supIds.includes(j?.supervisorId || '') || mySupervisorStudents.some(s => s.id === j?.studentId))
     );
     const supAttendance = attendance.filter(a => mySupervisorStudents.some(s => s.id === a.studentId) && a.date === todayDate);
     const supPresent = supAttendance.filter(a => isPresent(a.status) || isLate(a.status)).length;
