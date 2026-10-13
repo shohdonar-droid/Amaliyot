@@ -30,9 +30,32 @@ export function DocumentsModule() {
   const [isNewDocModalOpen, setIsNewDocModalOpen] = useState(false);
   // Referral letter print modal
   const [referralStudentId, setReferralStudentId] = useState<string | null>(null);
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [verifyInput, setVerifyInput] = useState('');
+  const [verifiedResult, setVerifiedResult] = useState<{ student: any; practice: any; place: any } | null>(null);
 
   const refreshList = () => {
     setDocuments(storageService.getDocuments());
+  };
+
+  const handleVerifyReferral = (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = verifyInput.trim().toLowerCase();
+    if (!query) return;
+    const found = students.find(s => 
+      s.id.toLowerCase() === query || 
+      s.studentId.toLowerCase() === query || 
+      s.fullName.toLowerCase().includes(query)
+    );
+    if (found) {
+      const p = practices.find(prac => prac.id === found.currentPracticeId) || practices[0];
+      const pl = places.find(place => place.id === found.currentPracticePlaceId) || places[0];
+      setVerifiedResult({ student: found, practice: p, place: pl });
+      showToast('success', 'Yo\'llanma tasdiqlandi', `${found.fullName} yo'llanmasi haqiqiy va faol.`);
+    } else {
+      setVerifiedResult(null);
+      showToast('error', 'Topilmadi', 'Bunday ID yoki talaba bo\'yicha yo\'llanma topilmadi.');
+    }
   };
 
   const handleCreateDocument = (e: React.FormEvent<HTMLFormElement>) => {
@@ -81,7 +104,15 @@ export function DocumentsModule() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsVerifyModalOpen(true)}
+            className="px-3.5 py-2 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors"
+          >
+            <FileCheck className="w-4 h-4 text-blue-600" />
+            <span>Yo'llanma tekshirish</span>
+          </button>
           <button
             type="button"
             onClick={() => setReferralStudentId(students[0]?.id || '')}
@@ -303,8 +334,50 @@ export function DocumentsModule() {
               type="button"
               onClick={() => {
                 const doc = new jsPDF();
-                doc.text(`Yo'llanma: ${referralStudent?.fullName}`, 10, 10);
-                doc.save(`yollanma_${referralStudent?.fullName}.pdf`);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(11);
+                doc.text("O'ZBEKISTON RESPUBLIKASI SOG'LIQLIYNI SAQLASH VAZIRLIGI", 105, 15, { align: 'center' });
+                doc.setFontSize(10);
+                doc.text("TOSHKENT DAVLAT TIBBIYOT UNIVERSITETI CHIRCHIQ FILIALI", 105, 22, { align: 'center' });
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                doc.text("O'quv-amaliyot bo'limi · Tel: +998 (71) 214-89-01", 105, 28, { align: 'center' });
+
+                doc.setLineWidth(0.5);
+                doc.line(20, 33, 190, 33);
+
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(11);
+                doc.text(`AMALIYOT YO'LLANMA XATI № YOL-2026/${referralStudent?.id.slice(-4) || '001'}`, 105, 42, { align: 'center' });
+                doc.setFontSize(9);
+                doc.text("Sana: 2026-yil 01-sentyabr", 105, 48, { align: 'center' });
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10);
+                doc.text(`${studentPlace?.name || 'Tibbiyot muassasasi'} bosh shifokori nomiga:`, 20, 60);
+
+                const textBody = `Universitet rektorining ${studentPractice?.orderNumber || '№188'} sonli buyrug'iga asosan, Davolash fakulteti talabasi ${referralStudent?.fullName || 'Talaba'} (Talaba ID: ${referralStudent?.studentId || 'N/A'}) siz rahbarlik qilayotgan tibbiyot muassasasida "${studentPractice?.name || 'Klinik amaliyot'}" dasturi bo'yicha klinik amaliyot o'tash uchun yuborilmoqda.`;
+                doc.text(textBody, 20, 70, { maxWidth: 170, align: 'justify' });
+
+                const textBody2 = `Amaliyot davri: ${studentPractice?.startDate || '2026-09-01'} dan ${studentPractice?.endDate || '2026-10-01'} gacha. Talabaga xavfsizlik texnikasi qoidalarini tushuntirish va klinik bo'limlarda kuratsiya jarayonini tashkil etishingizni so'raymiz.`;
+                doc.text(textBody2, 20, 95, { maxWidth: 170, align: 'justify' });
+
+                doc.setFont("helvetica", "bold");
+                doc.text("Amaliyot bo'limi boshlig':", 20, 130);
+                doc.setFont("helvetica", "normal");
+                doc.text("(Imzo, M.O'.)", 20, 136);
+
+                doc.setFont("helvetica", "bold");
+                doc.text("Klinika mas'uli:", 140, 130);
+                doc.setFont("helvetica", "normal");
+                doc.text("(Imzo)", 140, 136);
+
+                doc.setFontSize(8);
+                doc.setTextColor(100);
+                doc.text(`Haqiqiylik QR kodi: http://tma.uz/referral/${referralStudent?.id}`, 20, 160);
+
+                doc.save(`yollanma_${referralStudent?.fullName || 'talaba'}.pdf`);
+                showToast('success', 'Yo\'llanma PDF yuklab olindi', `${referralStudent?.fullName} yo'llanmasi muvaffaqiyatli saqlandi.`);
               }}
               className="px-4 py-2 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs flex items-center gap-1.5"
             >
@@ -312,6 +385,81 @@ export function DocumentsModule() {
               <span>PDF yuklab olish</span>
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* QR & Referral Verification Modal */}
+      <Modal
+        isOpen={isVerifyModalOpen}
+        onClose={() => {
+          setIsVerifyModalOpen(false);
+          setVerifiedResult(null);
+          setVerifyInput('');
+        }}
+        title="Yo'llanma haqiqiyligini tekshirish (QR / ID)"
+        maxWidth="lg"
+      >
+        <div className="space-y-4 text-xs">
+          <p className="text-slate-600">
+            Talaba yo'llanmasi yoki QR kodining haqiqiyligini tekshirish uchun talabaning ID raqami, F.I.Sh yoki tizim identifikatorini kiriting:
+          </p>
+
+          <form onSubmit={handleVerifyReferral} className="flex gap-2">
+            <input
+              type="text"
+              value={verifyInput}
+              onChange={e => setVerifyInput(e.target.value)}
+              placeholder="Masalan: STU-101 yoki F.I.Sh..."
+              className="flex-1 px-3 py-2 border rounded-lg font-mono text-xs"
+              required
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1.5"
+            >
+              <Search className="w-4 h-4" />
+              <span>Tekshirish</span>
+            </button>
+          </form>
+
+          {verifiedResult && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3">
+              <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm border-b border-emerald-200 pb-2">
+                <FileCheck className="w-5 h-5 text-emerald-600" />
+                <span>🟢 YO'LLANMA HAQIQIY VA TASDIQLANGAN</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-slate-800">
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Talaba F.I.Sh:</span>
+                  <strong className="text-slate-900">{verifiedResult.student.fullName}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Talaba ID:</span>
+                  <span className="font-mono">{verifiedResult.student.studentId}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Amaliyot bazasi:</span>
+                  <strong>{verifiedResult.place?.name}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Amaliyot dasturi:</span>
+                  <span>{verifiedResult.practice?.name}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-slate-500 block text-[11px]">Amaliyot muddatlari:</span>
+                  <span className="font-mono font-semibold text-blue-700">
+                    {verifiedResult.practice?.startDate} — {verifiedResult.practice?.endDate} (Buyruq: {verifiedResult.practice?.orderNumber})
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-emerald-200 text-[11px] text-emerald-700 flex items-center justify-between">
+                <span>Toshkent davlat tibbiyot universiteti Chirchiq filiali rasmiy bazasi</span>
+                <span className="font-semibold">Status: FAOL</span>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </div>

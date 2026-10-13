@@ -56,10 +56,76 @@ function getModuleFromUrl(): ActiveModule {
   return 'dashboard';
 }
 
+function getStoredModuleAndStack(): { module: ActiveModule; stack: ActiveModule[] } {
+  try {
+    const storedMod = sessionStorage.getItem('amaliyot_active_module') as ActiveModule;
+    const storedStack = sessionStorage.getItem('amaliyot_history_stack');
+    const urlMod = getModuleFromUrl();
+
+    let module: ActiveModule = urlMod;
+    if (storedMod && VALID_MODULES.includes(storedMod)) {
+      module = storedMod;
+    }
+
+    let stack: ActiveModule[] = [module];
+    if (storedStack) {
+      const parsed = JSON.parse(storedStack);
+      if (Array.isArray(parsed) && parsed.every(m => VALID_MODULES.includes(m))) {
+        stack = parsed;
+      }
+    }
+    if (!stack.includes(module)) {
+      stack.push(module);
+    }
+    return { module, stack };
+  } catch {
+    const mod = getModuleFromUrl();
+    return { module: mod, stack: [mod] };
+  }
+}
+
 function AppContent() {
   const { isAuthenticated, loading, canonicalRole, role, isSuperAdmin } = useAuth();
-  const [activeModule, setActiveModuleState] = useState<ActiveModule>(getModuleFromUrl);
-  const [historyStack, setHistoryStack] = useState<ActiveModule[]>([getModuleFromUrl()]);
+  const initial = getStoredModuleAndStack();
+  const [activeModule, setActiveModuleState] = useState<ActiveModule>(initial.module);
+  const [historyStack, setHistoryStack] = useState<ActiveModule[]>(initial.stack);
+
+  // Persist state to sessionStorage on change and before unload
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('amaliyot_active_module', activeModule);
+      sessionStorage.setItem('amaliyot_history_stack', JSON.stringify(historyStack));
+    } catch (e) {
+      console.error('Failed to save session state', e);
+    }
+  }, [activeModule, historyStack]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      try {
+        sessionStorage.setItem('amaliyot_active_module', activeModule);
+        sessionStorage.setItem('amaliyot_history_stack', JSON.stringify(historyStack));
+      } catch {}
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [activeModule, historyStack]);
+
+  // Handle service worker updates / controller change without losing state
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      const handleControllerChange = () => {
+        try {
+          sessionStorage.setItem('amaliyot_active_module', activeModule);
+          sessionStorage.setItem('amaliyot_history_stack', JSON.stringify(historyStack));
+        } catch {}
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+      return () => {
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      };
+    }
+  }, [activeModule, historyStack]);
 
   // Navigate to a module, updating in-memory history and browser URL
   const setActiveModule = useCallback((mod: ActiveModule) => {
@@ -109,7 +175,7 @@ function AppContent() {
     };
 
     // Ensure initial entry has state
-    const initialMod = getModuleFromUrl();
+    const initialMod = activeModule;
     const initialPath = initialMod === 'dashboard' ? '/' : `/${initialMod}`;
     window.history.replaceState({ module: initialMod, app: 'amaliyot' }, '', initialPath);
 

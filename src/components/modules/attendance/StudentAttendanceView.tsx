@@ -34,10 +34,11 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
   const [activeTab, setActiveTab] = useState<'QR' | 'GPS'>('QR');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isConfirmingGps, setIsConfirmingGps] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   // GPS state
-  const [distanceMeters, setDistanceMeters] = useState<number>(85);
-  const [isInsideGeofence, setIsInsideGeofence] = useState<boolean>(true);
+  const [distanceMeters, setDistanceMeters] = useState<number>(0);
+  const [isInsideGeofence, setIsInsideGeofence] = useState<boolean>(false);
   const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const todayDate = new Date().toISOString().split('T')[0];
@@ -61,47 +62,74 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     : [];
 
-function calcDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371e3;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
+  function calcDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371e3;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+  }
 
-  // Geolocation lookup
-  useEffect(() => {
-    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
-      if (!place?.latitude || !place?.longitude) {
-        setIsInsideGeofence(false);
-        setDistanceMeters(0);
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const uLat = pos.coords.latitude;
-          const uLng = pos.coords.longitude;
-          setCurrentCoords({ lat: uLat, lng: uLng });
-
-          const placeLat = place.latitude!;
-          const placeLng = place.longitude!;
-          const allowedRadius = place.allowedRadius || 200;
-
-          const distM = calcDistanceMeters(uLat, uLng, placeLat, placeLng);
-          setDistanceMeters(distM);
-          setIsInsideGeofence(distM <= allowedRadius);
-        },
-        err => {
-          console.warn('Geolocation error:', err);
-          setIsInsideGeofence(false);
-          setDistanceMeters(0);
-        },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
-      );
-    } else {
+  // Geolocation check function (GPS yangilash)
+  const handleRefreshGps = () => {
+    if (!place?.latitude || !place?.longitude) {
+      showToast('error', 'Koordinatalar mavjud emas', `Amaliyot bazasi (${place?.name || 'Tashkilot'}) uchun GPS koordinatalari kiritilmagan.`);
       setIsInsideGeofence(false);
+      return;
     }
-  }, [place]);
+
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      showToast('error', 'Qo\'llab-quvvatlanmaydi', 'Brauzeringiz GPS geolokatsiyani qo\'llab-quvvatlamaydi.');
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setIsLocating(false);
+        const uLat = pos.coords.latitude;
+        const uLng = pos.coords.longitude;
+        setCurrentCoords({ lat: uLat, lng: uLng });
+
+        const placeLat = place.latitude!;
+        const placeLng = place.longitude!;
+        const allowedRadius = place.allowedRadius || 300; // 300m default limit
+
+        const distM = calcDistanceMeters(uLat, uLng, placeLat, placeLng);
+        setDistanceMeters(distM);
+        const inside = distM <= allowedRadius;
+        setIsInsideGeofence(inside);
+
+        if (inside) {
+          showToast('success', 'GPS tasdiqlandi!', `Amaliyot bazasi hududidasiz (${distM} metr). QR kodni skanerlash ruxsat etildi.`);
+        } else {
+          showToast('error', 'Hududdan tashqaridasiz', `Siz amaliyot bazasidan ${distM} metr uzoqdasiz. Skanerlash uchun 300 metr radiusda bo'lishingiz shart.`);
+        }
+      },
+      err => {
+        setIsLocating(false);
+        console.warn('Geolocation error:', err);
+        setIsInsideGeofence(false);
+        showToast('error', 'GPS xatoligi', 'Joylashuvni aniqlab bo\'lmadi. GPS ruxsatini va qurilma sozlamalarini tekshiring.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  // Initial check on mount
+  useEffect(() => {
+    if (place?.latitude && place?.longitude) {
+      handleRefreshGps();
+    }
+  }, [place?.id]);
+
+  const handleOpenScanner = () => {
+    if (!isInsideGeofence) {
+      showToast('warning', 'QR skaner bloklangan', `Siz amaliyot bazasi 300 metr radiusida emassiz (Masofa: ${distanceMeters} m). Skanerlash uchun avval GPS ni yangilang.`);
+      return;
+    }
+    setIsScannerOpen(true);
+  };
 
   if (!student) {
     return (
@@ -236,21 +264,32 @@ function calcDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numb
 
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Klinika QR Kodini Skanerlash
+                Amaliyot bazasi QR Kodini Skanerlash
               </h2>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Shifoxona qabul bo‘limi yoki amaliyot xonasida o‘rnatilgan QR kodni kamerangiz orqali skanerlang.
+                Amaliyot bazasida o‘rnatilgan QR kodni kamerangiz orqali skanerlang. Skanerlash uchun bazadan 300 metr radiusda bo‘lishingiz shart.
               </p>
             </div>
+
+            {!isInsideGeofence && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-medium max-w-md mx-auto flex items-center justify-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                <span>QR skaner bloklangan: Siz amaliyot bazasidan {distanceMeters} metr uzoqdasiz (300m talab qilinadi).</span>
+              </div>
+            )}
 
             <div>
               <button
                 type="button"
-                onClick={() => setIsScannerOpen(true)}
-                className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-blue-600/20 transition-all cursor-pointer inline-flex items-center justify-center gap-2"
+                onClick={handleOpenScanner}
+                className={`w-full sm:w-auto px-8 py-3.5 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center justify-center gap-2 ${
+                  isInsideGeofence
+                    ? 'bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-blue-600/20'
+                    : 'bg-slate-400 hover:bg-slate-500 cursor-not-allowed'
+                }`}
               >
                 <QrCode className="w-4 h-4" />
-                <span>QR SKANERLASH</span>
+                <span>{isInsideGeofence ? 'QR SKANERLASH' : 'QR SKANER (BLOKLANGAN)'}</span>
               </button>
             </div>
           </div>
@@ -265,10 +304,10 @@ function calcDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numb
 
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Sizning joylashuvingiz
+                GPS Geofencing Nazorati (300m radius)
               </h2>
               <p className="text-sm font-mono font-bold text-slate-700 mt-1">
-                Masofa: <span className="text-blue-600">{distanceMeters} metr</span>
+                Amaliyot bazasigacha masofa: <span className="text-blue-600">{distanceMeters} metr</span>
               </p>
             </div>
 
@@ -276,28 +315,38 @@ function calcDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numb
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-wider border">
               {isInsideGeofence ? (
                 <span className="text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-xl border border-emerald-300">
-                  🟢 Amaliyot hududidasiz
+                  🟢 Amaliyot bazasi hududidasiz (300m ichida)
                 </span>
               ) : (
                 <span className="text-rose-700 bg-rose-100/80 px-3 py-1 rounded-xl border border-rose-300">
-                  🔴 Amaliyot hududidan tashqaridasiz
+                  🔴 Amaliyot bazasidan uzoqdasiz (&gt;300m)
                 </span>
               )}
             </div>
 
-            <div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                type="button"
+                disabled={isLocating}
+                onClick={handleRefreshGps}
+                className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center justify-center gap-2"
+              >
+                <Navigation className={`w-4 h-4 ${isLocating ? 'animate-spin' : ''}`} />
+                <span>{isLocating ? 'Aniqlanmoqda...' : 'GPS NI YANGILASH'}</span>
+              </button>
+
               <button
                 type="button"
                 disabled={isConfirmingGps || !isInsideGeofence || Boolean(todayRecord?.checkInTime)}
                 onClick={handleConfirmGpsAttendance}
-                className="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 active:scale-95 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer inline-flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 active:scale-95 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer inline-flex items-center justify-center gap-2"
               >
                 {isConfirmingGps ? (
                   <span>Tasdiqlanmoqda...</span>
                 ) : todayRecord?.checkInTime ? (
-                  <span>Bugun tasdiqlangan ({todayRecord.checkInTime})</span>
+                  <span>Bugun tasdiqlangan</span>
                 ) : (
-                  <span>[KELGANLIKNI TASDIQLASH]</span>
+                  <span>[GPS ORQALI KELISH]</span>
                 )}
               </button>
             </div>

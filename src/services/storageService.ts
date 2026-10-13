@@ -1252,11 +1252,65 @@ class StorageServiceV2 {
           const cloudData = docSnap.data();
           if (cloudData && Array.isArray(cloudData.users)) {
             this.isSyncingFromCloud = true;
-            this.memoryState = this.normalizeState(cloudData);
+            const localState = this.getState();
+            const normalizedCloud = this.normalizeState(cloudData);
+
+            const mergeArr = <T extends { id?: string; login?: string; studentCode?: string }>(localArr: T[], cloudArr: T[]): T[] => {
+              const map = new Map<string, T>();
+              for (const item of cloudArr) {
+                const key = item.id || item.login || item.studentCode || JSON.stringify(item);
+                map.set(key, item);
+              }
+              for (const item of localArr) {
+                const key = item.id || item.login || item.studentCode || JSON.stringify(item);
+                if (map.has(key)) {
+                  const existing = map.get(key)!;
+                  map.set(key, { ...existing, ...item });
+                } else {
+                  map.set(key, item);
+                }
+              }
+              return Array.from(map.values());
+            };
+
+            const mergedState: DatabaseStateV2 = {
+              ...localState,
+              ...normalizedCloud,
+              users: mergeArr(localState.users, normalizedCloud.users),
+              academicYears: mergeArr(localState.academicYears, normalizedCloud.academicYears),
+              faculties: mergeArr(localState.faculties, normalizedCloud.faculties),
+              directions: mergeArr(localState.directions, normalizedCloud.directions),
+              courses: normalizedCloud.courses && normalizedCloud.courses.length > 0 ? normalizedCloud.courses : localState.courses,
+              groups: mergeArr(localState.groups, normalizedCloud.groups),
+              students: mergeArr(localState.students, normalizedCloud.students),
+              practicePlaces: mergeArr(localState.practicePlaces, normalizedCloud.practicePlaces),
+              practiceDepartments: mergeArr(localState.practiceDepartments, normalizedCloud.practiceDepartments),
+              supervisors: mergeArr(localState.supervisors, normalizedCloud.supervisors),
+              clinicResponsibles: mergeArr(localState.clinicResponsibles, normalizedCloud.clinicResponsibles),
+              practices: mergeArr(localState.practices, normalizedCloud.practices),
+              practiceDistributions: mergeArr(localState.practiceDistributions, normalizedCloud.practiceDistributions),
+              practiceAssignments: mergeArr(localState.practiceAssignments, normalizedCloud.practiceAssignments),
+              attendance: mergeArr(localState.attendance, normalizedCloud.attendance),
+              attendanceSessions: mergeArr(localState.attendanceSessions, normalizedCloud.attendanceSessions),
+              dailyJournals: mergeArr(localState.dailyJournals, normalizedCloud.dailyJournals),
+              skills: mergeArr(localState.skills, normalizedCloud.skills),
+              studentSkills: mergeArr(localState.studentSkills, normalizedCloud.studentSkills),
+              skillLogs: mergeArr(localState.skillLogs, normalizedCloud.skillLogs),
+              tasks: mergeArr(localState.tasks, normalizedCloud.tasks),
+              assessments: mergeArr(localState.assessments, normalizedCloud.assessments),
+              finalExams: mergeArr(localState.finalExams, normalizedCloud.finalExams),
+              attestationCommissions: mergeArr(localState.attestationCommissions, normalizedCloud.attestationCommissions),
+              vedomosts: mergeArr(localState.vedomosts, normalizedCloud.vedomosts),
+              documents: mergeArr(localState.documents, normalizedCloud.documents),
+              notifications: mergeArr(localState.notifications, normalizedCloud.notifications),
+              auditLogs: mergeArr(localState.auditLogs, normalizedCloud.auditLogs),
+            };
+
+            this.memoryState = mergedState;
             try {
               localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(this.memoryState));
             } catch (e) {
-              console.warn('Failed to save cloud state to localStorage:', e);
+              console.warn('Failed to save merged cloud state to localStorage:', e);
             }
             this.isSyncingFromCloud = false;
             this.setSyncStatus('synced');
@@ -2566,9 +2620,22 @@ class StorageServiceV2 {
     const ids = Array.isArray(supervisorIdOrIds) ? supervisorIdOrIds : [supervisorIdOrIds];
     if (ids.length === 0) return [];
     const supervisorAssignments = (state.practiceAssignments || []).filter(
-      a => ids.includes(a.supervisorId) && (a.status === 'in_progress' || a.status === 'assigned')
+      a => ids.includes(a.supervisorId)
     );
     const studentIds = new Set(supervisorAssignments.map(a => a.studentId));
+
+    const distributions = (state.practiceDistributions || []).filter(d => ids.includes(d.supervisorId));
+    const groupIdsFromDist = new Set(distributions.map(d => d.groupId));
+    supervisorAssignments.forEach(a => {
+      if (a.groupId) groupIdsFromDist.add(a.groupId);
+    });
+
+    state.students.forEach(s => {
+      if (s.groupId && groupIdsFromDist.has(s.groupId)) {
+        studentIds.add(s.id);
+      }
+    });
+
     return state.students.filter(s => studentIds.has(s.id));
   }
 
@@ -2579,9 +2646,17 @@ class StorageServiceV2 {
     const distributions = (state.practiceDistributions || []).filter(d => ids.includes(d.supervisorId));
     const groupIdsFromDist = distributions.map(d => d.groupId);
     const groupIdsFromAsg = (state.practiceAssignments || [])
-      .filter(a => ids.includes(a.supervisorId) && a.groupId)
-      .map(a => a.groupId as string);
-    const allGroupIds = new Set([...groupIdsFromDist, ...groupIdsFromAsg]);
+      .filter(a => ids.includes(a.supervisorId))
+      .map(a => a.groupId)
+      .filter(Boolean) as string[];
+
+    const studentAssigned = (state.practiceAssignments || []).filter(a => ids.includes(a.supervisorId));
+    const studentGroupIds = studentAssigned.map(a => {
+      const st = state.students.find(s => s.id === a.studentId);
+      return st?.groupId;
+    }).filter(Boolean) as string[];
+
+    const allGroupIds = new Set([...groupIdsFromDist, ...groupIdsFromAsg, ...studentGroupIds]);
     return state.groups.filter(g => allGroupIds.has(g.id));
   }
 
