@@ -41,12 +41,18 @@ export function ClinicResponsibleAttendanceView({
   const groups = storageService.getGroups();
   const attendance = storageService.getAttendance();
 
-  const currentPlace = places.find(p => p.id === practicePlaceId);
+  const currentPlace = places.find(p => p.id === practicePlaceId || p.organizationId === practicePlaceId || p.organizationCode === practicePlaceId) || places[0];
+  const resolvedPlaceId = currentPlace?.id || practicePlaceId;
 
   // Security isolation: only students assigned to this hospital (Section 14 & 18)
-  const placeAssignments = assignments.filter(a => a.practicePlaceId === practicePlaceId);
+  const placeAssignments = assignments.filter(a => 
+    a.practicePlaceId === practicePlaceId || 
+    a.practicePlaceId === resolvedPlaceId ||
+    places.find(p => p.id === a.practicePlaceId)?.organizationId === practicePlaceId ||
+    places.find(p => p.organizationId === a.practicePlaceId)?.id === resolvedPlaceId
+  );
   const placeStudentIds = new Set(placeAssignments.map(a => a.studentId));
-  const placeStudents = students.filter(s => placeStudentIds.has(s.id));
+  const placeStudents = students.filter(s => placeStudentIds.has(s.id) || (s.currentPracticePlaceId && (s.currentPracticePlaceId === practicePlaceId || s.currentPracticePlaceId === resolvedPlaceId)));
 
   const isPresent = (st?: string) => st?.toUpperCase() === 'PRESENT';
   const isLate = (st?: string) => st?.toUpperCase() === 'LATE';

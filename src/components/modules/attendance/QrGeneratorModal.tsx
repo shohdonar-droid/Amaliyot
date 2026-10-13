@@ -46,7 +46,15 @@ export function QrGeneratorModal({
   const { showToast } = useToast();
 
   const [selectedPracticeId, setSelectedPracticeId] = useState<string>(initialPracticeId || practices[0]?.id || '');
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string>(initialPlaceId || places[0]?.id || '');
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string>(() => {
+    const target = initialPlaceId || currentUser?.practicePlaceId;
+    if (target) {
+      const match = places.find(p => p.id === target || p.organizationId === target || p.organizationCode === target);
+      if (match) return match.id;
+      return target;
+    }
+    return places[0]?.id || '';
+  });
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
   const [durationMinutes, setDurationMinutes] = useState<number>(5);
   const [practiceStartTime, setPracticeStartTime] = useState<string>('08:00');
@@ -229,8 +237,11 @@ export function QrGeneratorModal({
                   onChange={e => setSelectedPlaceId(e.target.value)}
                   className="w-full px-3 py-2 text-xs border rounded-lg bg-slate-50 focus:bg-white"
                 >
+                  <option value="">-- Klinik bazani tanlang --</option>
                   {places.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.organizationId ? `(${p.organizationId})` : ''}
+                    </option>
                   ))}
                 </select>
               </div>

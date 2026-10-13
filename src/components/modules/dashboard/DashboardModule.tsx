@@ -132,10 +132,12 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
   // =========================================================================
   if (isStudent) {
     const myStudent = students.find(s => s?.userId === currentUser?.uid || s?.id === currentUser?.studentId || s?.login === currentUser?.login) || students[0];
-    const myAssignment = myStudent ? assignments.find(a => a?.studentId === myStudent.id) : null;
+    const myAssignment = myStudent ? assignments.find(a => a?.studentId === myStudent.id || a?.studentId === currentUser?.studentId || (myStudent.groupId && a?.groupId === myStudent.groupId)) : null;
     const myPractice = myAssignment ? practices.find(p => p?.id === myAssignment.practiceId) : practices[0];
-    const myClinicPlace = myAssignment ? places.find(p => p?.id === myAssignment.practicePlaceId) : places[0];
-    const mySupervisor = myAssignment ? supervisors.find(s => s?.id === myAssignment.supervisorId) : supervisors[0];
+    const myClinicPlace = myAssignment 
+      ? places.find(p => p?.id === myAssignment.practicePlaceId || p?.organizationId === myAssignment.practicePlaceId || p?.organizationCode === myAssignment.practicePlaceId) 
+      : (myStudent?.currentPracticePlaceId ? places.find(p => p.id === myStudent.currentPracticePlaceId || p.organizationId === myStudent.currentPracticePlaceId) : places[0]);
+    const mySupervisor = myAssignment ? supervisors.find(s => s?.id === myAssignment.supervisorId || s?.userId === myAssignment.supervisorId) : supervisors[0];
 
     const myFaculty = faculties.find(f => f.id === myStudent?.facultyId);
     const myDirection = directions.find(d => d.id === myStudent?.directionId);
