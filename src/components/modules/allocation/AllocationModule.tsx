@@ -282,13 +282,199 @@ export function AllocationModule() {
     );
   };
 
-  // ==========================================
-  // PRACTICE HEAD / ADMIN STATE & LOGIC
-  // ==========================================
-  const [headActiveTab, setHeadActiveTab] = useState<'distributions' | 'matrix' | 'students' | 'unassigned'>('distributions');
+  const [headActiveTab, setHeadActiveTab] = useState<'dept_allocation' | 'distributions' | 'matrix' | 'students' | 'unassigned'>('dept_allocation');
   const [headSearchQuery, setHeadSearchQuery] = useState('');
   const [filterPracticeId, setFilterPracticeId] = useState<string>('all');
   const [filterOrgId, setFilterOrgId] = useState<string>('all');
+
+  // Admin Department Allocation State
+  const [adminSelectedPracticeId, setAdminSelectedPracticeId] = useState<string>(practices[0]?.id || '');
+  const [adminSelectedGroupId, setAdminSelectedGroupId] = useState<string>('');
+  const [adminDeptFilter, setAdminDeptFilter] = useState<'all' | 'unassigned' | string>('all');
+  const [adminSelectedStudentAsgIds, setAdminSelectedStudentAsgIds] = useState<string[]>([]);
+  const [adminTargetDeptName, setAdminTargetDeptName] = useState<string>('');
+  const [adminSearchStudent, setAdminSearchStudent] = useState<string>('');
+  const [isAddDeptModalOpen, setIsAddDeptModalOpen] = useState<boolean>(false);
+  const [newDeptInput, setNewDeptInput] = useState<string>('');
+
+  // Groups available for the selected practice in department allocation
+  const adminAvailableGroups = useMemo(() => {
+    const practice = practices.find(p => p.id === adminSelectedPracticeId);
+    if (!practice) return groups;
+    const practiceGroups = groups.filter(g => 
+      practice.groupIds?.includes(g.id) ||
+      distributions.some(d => d.practiceId === adminSelectedPracticeId && d.groupId === g.id) ||
+      assignments.some(a => a.practiceId === adminSelectedPracticeId && (a.groupId === g.id || students.find(s => s.id === a.studentId)?.groupId === g.id))
+    );
+    return practiceGroups.length > 0 ? practiceGroups : groups;
+  }, [adminSelectedPracticeId, practices, groups, distributions, assignments, students]);
+
+  useEffect(() => {
+    if (practices.length > 0 && (!adminSelectedPracticeId || !practices.some(p => p.id === adminSelectedPracticeId))) {
+      setAdminSelectedPracticeId(practices[0].id);
+    }
+  }, [practices, adminSelectedPracticeId]);
+
+  useEffect(() => {
+    if (adminAvailableGroups.length > 0 && (!adminSelectedGroupId || !adminAvailableGroups.some(g => g.id === adminSelectedGroupId))) {
+      setAdminSelectedGroupId(adminAvailableGroups[0].id);
+      setAdminSelectedStudentAsgIds([]);
+      setAdminDeptFilter('all');
+    }
+  }, [adminAvailableGroups, adminSelectedGroupId]);
+
+  // Distribution, Hospital, and Supervisor for current selection
+  const activeAdminDistribution = useMemo(() => {
+    return distributions.find(d => d.practiceId === adminSelectedPracticeId && d.groupId === adminSelectedGroupId);
+  }, [distributions, adminSelectedPracticeId, adminSelectedGroupId]);
+
+  const activeAdminHospital = useMemo(() => {
+    const currentPractice = practices.find(p => p.id === adminSelectedPracticeId);
+    const placeId = activeAdminDistribution?.organizationId || currentPractice?.practicePlaceIds?.[0] || places[0]?.id;
+    return places.find(p => p.id === placeId || p.organizationId === placeId || p.organizationCode === placeId) || places[0];
+  }, [activeAdminDistribution, adminSelectedPracticeId, places, practices]);
+
+  const activeAdminSupervisor = useMemo(() => {
+    const currentPractice = practices.find(p => p.id === adminSelectedPracticeId);
+    const supId = activeAdminDistribution?.supervisorId || currentPractice?.supervisorIds?.[0];
+    return supervisors.find(s => s.id === supId || s.userId === supId);
+  }, [activeAdminDistribution, adminSelectedPracticeId, supervisors, practices]);
+
+  // Hospital departments
+  const adminHospitalDepartments = useMemo(() => {
+    if (activeAdminHospital && activeAdminHospital.departments && activeAdminHospital.departments.length > 0) {
+      return activeAdminHospital.departments;
+    }
+    return ['Jarrohlik', 'Terapiya', 'Pediatriya', 'Kardiologiya', 'Qabul bo\'limi', 'Reanimatsiya', 'Nevrologiya'];
+  }, [activeAdminHospital]);
+
+  useEffect(() => {
+    if (adminHospitalDepartments.length > 0 && !adminTargetDeptName) {
+      setAdminTargetDeptName(adminHospitalDepartments[0]);
+    }
+  }, [adminHospitalDepartments, adminTargetDeptName]);
+
+  // Assignments for the selected practice and group
+  const currentAdminGroupAssignments = useMemo(() => {
+    if (!adminSelectedGroupId) return [];
+    return assignments.filter(
+      a => (a.practiceId === adminSelectedPracticeId || !adminSelectedPracticeId) &&
+           (a.groupId === adminSelectedGroupId || students.find(s => s.id === a.studentId)?.groupId === adminSelectedGroupId) &&
+           (a.status === 'in_progress' || a.status === 'assigned')
+    );
+  }, [assignments, adminSelectedPracticeId, adminSelectedGroupId, students]);
+
+  // Department counts breakdown
+  const adminGroupDeptBreakdown = useMemo(() => {
+    const counts: Record<string, number> = { unassigned: 0 };
+    adminHospitalDepartments.forEach(dept => { counts[dept] = 0; });
+    currentAdminGroupAssignments.forEach(asg => {
+      if (!asg.departmentId || !asg.department || asg.department === 'Biriktirilmagan') {
+        counts.unassigned = (counts.unassigned || 0) + 1;
+      } else {
+        counts[asg.department] = (counts[asg.department] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [currentAdminGroupAssignments, adminHospitalDepartments]);
+
+  // Filtered students
+  const filteredAdminStudents = useMemo(() => {
+    return currentAdminGroupAssignments.filter(asg => {
+      const student = students.find(s => s.id === asg.studentId);
+      if (!student) return false;
+
+      if (adminSearchStudent.trim()) {
+        const q = adminSearchStudent.toLowerCase();
+        const matchName = student.fullName.toLowerCase().includes(q);
+        const matchId = (student.studentId || '').toLowerCase().includes(q);
+        if (!matchName && !matchId) return false;
+      }
+
+      if (adminDeptFilter === 'unassigned') {
+        return !asg.departmentId || !asg.department || asg.department === 'Biriktirilmagan';
+      } else if (adminDeptFilter !== 'all') {
+        return asg.department === adminDeptFilter;
+      }
+
+      return true;
+    });
+  }, [currentAdminGroupAssignments, students, adminSearchStudent, adminDeptFilter]);
+
+  // Assignment handlers
+  const handleAdminAssignDepartment = (deptName?: string, asgIds?: string[]) => {
+    const targetDept = deptName || adminTargetDeptName;
+    const targetIds = asgIds || adminSelectedStudentAsgIds;
+    if (targetIds.length === 0) {
+      showToast('warning', 'Talabalar tanlanmagan', 'Kamida bitta talabani belgilang.');
+      return;
+    }
+    if (!targetDept) {
+      showToast('warning', 'Bo\'lim tanlanmagan', 'Iltimos, shifoxona bo\'limini tanlang.');
+      return;
+    }
+
+    const deptId = `dept-${targetDept.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+    const result = storageService.assignStudentsToDepartment(
+      targetIds,
+      deptId,
+      targetDept,
+      undefined,
+      currentUser?.id || 'admin',
+      'PRACTICE_HEAD'
+    );
+
+    refreshData();
+    setAdminSelectedStudentAsgIds([]);
+    showToast('success', 'Bo\'limga biriktirildi', `${result.successCount} nafar talaba "${targetDept}" bo'limiga biriktirildi.`);
+  };
+
+  const handleAdminResetDepartment = (asgIds: string[]) => {
+    const result = storageService.assignStudentsToDepartment(
+      asgIds,
+      '',
+      '',
+      undefined,
+      currentUser?.id || 'admin',
+      'PRACTICE_HEAD'
+    );
+    refreshData();
+    setAdminSelectedStudentAsgIds([]);
+    showToast('info', 'Bo\'limdan bo\'shatildi', `${result.successCount} nafar talabaning bo'lim biriktiruvi bekor qilindi.`);
+  };
+
+  const handleAdminAutoDistribute = () => {
+    if (currentAdminGroupAssignments.length === 0) return;
+    const depts = adminHospitalDepartments;
+    if (depts.length === 0) return;
+    const unassigned = currentAdminGroupAssignments.filter(a => !a.departmentId || !a.department || a.department === 'Biriktirilmagan');
+    if (unassigned.length === 0) {
+      showToast('info', 'Barcha talabalar biriktirilgan', 'Ushbu guruhdagi barcha talabalar allaqachon bo\'limlarga taqsimlangan.');
+      return;
+    }
+    unassigned.forEach((asg, idx) => {
+      const dept = depts[idx % depts.length];
+      const deptId = `dept-${dept.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+      storageService.assignStudentsToDepartment([asg.id], deptId, dept, undefined, currentUser?.id || 'admin', 'PRACTICE_HEAD');
+    });
+    refreshData();
+    showToast('success', 'Avtomatik taqsimlandi', `${unassigned.length} nafar talaba tashkilot bo'limlariga teng taqsimlandi.`);
+  };
+
+  const handleAddNewDepartmentToHospital = () => {
+    if (!newDeptInput.trim() || !activeAdminHospital) return;
+    const trimmed = newDeptInput.trim();
+    const existing = activeAdminHospital.departments || [];
+    if (!existing.includes(trimmed)) {
+      const updated = [...existing, trimmed];
+      organizationService.updateOrganization(activeAdminHospital.id, { departments: updated });
+      refreshData();
+      showToast('success', 'Yangi bo\'lim qo\'shildi', `"${trimmed}" bo'limi muvaffaqiyatli qo'shildi.`);
+      setAdminTargetDeptName(trimmed);
+    }
+    setNewDeptInput('');
+    setIsAddDeptModalOpen(false);
+  };
 
   // Distribution Creation Modal State
   const [isDistModalOpen, setIsDistModalOpen] = useState(false);
@@ -850,6 +1036,19 @@ export function AllocationModule() {
           <div className="flex items-center gap-2 border-b border-slate-200 pb-1 overflow-x-auto">
             <button
               type="button"
+              onClick={() => setHeadActiveTab('dept_allocation')}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer shrink-0 ${
+                headActiveTab === 'dept_allocation'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-700 bg-white border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              <span>Bo'limlarga taqsimlash (Tashkilot bo'yicha)</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setHeadActiveTab('distributions')}
               className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer shrink-0 ${
                 headActiveTab === 'distributions'
@@ -900,6 +1099,437 @@ export function AllocationModule() {
               <span>Taqsimlanmagan talabalar ({unassignedStudents.length})</span>
             </button>
           </div>
+
+          {/* TAB 0: DEPARTMENT ALLOCATION (Bo'limlarga taqsimlash) */}
+          {headActiveTab === 'dept_allocation' && (
+            <div className="space-y-4">
+              {/* Selector Bar: Amaliyot va Guruh */}
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Amaliyotni tanlang:
+                  </label>
+                  <select
+                    value={adminSelectedPracticeId}
+                    onChange={e => {
+                      setAdminSelectedPracticeId(e.target.value);
+                      setAdminSelectedStudentAsgIds([]);
+                      setAdminDeptFilter('all');
+                    }}
+                    className="w-full px-3 py-2 text-xs font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    {practices.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Guruhni tanlang:
+                  </label>
+                  <select
+                    value={adminSelectedGroupId}
+                    onChange={e => {
+                      setAdminSelectedGroupId(e.target.value);
+                      setAdminSelectedStudentAsgIds([]);
+                      setAdminDeptFilter('all');
+                    }}
+                    className="w-full px-3 py-2 text-xs font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    {adminAvailableGroups.map(grp => (
+                      <option key={grp.id} value={grp.id}>
+                        {grp.name} ({students.filter(s => s.groupId === grp.id).length} talaba)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Group Hospital & Supervisor Info Card */}
+              <div className="bg-slate-900 text-white p-5 rounded-2xl shadow-sm border border-slate-800 grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                <div>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                    Biriktirilgan Amaliyot Bazasi
+                  </span>
+                  <div className="flex items-center gap-1.5 mt-1 font-bold text-white text-sm">
+                    <Hospital className="w-4 h-4 text-blue-400 shrink-0" />
+                    <span>{activeAdminHospital?.name || 'Amaliyot bazasi'}</span>
+                  </div>
+                  <span className="text-[11px] text-blue-300 font-mono mt-0.5 block">
+                    ID: {activeAdminHospital?.organizationId || activeAdminHospital?.organizationCode || 'TASH-1'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                    GPS Koordinatalari & Radius
+                  </span>
+                  <div className="flex items-center gap-1.5 mt-1 font-semibold text-emerald-400">
+                    <MapPin className="w-4 h-4 shrink-0" />
+                    <span className="font-mono">
+                      {activeAdminHospital?.latitude?.toFixed(4) || '41.4682'}, {activeAdminHospital?.longitude?.toFixed(4) || '69.5824'}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-300 mt-0.5 block">
+                    Ruxsat etilgan radius: {activeAdminHospital?.allowedRadius || 300} metr
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                    Universitet Amaliyot Rahbari
+                  </span>
+                  <div className="flex items-center gap-1.5 mt-1 font-semibold text-white">
+                    <UserCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>{activeAdminSupervisor?.fullName || 'Biriktirilmagan'}</span>
+                  </div>
+                  <span className="text-[11px] text-slate-300 mt-0.5 block">
+                    {activeAdminSupervisor?.academicDegree || 'Kafedra o\'qituvchisi'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                    Taqsimot Kodi & Talabalar
+                  </span>
+                  <div className="flex items-center gap-1.5 mt-1 font-mono font-bold text-purple-300 text-sm">
+                    <Split className="w-4 h-4 shrink-0" />
+                    <span>{activeAdminDistribution?.distributionCode || 'TAQ-2026'}</span>
+                  </div>
+                  <span className="text-[11px] text-slate-300 mt-0.5 block">
+                    Jami talabalar: {currentAdminGroupAssignments.length} nafar
+                  </span>
+                </div>
+              </div>
+
+              {/* Department Distribution Summary Bar */}
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-blue-600" />
+                    Tashkilot bo'limlari bo'yicha taqsimot:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddDeptModalOpen(true)}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Yangi bo'lim qo'shish</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setAdminDeptFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-colors ${
+                      adminDeptFilter === 'all'
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Barchasi ({currentAdminGroupAssignments.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAdminDeptFilter('unassigned')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-colors ${
+                      adminDeptFilter === 'unassigned'
+                        ? 'bg-rose-600 text-white border-rose-600'
+                        : adminGroupDeptBreakdown.unassigned > 0
+                        ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                        : 'bg-slate-50 text-slate-400 border-slate-200'
+                    }`}
+                  >
+                    Biriktirilmagan ({adminGroupDeptBreakdown.unassigned})
+                  </button>
+
+                  {adminHospitalDepartments.map(dept => (
+                    <button
+                      key={dept}
+                      type="button"
+                      onClick={() => setAdminDeptFilter(adminDeptFilter === dept ? 'all' : dept)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-colors ${
+                        adminDeptFilter === dept
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {dept} ({adminGroupDeptBreakdown[dept] || 0})
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bulk Action Toolbar */}
+              <div className="p-4 bg-blue-50/70 border border-blue-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (adminSelectedStudentAsgIds.length === filteredAdminStudents.length) {
+                        setAdminSelectedStudentAsgIds([]);
+                      } else {
+                        setAdminSelectedStudentAsgIds(filteredAdminStudents.map(a => a.id));
+                      }
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-blue-900 hover:text-blue-700 cursor-pointer"
+                  >
+                    {adminSelectedStudentAsgIds.length > 0 && adminSelectedStudentAsgIds.length === filteredAdminStudents.length ? (
+                      <CheckSquare className="w-4 h-4 text-blue-600" />
+                    ) : (
+                      <Square className="w-4 h-4 text-slate-400" />
+                    )}
+                    <span>
+                      {adminSelectedStudentAsgIds.length > 0
+                        ? `${adminSelectedStudentAsgIds.length} nafar tanlandi`
+                        : "Barchasini tanlash"}
+                    </span>
+                  </button>
+                  {adminSelectedStudentAsgIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setAdminSelectedStudentAsgIds([])}
+                      className="text-[11px] text-slate-500 hover:underline cursor-pointer"
+                    >
+                      Bekor qilish
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-700 hidden sm:inline">
+                      Bo'limga:
+                    </span>
+                    <select
+                      value={adminTargetDeptName}
+                      onChange={e => setAdminTargetDeptName(e.target.value)}
+                      className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    >
+                      {adminHospitalDepartments.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAdminAssignDepartment()}
+                    disabled={adminSelectedStudentAsgIds.length === 0}
+                    className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Bo'limga biriktirish ({adminSelectedStudentAsgIds.length})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAdminAutoDistribute}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                    title="Bo'sh talabalarni bo'limlarga teng taqsimlash"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span className="hidden sm:inline">Avtomatik teng taqsimlash</span>
+                  </button>
+
+                  {adminSelectedStudentAsgIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleAdminResetDepartment(adminSelectedStudentAsgIds)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      <span>Bo'shatish</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Students Table */}
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+                <div className="p-3 border-b border-slate-200 flex items-center justify-between gap-4">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Talabani F.I.Sh yoki ID bo'yicha qidirish..."
+                      value={adminSearchStudent}
+                      onChange={e => setAdminSearchStudent(e.target.value)}
+                      className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <span className="text-xs text-slate-500">
+                    Ko'rsatilmoqda: {filteredAdminStudents.length} ta talaba
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
+                        <th className="py-2.5 px-3 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={filteredAdminStudents.length > 0 && adminSelectedStudentAsgIds.length === filteredAdminStudents.length}
+                            onChange={() => {
+                              if (adminSelectedStudentAsgIds.length === filteredAdminStudents.length) {
+                                setAdminSelectedStudentAsgIds([]);
+                              } else {
+                                setAdminSelectedStudentAsgIds(filteredAdminStudents.map(a => a.id));
+                              }
+                            }}
+                            className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          />
+                        </th>
+                        <th className="py-2.5 px-3">Talaba F.I.Sh</th>
+                        <th className="py-2.5 px-3">Talaba ID</th>
+                        <th className="py-2.5 px-3">Guruh</th>
+                        <th className="py-2.5 px-3">Amaliyot Bazasi</th>
+                        <th className="py-2.5 px-3">Hozirgi Bo'lim</th>
+                        <th className="py-2.5 px-3">Tezkor Biriktirish</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredAdminStudents.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-slate-400 text-xs italic">
+                            Talabalar topilmadi. Guruh yoki amaliyotni qayta tanlang.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredAdminStudents.map(asg => {
+                          const student = students.find(s => s.id === asg.studentId);
+                          const group = groups.find(g => g.id === (asg.groupId || student?.groupId));
+                          const org = places.find(p => p.id === asg.practicePlaceId || p.organizationId === asg.practicePlaceId);
+                          const isSelected = adminSelectedStudentAsgIds.includes(asg.id);
+                          const isUnassigned = !asg.departmentId || !asg.department || asg.department === 'Biriktirilmagan';
+
+                          return (
+                            <tr
+                              key={asg.id}
+                              className={`hover:bg-slate-50/80 transition-colors ${
+                                isSelected ? 'bg-blue-50/40' : ''
+                              }`}
+                            >
+                              <td className="py-2.5 px-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setAdminSelectedStudentAsgIds(prev =>
+                                      prev.includes(asg.id) ? prev.filter(id => id !== asg.id) : [...prev, asg.id]
+                                    );
+                                  }}
+                                  className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                              </td>
+                              <td className="py-2.5 px-3 font-semibold text-slate-900">
+                                {student?.fullName || 'Noma\'lum talaba'}
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-slate-500">
+                                {student?.studentId || asg.studentId}
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-600">
+                                {group?.name || 'Guruh'}
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-800">
+                                <div className="font-medium truncate max-w-[180px]">{org?.name || activeAdminHospital?.name}</div>
+                                <div className="text-[10px] text-slate-400 font-mono">ID: {org?.organizationId || org?.organizationCode || activeAdminHospital?.organizationId || 'Tash-1'}</div>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                {isUnassigned ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-100 text-rose-700">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                    Biriktirilmagan
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800">
+                                    {asg.department}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <div className="flex items-center gap-1.5">
+                                  <select
+                                    value={isUnassigned ? '' : asg.department}
+                                    onChange={e => {
+                                      const newDept = e.target.value;
+                                      if (!newDept) {
+                                        handleAdminResetDepartment([asg.id]);
+                                      } else {
+                                        handleAdminAssignDepartment(newDept, [asg.id]);
+                                      }
+                                    }}
+                                    className="px-2 py-1 text-xs border border-slate-200 rounded-md bg-white focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                                  >
+                                    <option value="">{isUnassigned ? 'Tanlang...' : 'Bo\'shatish'}</option>
+                                    {adminHospitalDepartments.map(d => (
+                                      <option key={d} value={d}>{d}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Modal for adding new department */}
+              {isAddDeptModalOpen && (
+                <Modal
+                  isOpen={isAddDeptModalOpen}
+                  onClose={() => setIsAddDeptModalOpen(false)}
+                  title="Yangi bo'lim qo'shish"
+                  subtitle={`${activeAdminHospital?.name || 'Tashkilot'} uchun yangi bo'lim ro'yxatdan o'tkazish`}
+                  maxWidth="md"
+                >
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Bo'lim nomi *
+                      </label>
+                      <input
+                        type="text"
+                        value={newDeptInput}
+                        onChange={e => setNewDeptInput(e.target.value)}
+                        placeholder="Masalan: Kardiologiya, Urologiya, Travmatologiya"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setIsAddDeptModalOpen(false)}
+                        className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+                      >
+                        Bekor qilish
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddNewDepartmentToHospital}
+                        disabled={!newDeptInput.trim()}
+                        className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg shadow-xs"
+                      >
+                        Qo'shish
+                      </button>
+                    </div>
+                  </div>
+                </Modal>
+              )}
+            </div>
+          )}
 
           {/* TAB 1: DISTRIBUTIONS (TAQ-2026-XXXXX) */}
           {headActiveTab === 'distributions' && (

@@ -2091,6 +2091,105 @@ class StorageServiceV2 {
       state.practices[idx] = payload;
     }
 
+    // Auto-link groups, university supervisor, and practice base organization
+    if (payload.groupIds && payload.groupIds.length > 0) {
+      const targetOrgId = payload.practicePlaceIds?.[0];
+      const targetSupervisorId = payload.supervisorIds?.[0];
+
+      if (targetOrgId) {
+        if (!state.practiceDistributions) state.practiceDistributions = [];
+        if (!state.practiceAssignments) state.practiceAssignments = [];
+
+        payload.groupIds.forEach(groupId => {
+          let dist = state.practiceDistributions.find(d => d.practiceId === payload.id && d.groupId === groupId);
+          const currentYear = new Date().getFullYear();
+          const distCode = dist?.distributionCode || `TAQ-${currentYear}-${Math.floor(10000 + Math.random() * 90000)}`;
+
+          if (!dist) {
+            dist = {
+              id: `dist-${Date.now()}-${groupId}`,
+              distributionCode: distCode,
+              practiceId: payload.id,
+              academicYear: payload.academicYear || '2026-2027',
+              courseLevel: payload.courseLevel || 4,
+              directionId: payload.directionId || '',
+              groupId: groupId,
+              supervisorId: targetSupervisorId || '',
+              organizationId: targetOrgId,
+              startDate: payload.startDate,
+              endDate: payload.endDate,
+              practiceDays: payload.practiceDays || ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+              startTime: payload.startTime || '08:00',
+              endTime: payload.endTime || '14:00',
+              status: 'active',
+              totalStudentsCount: 0,
+              assignedDepartmentsCount: 0,
+              unassignedDepartmentsCount: 0,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            state.practiceDistributions.unshift(dist);
+          } else {
+            dist.organizationId = targetOrgId;
+            if (targetSupervisorId) dist.supervisorId = targetSupervisorId;
+            dist.startDate = payload.startDate;
+            dist.endDate = payload.endDate;
+            dist.status = 'active';
+            dist.updatedAt = new Date().toISOString();
+          }
+
+          // Link all students of this group to this practice & organization
+          const groupStudents = (state.students || []).filter(s => s.groupId === groupId);
+          groupStudents.forEach((student, sIdx) => {
+            let asg = state.practiceAssignments.find(a => a.practiceId === payload.id && a.studentId === student.id);
+            if (!asg) {
+              const asgId = `asg-${dist!.distributionCode}-${String(sIdx + 1).padStart(2, '0')}`;
+              asg = {
+                id: asgId,
+                assignmentId: asgId,
+                distributionId: dist!.id,
+                distributionCode: dist!.distributionCode,
+                practiceId: payload.id,
+                studentId: student.id,
+                groupId: groupId,
+                practicePlaceId: targetOrgId,
+                department: '', // Initially unassigned to department
+                departmentId: undefined,
+                supervisorId: targetSupervisorId || '',
+                startDate: payload.startDate,
+                endDate: payload.endDate,
+                practiceDays: dist!.practiceDays,
+                startTime: dist!.startTime,
+                endTime: dist!.endTime,
+                academicYear: payload.academicYear,
+                courseLevel: payload.courseLevel,
+                directionId: payload.directionId,
+                status: 'in_progress',
+                createdAt: new Date().toISOString()
+              };
+              state.practiceAssignments.unshift(asg);
+            } else {
+              asg.practicePlaceId = targetOrgId;
+              if (targetSupervisorId) asg.supervisorId = targetSupervisorId;
+              asg.startDate = payload.startDate;
+              asg.endDate = payload.endDate;
+              asg.updatedAt = new Date().toISOString();
+            }
+
+            student.status = 'in_practice';
+            student.currentPracticeId = payload.id;
+            student.currentPracticePlaceId = targetOrgId;
+          });
+
+          // Update dist student counters
+          const distAsgs = state.practiceAssignments.filter(a => a.distributionId === dist!.id || a.distributionCode === dist!.distributionCode);
+          dist.totalStudentsCount = distAsgs.length;
+          dist.assignedDepartmentsCount = distAsgs.filter(a => !!a.departmentId && a.department !== '').length;
+          dist.unassignedDepartmentsCount = dist.totalStudentsCount - dist.assignedDepartmentsCount;
+        });
+      }
+    }
+
     this.recordAuditLog({
       userId: actorUserId,
       userRole: actorRole,
@@ -2787,23 +2886,58 @@ class StorageServiceV2 {
       studentIds.push(studentIdOrUser);
     }
 
-    const assignment = (state.practiceAssignments || []).find(
+    let assignment = (state.practiceAssignments || []).find(
       a => studentIds.includes(a.studentId) && (a.status === 'in_progress' || a.status === 'assigned')
     ) || (state.practiceAssignments || []).find(
       a => studentIds.includes(a.studentId)
-    ) || (state.practiceAssignments || [])[0];
+    );
 
-    if (!assignment) {
+    const studentObj = (state.students || []).find(s => 
+      studentIds.includes(s.id) || (s.studentId && studentIds.includes(s.studentId)) || (s.userId && studentIds.includes(s.userId))
+    );
+
+    let distribution = assignment 
+      ? (state.practiceDistributions || []).find(d => d.id === assignment!.distributionId || d.distributionCode === assignment!.distributionCode)
+      : undefined;
+
+    if (!assignment && studentObj) {
+      if (studentObj.groupId) {
+        distribution = (state.practiceDistributions || []).find(d => d.groupId === studentObj.groupId && d.status === 'active')
+          || (state.practiceDistributions || []).find(d => d.groupId === studentObj.groupId);
+      }
+      if (distribution) {
+        assignment = (state.practiceAssignments || []).find(a => a.studentId === studentObj.id && a.practiceId === distribution!.practiceId);
+      }
+    }
+
+    const practiceId = assignment?.practiceId || distribution?.practiceId || studentObj?.currentPracticeId;
+    if (!practiceId) {
       return { hasActivePractice: false };
     }
-    const practice = state.practices.find(p => p.id === assignment.practiceId);
-    const distribution = (state.practiceDistributions || []).find(
-      d => d.id === assignment.distributionId || d.distributionCode === assignment.distributionCode
-    );
-    const organization = state.practicePlaces.find(p => p.id === assignment.practicePlaceId);
-    const supervisor = state.supervisors.find(s => s.id === assignment.supervisorId);
-    const department = assignment.departmentId 
-      ? state.practiceDepartments.find(d => d.id === assignment.departmentId)
+
+    const practice = state.practices.find(p => p.id === practiceId);
+    if (!practice) {
+      return { hasActivePractice: false };
+    }
+
+    const orgId = assignment?.practicePlaceId || distribution?.organizationId || studentObj?.currentPracticePlaceId || practice.practicePlaceIds?.[0];
+    let organization = state.practicePlaces.find(p => p.id === orgId || p.organizationId === orgId || p.organizationCode === orgId);
+
+    if (organization) {
+      if (organization.latitude === undefined || organization.longitude === undefined) {
+        organization = {
+          ...organization,
+          latitude: 41.4682,
+          longitude: 69.5824,
+          allowedRadius: organization.allowedRadius || 300
+        };
+      }
+    }
+
+    const supId = assignment?.supervisorId || distribution?.supervisorId || practice.supervisorIds?.[0];
+    const supervisor = state.supervisors.find(s => s.id === supId || s.userId === supId);
+    const department = assignment?.departmentId 
+      ? state.practiceDepartments.find(d => d.id === assignment!.departmentId)
       : undefined;
 
     return {
@@ -3296,7 +3430,7 @@ class StorageServiceV2 {
     );
     const targetLat = session.latitude ?? place?.latitude;
     const targetLng = session.longitude ?? place?.longitude;
-    const allowedRadius = session.allowedRadius ?? place?.allowedRadius ?? 200;
+    const allowedRadius = session.allowedRadius ?? place?.allowedRadius ?? 300;
 
     if (params.latitude !== undefined && params.longitude !== undefined && targetLat !== undefined && targetLng !== undefined) {
       const distance = this.calculateDistanceMeters(params.latitude, params.longitude, targetLat, targetLng);
@@ -3447,7 +3581,7 @@ class StorageServiceV2 {
     }
 
     // 3. Calculate distance to organization
-    const allowedRadius = place.allowedRadius || 200;
+    const allowedRadius = place.allowedRadius || 300;
     const distance = this.calculateDistanceMeters(params.latitude, params.longitude, place.latitude, place.longitude);
 
     if (distance > allowedRadius) {

@@ -203,22 +203,36 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white/5 p-4 rounded-2xl border border-white/10">
               <div>
-                <p className="text-[10px] text-blue-300 uppercase font-bold">Tashkilot (Klinik baza)</p>
-                <p className="font-semibold text-white mt-0.5">{myClinicPlace?.name || 'Ma\'lumot kiritilmagan'}</p>
+                <p className="text-[10px] text-blue-300 uppercase font-bold">Amaliyot bazasi (Tashkilot)</p>
+                <p className="font-semibold text-white mt-0.5">{myClinicPlace?.name || 'Biriktirilmagan'}</p>
+                {(myClinicPlace?.organizationId || myClinicPlace?.organizationCode) && (
+                  <span className="text-[10px] font-mono text-blue-300">ID: {myClinicPlace.organizationId || myClinicPlace.organizationCode}</span>
+                )}
               </div>
               <div>
-                <p className="text-[10px] text-blue-300 uppercase font-bold">Amaliyot rahbari</p>
+                <p className="text-[10px] text-blue-300 uppercase font-bold">Universitet amaliyot rahbari</p>
                 <p className="font-semibold text-white mt-0.5">{mySupervisor?.fullName || 'Belgilanmagan'}</p>
               </div>
               <div>
-                <p className="text-[10px] text-blue-300 uppercase font-bold">Bo‘lim</p>
-                <p className="font-semibold text-white mt-0.5">{myAssignment?.department || 'Belgilanmagan'}</p>
+                <p className="text-[10px] text-blue-300 uppercase font-bold">Biriktirilgan bo‘lim</p>
+                <p className="font-semibold text-white mt-0.5">
+                  {myAssignment?.department ? (
+                    <span className="text-emerald-300 font-bold">{myAssignment.department}</span>
+                  ) : (
+                    <span className="text-amber-300 italic">Biriktirilmagan (Taqsimot kutilmoqda)</span>
+                  )}
+                </p>
               </div>
               <div>
-                <p className="text-[10px] text-blue-300 uppercase font-bold">Amaliyot muddati va vaqti</p>
+                <p className="text-[10px] text-blue-300 uppercase font-bold">Amaliyot muddati va GPS</p>
                 <p className="font-semibold text-white mt-0.5 font-mono">
                   {myPractice?.startDate || ''} — {myPractice?.endDate || ''}
                 </p>
+                {myClinicPlace?.latitude && (
+                  <p className="text-[10px] text-emerald-300 font-mono mt-0.5">
+                    📍 GPS: {myClinicPlace.latitude.toFixed(4)}, {myClinicPlace.longitude?.toFixed(4)} (300 m)
+                  </p>
+                )}
               </div>
             </div>
           </div>

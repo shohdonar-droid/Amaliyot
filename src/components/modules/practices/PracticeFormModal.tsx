@@ -311,96 +311,135 @@ export function PracticeFormModal({
           </div>
         </div>
 
-        {/* Guruhlar (Multi-selection checkboxes) */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-            Qatnashuvchi guruhlar ({selectedGroupIds.length} ta tanlandi)
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 max-h-32 overflow-y-auto">
-            {groups.map(grp => {
-              const isChecked = selectedGroupIds.includes(grp.id);
-              return (
-                <label key={grp.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggleSelection(grp.id, selectedGroupIds, setSelectedGroupIds)}
-                    className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                  />
-                  <span className="truncate">{grp.name}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Amaliyot bazalari (Hospitals multi-select) */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-            Amaliyot bazalari / Klinik muassasalar ({selectedPlaceIds.length} ta tanlandi)
-          </label>
-          {places.length === 0 ? (
-            <div className="p-3 text-center text-xs text-amber-700 bg-amber-50 rounded-lg border border-amber-200">
-              Hozircha amaliyot bazalari mavjud emas. Avval "Amaliyot bazalari" bo'limidan yangi baza qo'shing.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 max-h-36 overflow-y-auto">
-              {places.map(place => {
-                const isChecked = selectedPlaceIds.includes(place.id);
-                return (
-                  <label key={place.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:bg-white p-1 rounded transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => toggleSelection(place.id, selectedPlaceIds, setSelectedPlaceIds)}
-                      className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                    />
-                    <span className="truncate font-medium">{place.name} ({place.capacity} o'rin)</span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Supervisors & Clinic Responsibles */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Universitet amaliyot rahbari
-            </label>
-            <div className="space-y-1.5 p-2 rounded-lg border border-slate-200 bg-slate-50/50 max-h-28 overflow-y-auto">
-              {supervisors.map(sup => (
-                <label key={sup.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedSupervisorIds.includes(sup.id)}
-                    onChange={() => toggleSelection(sup.id, selectedSupervisorIds, setSelectedSupervisorIds)}
-                    className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300"
-                  />
-                  <span className="truncate">{sup.fullName}</span>
-                </label>
-              ))}
-            </div>
+        {/* Amaliyotga chiqish va biriktirish parametrlari (Guruh, Rahbar, Baza) */}
+        <div className="p-4 bg-blue-50/60 rounded-xl border border-blue-200/80 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-600" />
+              Amaliyot biriktiruvi: Guruh → Universitet rahbari → Amaliyot bazasi
+            </span>
+            <span className="text-[11px] text-blue-700 font-medium">
+              Amaliyot yaratilishi bilan guruh talabalari bazaga biriktiriladi
+            </span>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Klinik mas'ul shaxs (Shifoxona)
-            </label>
-            <div className="space-y-1.5 p-2 rounded-lg border border-slate-200 bg-slate-50/50 max-h-28 overflow-y-auto">
-              {clinicResponsibles.map(cresp => (
-                <label key={cresp.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedClinicRespIds.includes(cresp.id)}
-                    onChange={() => toggleSelection(cresp.id, selectedClinicRespIds, setSelectedClinicRespIds)}
-                    className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300"
-                  />
-                  <span className="truncate">{cresp.fullName}</span>
-                </label>
-              ))}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* 1. Guruh amaliyotga chiqishi */}
+            <div>
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                1. Qatnashuvchi guruh(lar) *
+              </label>
+              <div className="space-y-1.5 p-2 rounded-lg border border-slate-300 bg-white max-h-36 overflow-y-auto">
+                {groups.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic p-1">Guruhlar mavjud emas</p>
+                ) : (
+                  groups.map(grp => {
+                    const isChecked = selectedGroupIds.includes(grp.id);
+                    const groupStudentsCount = storageService.getStudents().filter(s => s.groupId === grp.id).length;
+                    return (
+                      <label key={grp.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:bg-slate-50 p-1 rounded transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSelection(grp.id, selectedGroupIds, setSelectedGroupIds)}
+                          className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                        />
+                        <span className="font-semibold text-slate-900">{grp.name}</span>
+                        <span className="text-[10px] text-slate-500 font-mono ml-auto">({groupStudentsCount} talaba)</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1">
+                Tanlandi: <strong className="text-blue-700">{selectedGroupIds.length} ta guruh</strong>
+              </p>
             </div>
+
+            {/* 2. Universitetdan amaliyot rahbari */}
+            <div>
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                2. Universitet amaliyot rahbari *
+              </label>
+              <select
+                value={selectedSupervisorIds[0] || ''}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSelectedSupervisorIds(val ? [val] : []);
+                }}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-medium"
+              >
+                <option value="">Rahbarni tanlang...</option>
+                {supervisors.map(sup => (
+                  <option key={sup.id} value={sup.id}>
+                    {sup.fullName} ({sup.academicDegree || 'Kafedra o\'qituvchisi'})
+                  </option>
+                ))}
+              </select>
+
+              <div className="mt-2 p-2 bg-slate-50 rounded-lg border border-slate-200 text-[11px] text-slate-600">
+                {selectedSupervisorIds[0] ? (
+                  <span>
+                    Mas'ul: <strong className="text-slate-900">{supervisors.find(s => s.id === selectedSupervisorIds[0])?.fullName}</strong>
+                  </span>
+                ) : (
+                  <span className="text-amber-700">Rahbar tanlanishi shart</span>
+                )}
+              </div>
+            </div>
+
+            {/* 3. Amaliyot tashkilotiga (bazaga) amaliyotga borishi */}
+            <div>
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                3. Amaliyot bazasi (Tashkilot) *
+              </label>
+              <select
+                value={selectedPlaceIds[0] || ''}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSelectedPlaceIds(val ? [val] : []);
+                }}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-medium"
+              >
+                <option value="">Amaliyot bazasini tanlang...</option>
+                {places.map(place => (
+                  <option key={place.id} value={place.id}>
+                    {place.name} [{place.organizationId || place.organizationCode || 'Tash-1'}]
+                  </option>
+                ))}
+              </select>
+
+              <div className="mt-2 p-2 bg-slate-50 rounded-lg border border-slate-200 text-[11px] text-slate-600">
+                {selectedPlaceIds[0] ? (
+                  (() => {
+                    const selPlace = places.find(p => p.id === selectedPlaceIds[0]);
+                    return (
+                      <div className="space-y-0.5">
+                        <div className="font-semibold text-slate-900">{selPlace?.name}</div>
+                        <div className="text-[10px] text-slate-500">
+                          GPS: {selPlace?.latitude?.toFixed(4)}, {selPlace?.longitude?.toFixed(4)} · Radius: 300 m
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <span className="text-amber-700">Amaliyot bazasi tanlanishi shart</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Live Link Summary & Info */}
+          <div className="p-3 bg-white rounded-lg border border-blue-200 text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-blue-900">🔗 Tizimli bog'lanish:</span>
+              <span>
+                Tanlangan {selectedGroupIds.length} ta guruh talabalari avtomatik tarzda ushbu amaliyot bazasi va universitet rahbariga biriktiriladi.
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-500 font-medium shrink-0">
+              Bo'limlarga taqsimot esa "Amaliyot taqsimoti" menyusida amalga oshiriladi.
+            </span>
           </div>
         </div>
 

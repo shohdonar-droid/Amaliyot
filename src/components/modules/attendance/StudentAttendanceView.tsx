@@ -48,9 +48,16 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
   const assignments = storageService.getAssignments() || [];
   const attendanceList = storageService.getAttendance() || [];
 
-  const assignment = student ? assignments.find(a => a?.studentId === student.id) : null;
-  const practice = practices.find(p => p?.id === (assignment?.practiceId || student?.currentPracticeId));
-  const place = places.find(p => p?.id === (assignment?.practicePlaceId || student?.currentPracticePlaceId));
+  const studentDetails = storageService.getStudentActivePracticeDetails(currentUser || student);
+  const practice = studentDetails.practice || practices.find(p => p?.id === (studentDetails.assignment?.practiceId || student?.currentPracticeId));
+  const assignment = studentDetails.assignment || (student ? assignments.find(a => a?.studentId === student.id) : null);
+  const rawPlace = studentDetails.organization || places.find(p => p?.id === (assignment?.practicePlaceId || student?.currentPracticePlaceId));
+  const place = rawPlace ? {
+    ...rawPlace,
+    latitude: rawPlace.latitude !== undefined ? rawPlace.latitude : 41.4682,
+    longitude: rawPlace.longitude !== undefined ? rawPlace.longitude : 69.5824,
+    allowedRadius: rawPlace.allowedRadius || 300
+  } : null;
 
   const todayRecord = student
     ? attendanceList.find(a => a?.studentId === student.id && a?.date === todayDate)
@@ -152,9 +159,9 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
       return;
     }
 
-    const allowedRadius = place.allowedRadius || 200;
+    const allowedRadius = place.allowedRadius || 300;
     if (!isInsideGeofence || distanceMeters > allowedRadius) {
-      showToast('error', 'Hududdan tashqarida', `Siz amaliyot joyidan ${distanceMeters} metr uzoqdasiz. Ruxsat etilgan radius: ${allowedRadius} metr.`);
+      showToast('error', 'Hududdan tashqarida', `Siz amaliyot tashkilotidan ${distanceMeters} metr uzoqdasiz. Ruxsat etilgan radius: ${allowedRadius} metr.`);
       return;
     }
 
@@ -217,7 +224,7 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
               Bugungi davomat
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Klinik baza: <strong className="text-slate-800">{place?.name || 'Klinik shifoxona'}</strong> ({assignment?.department || 'Bo‘lim'})
+              Amaliyot bazasi: <strong className="text-slate-800">{place?.name || 'Amaliyot bazasi'}</strong> · Bo'lim: <strong className="text-blue-700">{assignment?.department || 'Biriktirilmagan (Taqsimot kutilmoqda)'}</strong>
             </p>
           </div>
 
