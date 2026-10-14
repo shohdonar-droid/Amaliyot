@@ -292,7 +292,7 @@ export function AllocationModule() {
 
   // Distribution Creation Modal State
   const [isDistModalOpen, setIsDistModalOpen] = useState(false);
-  const [formAcademicYear, setFormAcademicYear] = useState('2025-2026');
+  const [formAcademicYear, setFormAcademicYear] = useState('2026-2027');
   const [formPracticeId, setFormPracticeId] = useState(practices[0]?.id || '');
   const [formDirectionId, setFormDirectionId] = useState(directions[0]?.id || '');
   const [formCourseLevel, setFormCourseLevel] = useState<number>(3);
@@ -1287,8 +1287,8 @@ export function AllocationModule() {
                 className="w-full px-3 py-2 border rounded-lg bg-white"
                 required
               >
-                <option value="2025-2026">2025-2026</option>
                 <option value="2026-2027">2026-2027</option>
+                <option value="2025-2026">2025-2026</option>
               </select>
             </div>
 

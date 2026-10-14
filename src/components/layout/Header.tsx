@@ -110,7 +110,7 @@ export function Header({
         <SyncBadge />
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100/70 border border-slate-200 text-xs font-medium text-slate-600">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>2025-2026 o'quv yili</span>
+          <span>2026-2027 o'quv yili</span>
           <span aria-hidden="true">·</span>
           <span className="text-slate-500">Kuzgi semestr</span>
         </div>

@@ -8,13 +8,13 @@ const COLLECTION = 'organizations';
 
 export function getNextOrganizationId(existingPlaces?: PracticePlace[]): string {
   const places = existingPlaces || storageService.getPracticePlaces();
-  let maxNum = 124; // Default baseline (default places are TASH-000125, TASH-000126, etc.)
+  let maxNum = 0;
 
   places.forEach(p => {
     const candidates = [p.organizationId, p.organizationCode, p.id];
     candidates.forEach(cand => {
       if (!cand) return;
-      const match = cand.match(/(?:TASH|ORG)[-_]?(\d+)/i) || cand.match(/(\d+)/);
+      const match = cand.match(/(?:Tash|TASH|ORG)[-_]?(\d+)/i) || cand.match(/(\d+)/);
       if (match && match[1]) {
         const num = parseInt(match[1], 10);
         if (!isNaN(num) && num > maxNum && num < 1000000) {
@@ -25,7 +25,7 @@ export function getNextOrganizationId(existingPlaces?: PracticePlace[]): string 
   });
 
   const nextNum = maxNum + 1;
-  return `TASH-${String(nextNum).padStart(6, '0')}`;
+  return `Tash-${nextNum}`;
 }
 
 const DEMO_PLACE_IDS = ['place-1', 'place-2', 'place-3', 'place-4'];

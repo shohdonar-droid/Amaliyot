@@ -238,12 +238,12 @@ const DEFAULT_DIRECTIONS: Direction[] = [
 ];
 
 const DEFAULT_COURSES: Course[] = [
-  { id: 'course-1', level: 1, name: '1-kurs', academicYear: '2025-2026' },
-  { id: 'course-2', level: 2, name: '2-kurs', academicYear: '2025-2026' },
-  { id: 'course-3', level: 3, name: '3-kurs', academicYear: '2025-2026' },
-  { id: 'course-4', level: 4, name: '4-kurs', academicYear: '2025-2026' },
-  { id: 'course-5', level: 5, name: '5-kurs', academicYear: '2025-2026' },
-  { id: 'course-6', level: 6, name: '6-kurs', academicYear: '2025-2026' }
+  { id: 'course-1', level: 1, name: '1-kurs', academicYear: '2026-2027' },
+  { id: 'course-2', level: 2, name: '2-kurs', academicYear: '2026-2027' },
+  { id: 'course-3', level: 3, name: '3-kurs', academicYear: '2026-2027' },
+  { id: 'course-4', level: 4, name: '4-kurs', academicYear: '2026-2027' },
+  { id: 'course-5', level: 5, name: '5-kurs', academicYear: '2026-2027' },
+  { id: 'course-6', level: 6, name: '6-kurs', academicYear: '2026-2027' }
 ];
 
 const DEFAULT_GROUPS: Group[] = [
@@ -1551,8 +1551,8 @@ class StorageServiceV2 {
       state.systemSettings = {
         universityName: 'TOSHKENT DAVLAT TIBBIYOT UNIVERSITETI CHIRCHIQ FILIALI',
         universityShortName: 'TDTU Chirchiq filiali',
-        academicYear: '2025-2026',
-        semester: 'Kuzgi',
+        academicYear: '2026-2027',
+        semester: 'Kuzgi semestr',
         qrRadiusMeters: 150,
         journalDeadlineTime: '23:59',
         mode: 'PRODUCTION'

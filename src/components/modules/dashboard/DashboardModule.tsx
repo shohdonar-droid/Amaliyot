@@ -131,13 +131,14 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
   // 9. TALABA — AMALIYOTIM (STUDENT)
   // =========================================================================
   if (isStudent) {
+    const details = storageService.getStudentActivePracticeDetails(currentUser);
     const myStudent = students.find(s => s?.userId === currentUser?.uid || s?.id === currentUser?.studentId || s?.login === currentUser?.login) || students[0];
-    const myAssignment = myStudent ? assignments.find(a => a?.studentId === myStudent.id || a?.studentId === currentUser?.studentId || (myStudent.groupId && a?.groupId === myStudent.groupId)) : null;
-    const myPractice = myAssignment ? practices.find(p => p?.id === myAssignment.practiceId) : practices[0];
-    const myClinicPlace = myAssignment 
+    const myAssignment = details.assignment || (myStudent ? assignments.find(a => a?.studentId === myStudent.id || a?.studentId === currentUser?.studentId || (myStudent.groupId && a?.groupId === myStudent.groupId)) : null) || assignments[0];
+    const myPractice = details.practice || (myAssignment ? practices.find(p => p?.id === myAssignment.practiceId) : null) || practices[0];
+    const myClinicPlace = details.organization || (myAssignment 
       ? places.find(p => p?.id === myAssignment.practicePlaceId || p?.organizationId === myAssignment.practicePlaceId || p?.organizationCode === myAssignment.practicePlaceId) 
-      : (myStudent?.currentPracticePlaceId ? places.find(p => p.id === myStudent.currentPracticePlaceId || p.organizationId === myStudent.currentPracticePlaceId) : places[0]);
-    const mySupervisor = myAssignment ? supervisors.find(s => s?.id === myAssignment.supervisorId || s?.userId === myAssignment.supervisorId) : supervisors[0];
+      : null) || (myStudent?.currentPracticePlaceId ? places.find(p => p.id === myStudent.currentPracticePlaceId || p.organizationId === myStudent.currentPracticePlaceId) : null) || places[0];
+    const mySupervisor = details.supervisor || (myAssignment ? supervisors.find(s => s?.id === myAssignment.supervisorId || s?.userId === myAssignment.supervisorId) : null) || supervisors[0];
 
     const myFaculty = faculties.find(f => f.id === myStudent?.facultyId);
     const myDirection = directions.find(d => d.id === myStudent?.directionId);
@@ -192,7 +193,7 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
               </span>
 
               <span className="text-xs font-mono text-blue-200/90 font-semibold">
-                {myPractice?.academicYear || '2025-2026'}
+                {myPractice?.academicYear || '2026-2027'}
               </span>
             </div>
 

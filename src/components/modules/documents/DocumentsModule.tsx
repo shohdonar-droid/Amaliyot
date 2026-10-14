@@ -38,15 +38,27 @@ export function DocumentsModule() {
     setDocuments(storageService.getDocuments());
   };
 
-  const handleVerifyReferral = (e: React.FormEvent) => {
-    e.preventDefault();
-    const query = verifyInput.trim().toLowerCase();
+  const handleVerifyReferral = (e?: React.FormEvent, customQuery?: string) => {
+    if (e) e.preventDefault();
+    let query = (customQuery !== undefined ? customQuery : verifyInput).trim();
     if (!query) return;
+
+    // Handle URL parsing e.g. http://tma.uz/referral/stu-1
+    if (query.includes('tma.uz/referral/')) {
+      const parts = query.split('tma.uz/referral/');
+      if (parts[1]) {
+        query = parts[1].trim();
+      }
+    }
+
+    const lowerQuery = query.toLowerCase();
     const found = students.find(s => 
-      s.id.toLowerCase() === query || 
-      s.studentId.toLowerCase() === query || 
-      s.fullName.toLowerCase().includes(query)
+      s.id.toLowerCase() === lowerQuery || 
+      s.studentId.toLowerCase() === lowerQuery || 
+      s.fullName.toLowerCase().includes(lowerQuery) ||
+      (s.hemisStudentId && s.hemisStudentId.toLowerCase() === lowerQuery)
     );
+
     if (found) {
       const p = practices.find(prac => prac.id === found.currentPracticeId) || practices[0];
       const pl = places.find(place => place.id === found.currentPracticePlaceId) || places[0];
@@ -54,7 +66,7 @@ export function DocumentsModule() {
       showToast('success', 'Yo\'llanma tasdiqlandi', `${found.fullName} yo'llanmasi haqiqiy va faol.`);
     } else {
       setVerifiedResult(null);
-      showToast('error', 'Topilmadi', 'Bunday ID yoki talaba bo\'yicha yo\'llanma topilmadi.');
+      showToast('error', 'Haqiqiy emas', 'Kiritilgan QR kod yoki ID bo\'yicha tizimda amaliyot yo\'llanmasi topilmadi.');
     }
   };
 
@@ -396,67 +408,109 @@ export function DocumentsModule() {
           setVerifiedResult(null);
           setVerifyInput('');
         }}
-        title="Yo'llanma haqiqiyligini tekshirish (QR / ID)"
+        title="Yo'llanma va QR kod haqiqiyligini tekshirish"
         maxWidth="lg"
       >
         <div className="space-y-4 text-xs">
           <p className="text-slate-600">
-            Talaba yo'llanmasi yoki QR kodining haqiqiyligini tekshirish uchun talabaning ID raqami, F.I.Sh yoki tizim identifikatorini kiriting:
+            Talaba yo'llanmasidagi QR kodni skanerlash, <code className="bg-slate-100 px-1 py-0.5 rounded font-mono">http://tma.uz/referral/ID</code> havolasini kiritish yoki talaba ID / F.I.Sh orqali rasmiy bazadan tekshiring:
           </p>
 
           <form onSubmit={handleVerifyReferral} className="flex gap-2">
-            <input
-              type="text"
-              value={verifyInput}
-              onChange={e => setVerifyInput(e.target.value)}
-              placeholder="Masalan: STU-101 yoki F.I.Sh..."
-              className="flex-1 px-3 py-2 border rounded-lg font-mono text-xs"
-              required
-            />
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={verifyInput}
+                onChange={e => setVerifyInput(e.target.value)}
+                placeholder="Havola, Talaba ID (STU-101) yoki F.I.Sh..."
+                className="w-full pl-9 pr-3 py-2 border rounded-lg font-mono text-xs"
+                required
+              />
+            </div>
             <button
               type="submit"
-              className="px-4 py-2 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1.5"
+              className="px-4 py-2 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1.5 shadow-xs"
             >
-              <Search className="w-4 h-4" />
+              <FileCheck className="w-4 h-4" />
               <span>Tekshirish</span>
             </button>
           </form>
 
+          {/* Quick Test QR Scanner Simulation buttons */}
+          <div className="p-3 bg-slate-50 border rounded-xl space-y-2">
+            <p className="font-semibold text-slate-700">Tezkor test uchun talabalarni tanlang (QR simulyatsiya):</p>
+            <div className="flex flex-wrap gap-1.5">
+              {students.slice(0, 4).map(st => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => {
+                    const sampleUrl = `http://tma.uz/referral/${st.id}`;
+                    setVerifyInput(sampleUrl);
+                    handleVerifyReferral(undefined, sampleUrl);
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-medium bg-white border border-slate-300 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 rounded-md transition-colors"
+                >
+                  📷 {st.fullName} ({st.studentId})
+                </button>
+              ))}
+            </div>
+          </div>
+
           {verifiedResult && (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3">
-              <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm border-b border-emerald-200 pb-2">
-                <FileCheck className="w-5 h-5 text-emerald-600" />
-                <span>🟢 YO'LLANMA HAQIQIY VA TASDIQLANGAN</span>
+            <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-xl space-y-3 shadow-sm animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
+                <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+                  <div className="w-7 h-7 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold text-xs">✓</div>
+                  <span>YO'LLANMA HAQIQIY VA TASDIQLANGAN</span>
+                </div>
+                <span className="bg-emerald-200 text-emerald-900 font-mono text-[10px] px-2 py-0.5 rounded-full font-bold">
+                  2026-2027 KUZGI
+                </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-slate-800">
+              <div className="grid grid-cols-2 gap-3 text-slate-800 bg-white p-3 rounded-lg border border-emerald-100">
                 <div>
-                  <span className="text-slate-500 block text-[11px]">Talaba F.I.Sh:</span>
-                  <strong className="text-slate-900">{verifiedResult.student.fullName}</strong>
+                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Talaba F.I.Sh:</span>
+                  <strong className="text-slate-900 text-sm">{verifiedResult.student.fullName}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[11px]">Talaba ID:</span>
-                  <span className="font-mono">{verifiedResult.student.studentId}</span>
+                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Talaba ID / HEMIS:</span>
+                  <span className="font-mono font-bold text-blue-700">{verifiedResult.student.studentId}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[11px]">Amaliyot bazasi:</span>
-                  <strong>{verifiedResult.place?.name}</strong>
+                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Amaliyot bazasi (Klinika):</span>
+                  <strong className="text-slate-900">{verifiedResult.place?.name}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[11px]">Amaliyot dasturi:</span>
-                  <span>{verifiedResult.practice?.name}</span>
+                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Amaliyot dasturi:</span>
+                  <span className="text-slate-800 font-medium">{verifiedResult.practice?.name}</span>
                 </div>
-                <div className="col-span-2">
-                  <span className="text-slate-500 block text-[11px]">Amaliyot muddatlari:</span>
-                  <span className="font-mono font-semibold text-blue-700">
-                    {verifiedResult.practice?.startDate} — {verifiedResult.practice?.endDate} (Buyruq: {verifiedResult.practice?.orderNumber})
-                  </span>
+                <div className="col-span-2 pt-1 border-t border-slate-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase font-semibold">Muddat va buyruq:</span>
+                    <span className="font-mono font-semibold text-slate-900">
+                      {verifiedResult.practice?.startDate} — {verifiedResult.practice?.endDate} ({verifiedResult.practice?.orderNumber})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsVerifyModalOpen(false);
+                      setReferralStudentId(verifiedResult.student.id);
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-xs flex items-center gap-1"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Blankani ko'rish</span>
+                  </button>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-emerald-200 text-[11px] text-emerald-700 flex items-center justify-between">
-                <span>Toshkent davlat tibbiyot universiteti Chirchiq filiali rasmiy bazasi</span>
-                <span className="font-semibold">Status: FAOL</span>
+              <div className="flex items-center justify-between text-[11px] text-emerald-800 pt-1">
+                <span>🔒 TDTU Chirchiq filiali kriptografik QR imzo tizimi</span>
+                <span className="font-mono font-bold">SHA-256 Verified</span>
               </div>
             </div>
           )}

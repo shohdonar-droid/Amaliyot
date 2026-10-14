@@ -120,7 +120,7 @@ export function PracticeWizardModal({
   const [code, setCode] = useState('');
   const [startDate, setStartDate] = useState('2026-10-01');
   const [endDate, setEndDate] = useState('2026-11-15');
-  const [academicYear, setAcademicYear] = useState('2025-2026');
+  const [academicYear, setAcademicYear] = useState('2026-2027');
   const [orderNumber, setOrderNumber] = useState('');
   const [orderDate, setOrderDate] = useState('2026-09-25');
   const [totalHours, setTotalHours] = useState(180);
@@ -156,7 +156,7 @@ export function PracticeWizardModal({
       setCode(`PRAC-${new Date().getFullYear()}-MED${randomSuffix}`);
       setStartDate('2026-10-01');
       setEndDate('2026-11-15');
-      setAcademicYear('2025-2026');
+      setAcademicYear('2026-2027');
       setOrderNumber(`BUYRUQ-№${randomSuffix}/A`);
       setOrderDate('2026-09-25');
       setTotalHours(180);

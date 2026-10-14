@@ -38,7 +38,7 @@ export function PracticeFormModal({
   const [code, setCode] = useState('');
   const [startDate, setStartDate] = useState('2026-10-01');
   const [endDate, setEndDate] = useState('2026-11-15');
-  const [academicYear, setAcademicYear] = useState('2025-2026');
+  const [academicYear, setAcademicYear] = useState('2026-2027');
   const [facultyId, setFacultyId] = useState(faculties[0]?.id || '');
   const [directionId, setDirectionId] = useState(directions[0]?.id || '');
   const [courseLevel, setCourseLevel] = useState<number>(4);
@@ -91,7 +91,7 @@ export function PracticeFormModal({
       setCode(`PRAC-${new Date().getFullYear()}-MED${Math.floor(10 + Math.random() * 90)}`);
       setStartDate('2026-10-01');
       setEndDate('2026-11-15');
-      setAcademicYear('2025-2026');
+      setAcademicYear('2026-2027');
       setFacultyId(faculties[0]?.id || '');
       setDirectionId(directions[0]?.id || '');
       setCourseLevel(4);
@@ -257,7 +257,7 @@ export function PracticeFormModal({
               type="text"
               value={academicYear}
               onChange={e => setAcademicYear(e.target.value)}
-              placeholder="2025-2026"
+              placeholder="2026-2027"
               className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
             />
           </div>
