@@ -1040,7 +1040,7 @@ export function DailyJournalModule() {
           )}
 
           {/* Today's Daily Check-in Alert */}
-          {todayAttendance ? (
+          {todayAttendance && (todayAttendance.status === 'PRESENT' || todayAttendance.status === 'LATE') ? (
             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
@@ -1048,38 +1048,76 @@ export function DailyJournalModule() {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-emerald-900">
-                    Bugungi davomat tasdiqlangan: {todayAttendance.status} ({todayAttendance.checkInTime} da kelindi)
+                    Bugungi davomat tasdiqlangan: Kelgan ({todayAttendance.checkInTime} da)
                   </h4>
                   <p className="text-xs text-emerald-700 mt-0.5">
                     {todayJournal
-                      ? 'Bugungi kunlik amaliyot kundaligi topshirilgan va ko\'rib chiqilmoqda.'
+                      ? (todayJournal.status === 'DRAFT'
+                          ? 'Bugungi kundalik qoralama (DRAFT) holatida saqlangan. Qayta kirib tekshiruvga yuborishingiz mumkin.'
+                          : 'Bugungi kunlik amaliyot kundaligi topshirilgan va rahbar tekshiruvida.')
                       : 'Bugun bajargan ishlaringiz va muolajalaringizni elektron kundalikka kiritishingiz mumkin.'}
                   </p>
                 </div>
               </div>
 
-              {!todayJournal && (
+              {!todayJournal ? (
                 <button
                   type="button"
                   onClick={() => {
                     setJournalToEdit(null);
                     setIsSubmitModalOpen(true);
                   }}
-                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors shrink-0"
+                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
                 >
                   Bugungi kundalikni to'ldirish
                 </button>
-              )}
+              ) : todayJournal.status === 'DRAFT' ? (
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(todayJournal)}
+                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
+                >
+                  Qoralamani ochish va yuborish
+                </button>
+              ) : null}
+            </div>
+          ) : todayAttendance && (todayAttendance.status === 'PENDING' || todayAttendance.status === 'PENDING_CONFIRMATION') ? (
+            <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 text-amber-700 rounded-xl">
+                  <Clock className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-amber-950">
+                    ⏳ Davomat qayd etilgan, amaliyot rahbari tasdiqlashi kutilmoqda ({todayAttendance.checkInTime} da GPS orqali)
+                  </h4>
+                  <p className="text-xs text-amber-800 mt-0.5">
+                    Amaliyot rahbari kelganligingizni tasdiqlaganidan so'ng elektron kundalik to'ldirish imkoniyati avtomatik ochiladi.
+                  </p>
+                </div>
+              </div>
+
+              <span className="px-3.5 py-1.5 rounded-xl bg-amber-200/80 text-amber-900 font-bold text-xs shrink-0">
+                Rahbar tasdiqlashi kutilmoqda...
+              </span>
             </div>
           ) : (
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3 text-xs text-slate-600">
-              <Clock className="w-5 h-5 text-slate-400 shrink-0" />
-              <div>
-                <p className="font-bold text-slate-800">Bugungi kun uchun davomat hali o'tilmagan</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Kundalikni faqat shu kuni QR orqali kelganingiz tasdiqlangandan keyin to'ldirishingiz mumkin.
-                </p>
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-slate-200 text-slate-600 rounded-xl">
+                  <Clock className="w-5 h-5 text-slate-500" />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-800 text-xs">Bugungi kun uchun davomat hali qayd etilmagan</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Kundalikni to'ldirish uchun avval "Davomat" menyusiga o'tib, GPS orqali amaliyot bazasiga kelganingizni qayd eting.
+                  </p>
+                </div>
               </div>
+
+              <span className="text-xs font-semibold text-slate-500 px-3 py-1.5 bg-slate-100 rounded-xl border border-slate-200 shrink-0">
+                Avval davomatdan o'ting
+              </span>
             </div>
           )}
 
@@ -1096,21 +1134,34 @@ export function DailyJournalModule() {
               <div className="p-12 text-center bg-white border border-slate-200 rounded-2xl text-slate-400 space-y-3">
                 <BookOpen className="w-10 h-10 mx-auto text-slate-300" />
                 <p className="font-medium text-xs">Sizda hali topshirilgan amaliyot kundaliklari mavjud emas.</p>
-                <button
-                  type="button"
-                  onClick={() => setIsSubmitModalOpen(true)}
-                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
-                >
-                  Birinchi kundalikni to'ldirish
-                </button>
+                {todayAttendance && (todayAttendance.status === 'PRESENT' || todayAttendance.status === 'LATE') && (
+                  <button
+                    type="button"
+                    onClick={() => setIsSubmitModalOpen(true)}
+                    className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Birinchi kundalikni to'ldirish
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {studentJournals.map(j => {
-                  const statusUpper = j.status.toUpperCase();
-                  const isApproved = statusUpper === 'APPROVED';
+                  const statusUpper = (j.status || '').toUpperCase();
+                  const isApproved = statusUpper === 'APPROVED' || statusUpper === 'SUPERVISOR_APPROVED' || statusUpper === 'FINAL_APPROVED';
                   const isRevision = statusUpper === 'REVISION' || statusUpper === 'REJECTED';
-                  const isPending = statusUpper === 'PENDING';
+                  const isDraft = statusUpper === 'DRAFT';
+                  const isPending = statusUpper === 'PENDING' || statusUpper === 'SUBMITTED' || statusUpper === 'FINAL_PENDING';
+
+                  const handleDirectSubmitToSupervisor = (journalId: string) => {
+                    const res = storageService.submitDraftJournalToSupervisor(journalId, currentUser?.uid || currentStudent?.id);
+                    if (res.success) {
+                      showToast('success', 'Kundalik topshirildi!', 'Kundalik muvaffaqiyatli topshirildi va amaliyot rahbariga tekshirish uchun yuborildi.');
+                      refreshJournals();
+                    } else {
+                      showToast('error', 'Xatolik', res.error || 'Kundalikni yuborish imkoni bo\'lmadi');
+                    }
+                  };
 
                   return (
                     <div
@@ -1120,6 +1171,8 @@ export function DailyJournalModule() {
                           ? 'bg-white border-slate-200 hover:border-emerald-300'
                           : isRevision
                           ? 'bg-amber-50/40 border-amber-300 hover:border-amber-400'
+                          : isDraft
+                          ? 'bg-slate-50/80 border-slate-300 hover:border-blue-400'
                           : 'bg-white border-slate-200 hover:border-blue-300'
                       }`}
                     >
@@ -1132,9 +1185,13 @@ export function DailyJournalModule() {
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : isRevision
                                 ? 'bg-amber-100 text-amber-900'
+                                : isDraft
+                                ? 'bg-slate-200 text-slate-800 border border-slate-300'
                                 : 'bg-blue-100 text-blue-800'
                             }`}>
-                              {isApproved ? 'Tasdiqlangan' : isRevision ? 'Qayta ishlash' : 'Tekshiruvda'}
+                              {isApproved ? 'Tasdiqlangan' :
+                               isRevision ? 'Qayta ishlash' :
+                               isDraft ? 'Qoralama (DRAFT)' : 'Tekshiruvda (SUBMITTED)'}
                             </span>
                             {j.version && j.version > 1 && (
                               <span className="text-[10px] text-slate-400 font-mono">v{j.version}</span>
@@ -1179,31 +1236,52 @@ export function DailyJournalModule() {
                       )}
 
                       {/* Action buttons */}
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={() => handleOpenPrint(j)}
-                          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 font-medium"
+                          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 font-medium cursor-pointer"
                         >
                           <Printer className="w-3.5 h-3.5" />
                           <span>Chop etish</span>
                         </button>
 
                         <div className="flex items-center gap-2">
+                          {/* If Draft: allow edit AND direct submit to supervisor */}
+                          {isDraft && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(j)}
+                                className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
+                              >
+                                Tahrirlash
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDirectSubmitToSupervisor(j.id)}
+                                className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-2xs cursor-pointer"
+                                title="Rahbar tekshiruviga yuborish"
+                              >
+                                Rahbarga yuborish
+                              </button>
+                            </>
+                          )}
+
                           {isRevision && (
                             <button
                               type="button"
                               onClick={() => handleOpenEdit(j)}
-                              className="px-3 py-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-2xs"
+                              className="px-3 py-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-2xs cursor-pointer"
                             >
-                              Tahrirlash
+                              Tahrirlash va qayta topshirish
                             </button>
                           )}
 
                           <button
                             type="button"
                             onClick={() => handleOpenDetail(j)}
-                            className="px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 rounded-lg"
+                            className="px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer"
                           >
                             Batafsil
                           </button>

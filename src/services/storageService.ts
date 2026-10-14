@@ -119,6 +119,35 @@ const DEFAULT_USERS_V2: User[] = [
     lastLoginAt: '2026-09-28T06:00:00Z'
   },
   {
+    id: 'user-head',
+    uid: 'uid-head-002',
+    login: 'dept_head',
+    username: 'dept_head',
+    password: 'password123',
+    fullName: 'Rahimov Shavkat Akramovich',
+    role: 'PRACTICE_HEAD',
+    email: 'amaliyot@tma.uz',
+    phone: '+998 (71) 214-88-11',
+    status: 'ACTIVE',
+    createdAt: '2026-08-01T08:00:00Z',
+    lastLoginAt: '2026-09-28T06:15:00Z'
+  },
+  {
+    id: 'user-sup-1',
+    uid: 'uid-sup-003',
+    login: 'supervisor',
+    username: 'supervisor',
+    password: 'password123',
+    fullName: 'Dots. Karimov Jasur Alisherovich',
+    role: 'PRACTICE_SUPERVISOR',
+    email: 'j.karimov@tma.uz',
+    phone: '+998 (90) 321-44-55',
+    status: 'ACTIVE',
+    supervisorId: 'sup-1',
+    createdAt: '2026-08-01T08:00:00Z',
+    lastLoginAt: '2026-09-28T06:30:00Z'
+  },
+  {
     id: 'user-std',
     uid: 'uid-std-007',
     login: 'T00001',
@@ -294,17 +323,345 @@ const DEFAULT_GROUPS: Group[] = [
   }
 ];
 
-const DEFAULT_PRACTICE_PLACES: PracticePlace[] = [];
+const DEFAULT_PRACTICE_PLACES: PracticePlace[] = [
+  {
+    id: 'place-tash-1',
+    organizationId: 'Tash-1',
+    organizationCode: 'Tash-1',
+    name: 'Chirchiq shahar tibbiyot birlashmasi',
+    type: 'Shifoxona',
+    city: 'Chirchiq shahar',
+    address: 'A.Temur ko\'chasi, 12-uy',
+    phone: '+998 (70) 715-22-33',
+    email: 'info@chirchiq-tb.uz',
+    capacity: 60,
+    activeStudentsCount: 38,
+    contactPerson: 'Xolmatov Dilshod Anvarovich',
+    contactPhone: '+998 (90) 111-44-55',
+    departments: ['Jarrohlik', 'Terapiya', 'Pediatriya', 'Kardiologiya', 'Qabul bo\'limi', 'Reanimatsiya', 'Nevrologiya'],
+    contractNumber: 'SH-2026/01',
+    contractDate: '2026-01-10',
+    contractExpiryDate: '2026-12-31',
+    latitude: 41.4682,
+    longitude: 69.5824,
+    allowedRadius: 300,
+    createdAt: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'place-tash-2',
+    organizationId: 'Tash-2',
+    organizationCode: 'Tash-2',
+    name: 'Toshkent viloyati ko\'p tarmoqli tibbiyot markazi',
+    type: 'Klinika',
+    city: 'Toshkent viloyati',
+    address: 'Navoiy shoh ko\'chasi, 45-uy',
+    phone: '+998 (70) 716-44-55',
+    email: 'tv-kttm@tma.uz',
+    capacity: 50,
+    activeStudentsCount: 24,
+    contactPerson: 'Karimova Nargiza Shuhratovna',
+    contactPhone: '+998 (90) 222-55-66',
+    departments: ['Terapiya', 'Ginekologiya', 'Jarrohlik', 'Qabul bo\'limi'],
+    contractNumber: 'SH-2026/02',
+    contractDate: '2026-01-12',
+    contractExpiryDate: '2026-12-31',
+    latitude: 41.4721,
+    longitude: 69.5789,
+    allowedRadius: 300,
+    createdAt: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'place-tash-3',
+    organizationId: 'Tash-3',
+    organizationCode: 'Tash-3',
+    name: 'Chirchiq shahar bolalar shifoxonasi',
+    type: 'Shifoxona',
+    city: 'Chirchiq shahar',
+    address: 'Lomonosov ko\'chasi, 8-uy',
+    phone: '+998 (70) 714-11-22',
+    email: 'bolalar@chirchiq.uz',
+    capacity: 40,
+    activeStudentsCount: 18,
+    contactPerson: 'Sultonov Akmal Baxtiyorovich',
+    contactPhone: '+998 (90) 333-66-77',
+    departments: ['Pediatriya', 'Bolalar xirurgiyasi', 'Reanimatsiya'],
+    contractNumber: 'SH-2026/03',
+    contractDate: '2026-01-15',
+    contractExpiryDate: '2026-12-31',
+    latitude: 41.4650,
+    longitude: 69.5890,
+    allowedRadius: 300,
+    createdAt: '2026-08-01T08:00:00Z'
+  }
+];
 
-const DEFAULT_PRACTICE_DEPARTMENTS: PracticeDepartment[] = [];
+const DEFAULT_PRACTICE_DEPARTMENTS: PracticeDepartment[] = [
+  { id: 'dept-jarrohlik', organizationId: 'Tash-1', practicePlaceId: 'place-tash-1', name: 'Jarrohlik', headDoctor: 'Dots. Ismoilov A.', bedCapacity: 30 },
+  { id: 'dept-terapiya', organizationId: 'Tash-1', practicePlaceId: 'place-tash-1', name: 'Terapiya', headDoctor: 'Dots. Karimova M.', bedCapacity: 40 },
+  { id: 'dept-pediatriya', organizationId: 'Tash-1', practicePlaceId: 'place-tash-1', name: 'Pediatriya', headDoctor: 'Dr. Ergashev N.', bedCapacity: 25 },
+  { id: 'dept-kardiologiya', organizationId: 'Tash-1', practicePlaceId: 'place-tash-1', name: 'Kardiologiya', headDoctor: 'Prof. Sobirov Q.', bedCapacity: 35 }
+];
 
-const DEFAULT_SUPERVISORS: Supervisor[] = [];
+const DEFAULT_SUPERVISORS: Supervisor[] = [
+  {
+    id: 'sup-1',
+    userId: 'user-sup-1',
+    fullName: 'Dots. Karimov Jasur Alisherovich',
+    phone: '+998 (90) 321-44-55',
+    email: 'j.karimov@tma.uz',
+    department: 'Gospital terapiya va kardiologiya kafedrasi',
+    academicDegree: 'Tibbiyot fanlari nomzodi, dotsent',
+    position: 'Kafedra dotsenti',
+    type: 'university',
+    status: 'ACTIVE',
+    createdAt: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'sup-2',
+    userId: 'user-sup-2',
+    fullName: 'Prof. Xusanov Ravshan Karimboyevich',
+    phone: '+998 (90) 123-77-88',
+    email: 'r.xusanov@tma.uz',
+    department: 'Xirurgik kasalliklar kafedrasi',
+    academicDegree: 'Tibbiyot fanlari doktori, professor',
+    position: 'Fakultet dekani, professor',
+    type: 'university',
+    status: 'ACTIVE',
+    createdAt: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'sup-3',
+    userId: 'user-sup-3',
+    fullName: 'Dots. Mirzayeva Ziyoda Erkinovna',
+    phone: '+998 (90) 555-88-99',
+    email: 'z.mirzayeva@tma.uz',
+    department: 'Bolalar kasalliklari va neonatologiya kafedrasi',
+    academicDegree: 'Tibbiyot fanlari nomzodi, dotsent',
+    position: 'Kafedra mudiri',
+    type: 'university',
+    status: 'ACTIVE',
+    createdAt: '2026-08-01T08:00:00Z'
+  }
+];
 
-const DEFAULT_CLINIC_RESPONSIBLES: ClinicResponsible[] = [];
+const DEFAULT_CLINIC_RESPONSIBLES: ClinicResponsible[] = [
+  {
+    id: 'cresp-1',
+    fullName: 'Dr. Xolmatov Dilshod Anvarovich',
+    practicePlaceId: 'place-tash-1',
+    position: 'Bosh shifokor muovini',
+    department: 'Terapiya',
+    phone: '+998 (90) 111-44-55',
+    email: 'd.xolmatov@tma.uz',
+    status: 'ACTIVE',
+    createdAt: '2026-08-01T08:00:00Z'
+  }
+];
 
-const DEFAULT_STUDENTS_V2: Student[] = [];
+const DEFAULT_STUDENTS_V2: Student[] = [
+  {
+    id: 'std-1',
+    userId: 'uid-std-007',
+    studentId: 'T00001',
+    hemisStudentId: '12345678',
+    studentCode: 'T00001',
+    login: 'T00001',
+    fullName: 'Olimov Sardor Botir o\'g\'li',
+    facultyId: 'fac-1',
+    directionId: 'dir-1',
+    courseId: 'course-4',
+    groupId: 'grp-401',
+    phone: '+998 (90) 111-22-33',
+    email: 'T00001@student.uz',
+    status: 'in_practice',
+    currentPracticeId: 'prac-1',
+    currentPracticePlaceId: 'place-tash-1',
+    createdAt: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'std-2',
+    studentId: 'T00002',
+    hemisStudentId: '12345679',
+    studentCode: 'T00002',
+    login: 'T00002',
+    fullName: 'Qodirova Madina Shavkat qizi',
+    facultyId: 'fac-1',
+    directionId: 'dir-1',
+    courseId: 'course-4',
+    groupId: 'grp-401',
+    phone: '+998 (90) 222-33-44',
+    email: 'T00002@student.uz',
+    status: 'in_practice',
+    currentPracticeId: 'prac-1',
+    currentPracticePlaceId: 'place-tash-1',
+    createdAt: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'std-3',
+    studentId: 'T00003',
+    hemisStudentId: '12345680',
+    studentCode: 'T00003',
+    login: 'T00003',
+    fullName: 'Rahmonov Jasur Ulug\'bek o\'g\'li',
+    facultyId: 'fac-1',
+    directionId: 'dir-1',
+    courseId: 'course-4',
+    groupId: 'grp-401',
+    phone: '+998 (90) 333-44-55',
+    email: 'T00003@student.uz',
+    status: 'in_practice',
+    currentPracticeId: 'prac-1',
+    currentPracticePlaceId: 'place-tash-1',
+    createdAt: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'std-4',
+    studentId: 'T00004',
+    hemisStudentId: '12345681',
+    studentCode: 'T00004',
+    login: 'T00004',
+    fullName: 'Yusupova Nilufar Anvar qizi',
+    facultyId: 'fac-1',
+    directionId: 'dir-1',
+    courseId: 'course-4',
+    groupId: 'grp-402',
+    phone: '+998 (90) 444-55-66',
+    email: 'T00004@student.uz',
+    status: 'in_practice',
+    currentPracticeId: 'prac-1',
+    currentPracticePlaceId: 'place-tash-1',
+    createdAt: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'std-5',
+    studentId: 'T00005',
+    hemisStudentId: '12345682',
+    studentCode: 'T00005',
+    login: 'T00005',
+    fullName: 'Bekmurodov Shahzod Nodir o\'g\'li',
+    facultyId: 'fac-1',
+    directionId: 'dir-1',
+    courseId: 'course-3',
+    groupId: 'grp-301',
+    phone: '+998 (90) 555-66-77',
+    email: 'T00005@student.uz',
+    status: 'in_practice',
+    currentPracticeId: 'prac-2',
+    currentPracticePlaceId: 'place-tash-2',
+    createdAt: '2026-08-01T08:00:00Z'
+  }
+];
 
-const DEFAULT_PRACTICES_V2: Practice[] = [];
+const DEFAULT_PRACTICES_V2: Practice[] = [
+  {
+    id: 'prac-1',
+    name: '4-kurs Davolash ishi klinik ishlab chiqarish amaliyoti',
+    type: 'Klinik ishlab chiqarish amaliyoti',
+    code: 'PRAC-2026-MED41',
+    startDate: '2026-10-01',
+    endDate: '2026-11-15',
+    academicYear: '2026-2027',
+    facultyId: 'fac-1',
+    directionId: 'dir-1',
+    courseLevel: 4,
+    groupIds: ['grp-401', 'grp-402'],
+    practicePlaceIds: ['place-tash-1'],
+    supervisorIds: ['sup-1'],
+    clinicResponsibleIds: ['cresp-1'],
+    status: 'ACTIVE',
+    orderNumber: 'BUYRUQ-№188/A',
+    orderDate: '2026-09-20',
+    description: 'Talabalarning statsionar shifoxonalarda ichki kasalliklar, jarrohlik va kardiologiya bo\'limlarida malakaviy ko\'nikmalarini oshirish.',
+    totalHours: 180,
+    credits: 6,
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    createdAt: '2026-08-15T08:00:00Z',
+    updatedAt: '2026-09-28T08:00:00Z'
+  },
+  {
+    id: 'prac-2',
+    name: '3-kurs Davolash ishi hamshiralik malakaviy amaliyoti',
+    type: 'Hamshiralik malakaviy amaliyoti',
+    code: 'PRAC-2026-NURS3',
+    startDate: '2026-10-05',
+    endDate: '2026-10-30',
+    academicYear: '2026-2027',
+    facultyId: 'fac-1',
+    directionId: 'dir-1',
+    courseLevel: 3,
+    groupIds: ['grp-301'],
+    practicePlaceIds: ['place-tash-2'],
+    supervisorIds: ['sup-2'],
+    clinicResponsibleIds: [],
+    status: 'ACTIVE',
+    orderNumber: 'BUYRUQ-№192/A',
+    orderDate: '2026-09-22',
+    description: 'Hamshiralik ishi muolajalari, infuzion terapiya va bemorlarni parvarish qilish amaliyoti.',
+    totalHours: 120,
+    credits: 4,
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:30',
+    endTime: '13:30',
+    createdAt: '2026-08-18T08:00:00Z',
+    updatedAt: '2026-09-28T08:00:00Z'
+  },
+  {
+    id: 'prac-3',
+    name: '2-kurs Pediatriya ishi o\'quv-tanishuv amaliyoti',
+    type: 'O\'quv-tanishuv amaliyoti',
+    code: 'PRAC-2026-PED2',
+    startDate: '2026-11-01',
+    endDate: '2026-11-25',
+    academicYear: '2026-2027',
+    facultyId: 'fac-2',
+    directionId: 'dir-3',
+    courseLevel: 2,
+    groupIds: ['grp-301'],
+    practicePlaceIds: ['place-tash-3'],
+    supervisorIds: ['sup-3'],
+    clinicResponsibleIds: [],
+    status: 'DRAFT',
+    orderNumber: 'BUYRUQ-№205/A',
+    orderDate: '2026-09-28',
+    description: 'Bolalar shifoxonasi tuzilmasi, sanitariya-gigiyena qoidalari bilan tanishuv.',
+    totalHours: 90,
+    credits: 3,
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '09:00',
+    endTime: '13:00',
+    createdAt: '2026-09-01T08:00:00Z',
+    updatedAt: '2026-09-28T08:00:00Z'
+  },
+  {
+    id: 'prac-4',
+    name: '5-kurs Davolash ishi umumiy shifokorlik amaliyoti',
+    type: 'Ishlab chiqarish amaliyoti',
+    code: 'PRAC-2026-MED5',
+    startDate: '2026-09-01',
+    endDate: '2026-10-01',
+    academicYear: '2026-2027',
+    facultyId: 'fac-1',
+    directionId: 'dir-1',
+    courseLevel: 5,
+    groupIds: ['grp-501'],
+    practicePlaceIds: ['place-tash-1'],
+    supervisorIds: ['sup-1'],
+    clinicResponsibleIds: [],
+    status: 'COMPLETED',
+    orderNumber: 'BUYRUQ-№150/A',
+    orderDate: '2026-08-25',
+    description: 'Ambulatoriya va poliklinika sharoitida umumiy amaliyot shifokori vazifalari.',
+    totalHours: 240,
+    credits: 8,
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    createdAt: '2026-08-01T08:00:00Z',
+    updatedAt: '2026-10-02T08:00:00Z'
+  }
+];
 
 const DEFAULT_DISTRIBUTIONS_V2: PracticeDistribution[] = [];
 
@@ -1337,28 +1694,56 @@ class StorageServiceV2 {
   }
 
   private normalizeState(parsed: any): DatabaseStateV2 {
-    parsed.users = parsed.users || [];
+    parsed.users = Array.isArray(parsed.users) && parsed.users.length > 0 ? parsed.users : DEFAULT_USERS_V2;
     parsed.academicYears = parsed.academicYears || [];
-    parsed.faculties = Array.isArray(parsed.faculties) ? parsed.faculties : [];
-    parsed.directions = Array.isArray(parsed.directions) ? parsed.directions : [];
+    parsed.faculties = Array.isArray(parsed.faculties) && parsed.faculties.length > 0 ? parsed.faculties : DEFAULT_FACULTIES;
+    parsed.directions = Array.isArray(parsed.directions) && parsed.directions.length > 0 ? parsed.directions : DEFAULT_DIRECTIONS;
     parsed.courses = parsed.courses && parsed.courses.length > 0 ? parsed.courses : DEFAULT_COURSES;
-    parsed.groups = Array.isArray(parsed.groups) ? parsed.groups : [];
-    parsed.students = parsed.students || [];
-    parsed.practicePlaces = Array.isArray(parsed.practicePlaces) ? parsed.practicePlaces : [];
+    parsed.groups = Array.isArray(parsed.groups) && parsed.groups.length > 0 ? parsed.groups : DEFAULT_GROUPS;
+    parsed.students = Array.isArray(parsed.students) && parsed.students.length > 0 ? parsed.students : DEFAULT_STUDENTS_V2;
+    parsed.practicePlaces = Array.isArray(parsed.practicePlaces) && parsed.practicePlaces.length > 0 ? parsed.practicePlaces : DEFAULT_PRACTICE_PLACES;
     // Ensure legacy demo places are never revived
     const DEMO_PLACE_IDS = ['place-1', 'place-2', 'place-3', 'place-4'];
     parsed.practicePlaces = parsed.practicePlaces.filter((p: any) => p && !DEMO_PLACE_IDS.includes(p.id));
-    parsed.practiceDepartments = Array.isArray(parsed.practiceDepartments) ? parsed.practiceDepartments : [];
+    if (parsed.practicePlaces.length === 0) {
+      parsed.practicePlaces = DEFAULT_PRACTICE_PLACES;
+    }
+    parsed.practiceDepartments = Array.isArray(parsed.practiceDepartments) && parsed.practiceDepartments.length > 0 ? parsed.practiceDepartments : DEFAULT_PRACTICE_DEPARTMENTS;
     
     parsed.deletedSupervisorIds = parsed.deletedSupervisorIds || [];
     parsed.deletedClinicResponsibleIds = parsed.deletedClinicResponsibleIds || [];
     parsed.deletedPracticeIds = parsed.deletedPracticeIds || [];
 
     parsed.supervisors = Array.isArray(parsed.supervisors) ? parsed.supervisors.filter((s: any) => !parsed.deletedSupervisorIds.includes(s.id) && !parsed.deletedSupervisorIds.includes(s.userId)) : [];
+    if (parsed.supervisors.length === 0) {
+      parsed.supervisors = DEFAULT_SUPERVISORS;
+    }
     parsed.clinicResponsibles = Array.isArray(parsed.clinicResponsibles) ? parsed.clinicResponsibles.filter((c: any) => !parsed.deletedClinicResponsibleIds.includes(c.id) && !parsed.deletedClinicResponsibleIds.includes(c.userId)) : [];
+    if (parsed.clinicResponsibles.length === 0) {
+      parsed.clinicResponsibles = DEFAULT_CLINIC_RESPONSIBLES;
+    }
     parsed.practices = Array.isArray(parsed.practices) ? parsed.practices.filter((p: any) => !parsed.deletedPracticeIds.includes(p.id)) : [];
+    if (parsed.practices.length === 0) {
+      parsed.practices = DEFAULT_PRACTICES_V2;
+    }
     parsed.practiceDistributions = Array.isArray(parsed.practiceDistributions) ? parsed.practiceDistributions.filter((d: any) => !parsed.deletedPracticeIds.includes(d.practiceId)) : [];
     parsed.practiceAssignments = Array.isArray(parsed.practiceAssignments) ? parsed.practiceAssignments.filter((a: any) => !parsed.deletedPracticeIds.includes(a.practiceId)) : [];
+
+    // Ensure admin and dept_head are present
+    const hasAdmin = (parsed.users || []).some((u: any) => u.login === 'admin' || u.role === 'SUPER_ADMIN');
+    if (!hasAdmin) {
+      parsed.users.unshift(DEFAULT_USERS_V2[0]);
+    }
+    const hasHead = (parsed.users || []).some((u: any) => u.login === 'dept_head' || u.role === 'PRACTICE_HEAD');
+    if (!hasHead) {
+      const headUser = DEFAULT_USERS_V2.find(u => u.login === 'dept_head');
+      if (headUser) parsed.users.push(headUser);
+    }
+    const hasSup = (parsed.users || []).some((u: any) => u.login === 'supervisor');
+    if (!hasSup) {
+      const supUser = DEFAULT_USERS_V2.find(u => u.login === 'supervisor');
+      if (supUser) parsed.users.push(supUser);
+    }
     parsed.attendance = parsed.attendance || [];
     parsed.attendanceSessions = parsed.attendanceSessions || [];
     parsed.dailyJournals = parsed.dailyJournals || [];
@@ -3598,6 +3983,14 @@ class StorageServiceV2 {
     );
 
     if (existing && existing.checkInTime) {
+      if (existing.status === 'PENDING' || existing.status === 'PENDING_CONFIRMATION') {
+        return {
+          success: false,
+          error: 'Siz amaliyot bazasiga kelganingizni qayd etgansiz. Rahbar tasdiqlashi kutilmoqda.',
+          alreadyRecorded: true,
+          attendance: existing
+        };
+      }
       return {
         success: false,
         error: 'Bugungi davomat allaqachon qayd etilgan.',
@@ -3606,12 +3999,7 @@ class StorageServiceV2 {
       };
     }
 
-    // 5. Determine status (PRESENT vs LATE)
-    const cutoffMinutes = 8 * 60 + 15; // 08:15 cutoff
-    const [currentHour, currentMin] = nowHHMM.split(':').map(Number);
-    const currentTotalMin = (currentHour || 0) * 60 + (currentMin || 0);
-    const calculatedStatus: AttendanceStatus = currentTotalMin > cutoffMinutes ? 'LATE' : 'PRESENT';
-
+    // 5. GPS check-in creates record in PENDING status waiting for supervisor confirmation
     const newRecord: Attendance = {
       id: existing?.id || `att-gps-${Date.now()}-${params.studentId}`,
       practiceId: assignment.practiceId,
@@ -3624,15 +4012,15 @@ class StorageServiceV2 {
       date: todayStr,
       checkInTime: nowHHMM,
       checkOutTime: undefined,
-      status: calculatedStatus,
+      status: 'PENDING', // Awaiting supervisor approval
       attendanceMethod: 'GPS',
       latitude: params.latitude,
       longitude: params.longitude,
       locationVerified: true,
       deviceInfo: params.deviceInfo || (typeof navigator !== 'undefined' ? navigator.userAgent : 'Mobile App Web'),
-      note: `GPS koordinata orqali tasdiqlandi (Masofa: ${Math.round(distance)} m / ${place.name})`,
-      verifiedBy: 'GPS Geolokatsiya tizimi',
-      verifiedAt: now.toISOString(),
+      note: `GPS orqali kelindi (${place.name}, masofa: ${Math.round(distance)}m). Rahbar tasdiqlashi kutilmoqda.`,
+      verifiedBy: undefined,
+      verifiedAt: undefined,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString()
     };
@@ -3644,36 +4032,32 @@ class StorageServiceV2 {
       state.attendance.unshift(newRecord);
     }
 
-    // Supervisor notification
-    if (assignment.supervisorId) {
-      const supervisor = state.supervisors.find(s => s.id === assignment.supervisorId);
-      const student = state.students.find(s => s.id === params.studentId);
-      if (supervisor && student) {
-        state.notifications.unshift({
-          id: `notif-att-gps-${Date.now()}-${student.id}`,
-          recipientUserId: supervisor.userId || supervisor.id,
-          recipientRoles: ['PRACTICE_SUPERVISOR'],
-          title: '📍 GPS Davomat qayd etildi',
-          message: `${student.fullName} tashkilot hududidan (${place.name}, masofa: ${Math.round(distance)}m) davomatdan o'tdi.`,
-          type: 'success',
-          createdAt: now.toISOString(),
-          isRead: false,
-          linkModule: 'attendance'
-        });
-      }
-    }
+    // Real-time notification to supervisor
+    const supervisor = state.supervisors.find(s => s.id === assignment.supervisorId);
+    const student = state.students.find(s => s.id === params.studentId);
+    const group = state.groups.find(g => g.id === student?.groupId);
+
+    this.addNotification({
+      recipientUserId: supervisor?.userId || supervisor?.id || 'sup-1',
+      recipientRoles: ['PRACTICE_SUPERVISOR', 'supervisor'],
+      title: '📍 Talaba keldi: Davomatni tasdiqlang',
+      message: `${student?.fullName || 'Talaba'} (${group?.name || 'Guruh'}) amaliyot bazasiga (${place.name}, masofa: ${Math.round(distance)}m) yetib keldi. Davomatni tasdiqlashingiz kutilmoqda.`,
+      type: 'warning',
+      linkModule: 'attendance'
+    });
 
     this.recordAuditLog({
       userId: params.studentId,
       userRole: 'STUDENT',
-      action: 'attendanceCheckIn',
+      action: 'attendanceCheckInGPS',
       entity: 'attendance',
       entityId: newRecord.id,
       metadata: JSON.stringify({
         method: 'GPS',
         distanceMeters: Math.round(distance),
         placeId: place.id,
-        placeName: place.name
+        placeName: place.name,
+        status: 'PENDING'
       })
     });
 
@@ -3686,8 +4070,102 @@ class StorageServiceV2 {
   }
 
   /**
-   * Check-Out recording
+   * Confirm student attendance by supervisor
    */
+  public confirmStudentAttendance(
+    attendanceId: string,
+    supervisorUserId: string,
+    supervisorFullName = 'Amaliyot rahbari'
+  ): { success: boolean; attendance?: Attendance; error?: string } {
+    const state = this.getState();
+    const record = state.attendance.find(a => a.id === attendanceId);
+    if (!record) {
+      return { success: false, error: 'Davomat yozuvi topilmadi.' };
+    }
+
+    const cutoffMinutes = 8 * 60 + 15; // 08:15 cutoff
+    const [h, m] = (record.checkInTime || '08:30').split(':').map(Number);
+    const checkInMin = (h || 0) * 60 + (m || 0);
+    const finalStatus: AttendanceStatus = checkInMin > cutoffMinutes ? 'LATE' : 'PRESENT';
+
+    record.status = finalStatus;
+    record.verifiedBy = supervisorFullName;
+    record.verifiedAt = new Date().toISOString();
+    record.note = `${record.note || 'GPS davomat'} — ${supervisorFullName} tomonidan tasdiqlandi.`;
+    record.updatedAt = new Date().toISOString();
+
+    const student = state.students.find(s => s.id === record.studentId);
+    if (student) {
+      this.addNotification({
+        recipientUserId: student.userId || student.id,
+        recipientRoles: ['STUDENT', 'student'],
+        title: '✅ Bugungi davomatingiz tasdiqlandi',
+        message: `Amaliyot rahbari (${supervisorFullName}) sizning bugungi davomatingizni tasdiqladi. Elektron kundalikni to'ldirishingiz mumkin.`,
+        type: 'success',
+        linkModule: 'daily_journal'
+      });
+    }
+
+    this.recordAuditLog({
+      userId: supervisorUserId,
+      userRole: 'PRACTICE_SUPERVISOR',
+      action: 'attendanceConfirmed',
+      entity: 'attendance',
+      entityId: record.id,
+      metadata: JSON.stringify({ studentId: record.studentId, status: record.status })
+    });
+
+    this.saveState(state);
+    return { success: true, attendance: record };
+  }
+
+  /**
+   * Submit draft journal to supervisor for review
+   */
+  public submitDraftJournalToSupervisor(
+    journalId: string,
+    actorUserId = 'system'
+  ): { success: boolean; journal?: DailyJournal; error?: string } {
+    const state = this.getState();
+    const journal = state.dailyJournals.find(j => j.id === journalId);
+    if (!journal) {
+      return { success: false, error: 'Kundalik topilmadi.' };
+    }
+    if (journal.isLocked || journal.status === 'LOCKED' || journal.status === 'FINAL_APPROVED') {
+      return { success: false, error: 'Ushbu kundalik allaqachon tasdiqlangan va qulflangan.' };
+    }
+
+    journal.status = 'SUBMITTED';
+    journal.submittedAt = new Date().toISOString();
+    journal.updatedAt = new Date().toISOString();
+
+    const student = state.students.find(s => s.id === journal.studentId);
+    const supervisor = state.supervisors.find(s => s.id === journal.supervisorId);
+    const group = state.groups.find(g => g.id === student?.groupId);
+
+    if (supervisor) {
+      this.addNotification({
+        recipientUserId: supervisor.userId || supervisor.id,
+        recipientRoles: ['PRACTICE_SUPERVISOR', 'supervisor'],
+        title: '📝 Yangi kundalik tekshiruvga yuborildi',
+        message: `${student?.fullName || 'Talaba'} (${group?.name || 'Guruh'}) ${journal.date} kungi amaliyot kundaligini tekshirish uchun yubordi.`,
+        type: 'info',
+        linkModule: 'daily_journal'
+      });
+    }
+
+    this.recordAuditLog({
+      userId: actorUserId,
+      userRole: 'STUDENT',
+      action: 'journalSubmittedToSupervisor',
+      entity: 'dailyJournals',
+      entityId: journal.id,
+      metadata: JSON.stringify({ studentId: journal.studentId, date: journal.date })
+    });
+
+    this.saveState(state);
+    return { success: true, journal };
+  }
   public recordCheckOut(attendanceId: string, actorUserId: string, actorRole = 'STUDENT'): { success: boolean; attendance?: Attendance; error?: string } {
     const state = this.getState();
     const record = state.attendance.find(a => a.id === attendanceId);
@@ -3908,18 +4386,28 @@ class StorageServiceV2 {
     if (!attendance) {
       return {
         eligible: false,
-        reason: 'Ushbu kun uchun davomat mavjud emas. Kundalik to\'ldirish uchun avval QR davomatdan o\'tishingiz lozim.',
+        reason: 'Ushbu kun uchun davomat mavjud emas. Kundalik to\'ldirish uchun avval GPS orqali bazaga kelganingizni qayd eting.',
         assignment
       };
     }
 
     const statusUpper = attendance.status.toUpperCase();
 
+    // Pending supervisor confirmation
+    if (statusUpper === 'PENDING' || statusUpper === 'PENDING_CONFIRMATION') {
+      return {
+        eligible: false,
+        reason: 'Siz amaliyot bazasiga kelgansiz (GPS qayd etilgan). Hozirda amaliyot rahbari davomatni tasdiqlashi kutilmoqda. Rahbar tasdiqlaganidan so\'ng kundalik ochiladi.',
+        attendance,
+        assignment
+      };
+    }
+
     // Section 3 rule: ABSENT -> "Ushbu kun uchun davomat mavjud emas. Kundalik to'ldirish mumkin emas."
     if (statusUpper === 'ABSENT') {
       return {
         eligible: false,
-        reason: 'Ushbu kun uchun davomat mavjud emas. Kundalik to\'ldirish mumkin emas.',
+        reason: 'Ushbu kunda amaliyotga kelmagansiz (ABSENT). Kundalik to\'ldirish taqiqlanadi.',
         attendance,
         assignment
       };
@@ -3939,7 +4427,7 @@ class StorageServiceV2 {
     if (statusUpper !== 'PRESENT' && statusUpper !== 'LATE') {
       return {
         eligible: false,
-        reason: 'Kundalikni faqat amaliyotga kelgan (PRESENT) yoki kechikkan (LATE) kunlarda to\'ldirish mumkin.',
+        reason: 'Kundalikni faqat amaliyot rahbari davomatni tasdiqlagan (PRESENT yoki LATE) kunlarda to\'ldirish mumkin.',
         attendance,
         assignment
       };

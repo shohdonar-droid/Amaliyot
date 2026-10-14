@@ -313,8 +313,8 @@ export interface PracticeAssignment {
 }
 
 export type AttendanceStatus = 
-  | 'present' | 'absent' | 'excused' | 'late'
-  | 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE';
+  | 'present' | 'absent' | 'excused' | 'late' | 'pending'
+  | 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | 'PENDING' | 'PENDING_CONFIRMATION';
 
 export type AttendanceSessionStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
 

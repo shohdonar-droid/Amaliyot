@@ -38,6 +38,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { useAuth } from '../../../context/AuthContext';
 import { storageService } from '../../../services/storageService';
 import { ActiveModule } from '../../layout/Sidebar';
+import { PracticesListOverview } from '../practices/PracticesListOverview';
 
 interface DashboardModuleProps {
   onNavigate: (module: ActiveModule) => void;
@@ -901,6 +902,13 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           </div>
         )}
 
+        {/* Tizimda shu vaqtgacha yaratilgan amaliyotlar ro'yxati (Bo'lim boshlig'i) */}
+        <PracticesListOverview
+          onNavigate={onNavigate}
+          title="Tizimda shu vaqtgacha yaratilgan amaliyotlar ro'yxati"
+          subtitle="Bo'lim boshlig'i nazorati ostidagi barcha o'quv, klinik ishlab chiqarish va malakaviy amaliyotlar"
+        />
+
         {/* Katta action cards: 10 ta asosiy bo‘lim */}
         <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -1052,6 +1060,13 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           </div>
         </div>
       </div>
+
+      {/* Tizimda shu vaqtgacha yaratilgan amaliyotlar ro'yxati (Admin) */}
+      <PracticesListOverview
+        onNavigate={onNavigate}
+        title="Tizimda shu vaqtgacha yaratilgan amaliyotlar ro'yxati"
+        subtitle="Rektorat va amaliyot bo'limi tomonidan tasdiqlangan barcha o'quv, klinik ishlab chiqarish va malakaviy amaliyotlar"
+      />
 
       {/* TEZKOR AMALLAR: Talabalar, Amaliyot yaratish, Taqsimot, Tashkilotlar, Hisobotlar */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">

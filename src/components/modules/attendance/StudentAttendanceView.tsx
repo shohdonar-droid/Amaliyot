@@ -31,7 +31,7 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
   const { currentUser } = useAuth();
   const { showToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'QR' | 'GPS'>('QR');
+  const [activeTab, setActiveTab] = useState<'GPS' | 'QR'>('GPS');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isConfirmingGps, setIsConfirmingGps] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -108,9 +108,9 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
         setIsInsideGeofence(inside);
 
         if (inside) {
-          showToast('success', 'GPS tasdiqlandi!', `Amaliyot bazasi hududidasiz (${distM} metr). QR kodni skanerlash ruxsat etildi.`);
+          showToast('success', 'Tashkilot hududidasiz!', `Siz amaliyot bazasidasiz (${distM} metr). "BUGUN KELDIM" tugmasi faollashdi.`);
         } else {
-          showToast('error', 'Hududdan tashqaridasiz', `Siz amaliyot bazasidan ${distM} metr uzoqdasiz. Skanerlash uchun 300 metr radiusda bo'lishingiz shart.`);
+          showToast('warning', 'Hududdan tashqaridasiz', `Amaliyot bazasidan ${distM} metr uzoqdasiz. Davomat uchun 300 metr radiusda bo'lishingiz shart.`);
         }
       },
       err => {
@@ -131,11 +131,7 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
   }, [place?.id]);
 
   const handleOpenScanner = () => {
-    if (!isInsideGeofence) {
-      showToast('warning', 'QR skaner bloklangan', `Siz amaliyot bazasi 300 metr radiusida emassiz (Masofa: ${distanceMeters} m). Skanerlash uchun avval GPS ni yangilang.`);
-      return;
-    }
-    setIsScannerOpen(true);
+    showToast('info', 'QR davomat to\'xtatilgan', 'QR kod orqali davomat vaqtincha to\'xtatilgan. Faqat GPS orqali amalga oshiriladi.');
   };
 
   if (!student) {
@@ -147,7 +143,7 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
     );
   }
 
-  // Handle GPS attendance confirmation
+  // Handle GPS attendance confirmation ("BUGUN KELDIM")
   const handleConfirmGpsAttendance = async () => {
     if (!place?.latitude || !place?.longitude) {
       showToast('error', 'Koordinatalar mavjud emas', `Amaliyot bazasi (${place?.name || 'Tashkilot'}) uchun GPS koordinatalari kiritilmagan.`);
@@ -155,7 +151,7 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
     }
 
     if (!currentCoords) {
-      showToast('error', 'GPS xatoligi', 'Sizning joriy koordinatalaringiz aniqlanmadi. Iltimos GPS ruxsatini tekshiring.');
+      showToast('error', 'GPS xatoligi', 'Sizning joriy koordinatalaringiz aniqlanmadi. Iltimos "GPS ni yangilash" tugmasini bosing.');
       return;
     }
 
@@ -174,7 +170,7 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
       });
 
       if (res.success) {
-        showToast('success', 'Davomat tasdiqlandi!', `GPS orqali kelganlik qayd etildi (${distanceMeters} metr masofada).`);
+        showToast('success', 'Kelganligingiz qayd etildi!', `Amaliyot rahbariga real vaqtda xabar yuborildi. Rahbar tasdiqlashi kutilmoqda.`);
         if (onRefresh) onRefresh();
       } else {
         showToast('warning', 'Eslatma', res.error || 'Davomat allaqachon qayd etilgan.');
@@ -199,6 +195,7 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
 
   const isPresent = (st?: string) => st?.toUpperCase() === 'PRESENT';
   const isLate = (st?: string) => st?.toUpperCase() === 'LATE';
+  const isPending = (st?: string) => st?.toUpperCase() === 'PENDING' || st?.toUpperCase() === 'PENDING_CONFIRMATION';
   const isAbsent = (st?: string) => st?.toUpperCase() === 'ABSENT';
   const isExcused = (st?: string) => st?.toUpperCase() === 'EXCUSED';
 
@@ -218,13 +215,13 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div>
             <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block">
-              Mobil davomat
+              Mobil davomat · GPS Geofencing
             </span>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900">
               Bugungi davomat
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Amaliyot bazasi: <strong className="text-slate-800">{place?.name || 'Amaliyot bazasi'}</strong> · Bo'lim: <strong className="text-blue-700">{assignment?.department || 'Biriktirilmagan (Taqsimot kutilmoqda)'}</strong>
+              Amaliyot bazasi: <strong className="text-slate-800">{place?.name || 'Amaliyot bazasi'}</strong> · Bo'lim: <strong className="text-blue-700">{assignment?.department || 'Biriktirilmagan'}</strong>
             </p>
           </div>
 
@@ -234,75 +231,59 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
           </span>
         </div>
 
-        {/* Tab: QR / GPS */}
-        <div className="flex items-center p-1 bg-slate-100 rounded-2xl w-full max-w-xs">
-          <button
-            type="button"
-            onClick={() => setActiveTab('QR')}
-            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'QR'
-                ? 'bg-white text-blue-700 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <QrCode className="w-4 h-4" />
-            <span>QR</span>
-          </button>
+        {/* Tab: GPS (Asosiy) va QR (To'xtatilgan) */}
+        <div className="flex items-center p-1 bg-slate-100 rounded-2xl w-full max-w-sm">
           <button
             type="button"
             onClick={() => setActiveTab('GPS')}
             className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === 'GPS'
-                ? 'bg-white text-blue-700 shadow-xs'
+                ? 'bg-white text-emerald-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Navigation className="w-4 h-4" />
-            <span>GPS</span>
+            <Navigation className="w-4 h-4 text-emerald-600" />
+            <span>GPS Davomat</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('QR')}
+            className={`flex-1 py-2 text-xs font-medium rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'QR'
+                ? 'bg-white text-slate-800 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>QR Kod (To'xtatilgan)</span>
           </button>
         </div>
 
-        {/* Tab 1: QR Content */}
+        {/* Tab 1: QR Content (Vaqtincha to'xtatilgan) */}
         {activeTab === 'QR' && (
-          <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/80 text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white mx-auto flex items-center justify-center shadow-md">
-              <QrCode className="w-8 h-8" />
+          <div className="p-6 rounded-2xl bg-amber-50/60 border border-amber-200 text-center space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 mx-auto flex items-center justify-center">
+              <QrCode className="w-7 h-7" />
             </div>
-
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Amaliyot bazasi QR Kodini Skanerlash
+              <h2 className="text-base font-bold text-amber-950">
+                QR kod bilan davomat vaqtincha to'xtatilgan
               </h2>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Amaliyot bazasida o‘rnatilgan QR kodni kamerangiz orqali skanerlang. Skanerlash uchun bazadan 300 metr radiusda bo‘lishingiz shart.
+              <p className="text-xs text-amber-800 mt-1 max-w-md mx-auto">
+                Hozirgi davrda davomat faqat amaliyot bazasi hududida bo'lishingizni tekshiruvchi <strong>GPS Geofencing</strong> orqali qabul qilinadi.
               </p>
             </div>
-
-            {!isInsideGeofence && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-medium max-w-md mx-auto flex items-center justify-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
-                <span>QR skaner bloklangan: Siz amaliyot bazasidan {distanceMeters} metr uzoqdasiz (300m talab qilinadi).</span>
-              </div>
-            )}
-
-            <div>
-              <button
-                type="button"
-                onClick={handleOpenScanner}
-                className={`w-full sm:w-auto px-8 py-3.5 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center justify-center gap-2 ${
-                  isInsideGeofence
-                    ? 'bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-blue-600/20'
-                    : 'bg-slate-400 hover:bg-slate-500 cursor-not-allowed'
-                }`}
-              >
-                <QrCode className="w-4 h-4" />
-                <span>{isInsideGeofence ? 'QR SKANERLASH' : 'QR SKANER (BLOKLANGAN)'}</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('GPS')}
+              className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors cursor-pointer"
+            >
+              GPS Davomatiga o'tish →
+            </button>
           </div>
         )}
 
-        {/* Tab 2: GPS Content */}
+        {/* Tab 2: GPS Content (Asosiy talab) */}
         {activeTab === 'GPS' && (
           <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-50 to-emerald-50 border border-slate-200 text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white mx-auto flex items-center justify-center shadow-md">
@@ -310,53 +291,87 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
             </div>
 
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                GPS Geofencing Nazorati (300m radius)
+              <h2 className="text-base sm:text-lg font-black text-slate-900">
+                Amaliyot bazasi GPS Geofencing (300m radius)
               </h2>
-              <p className="text-sm font-mono font-bold text-slate-700 mt-1">
-                Amaliyot bazasigacha masofa: <span className="text-blue-600">{distanceMeters} metr</span>
+              <p className="text-xs text-slate-600 mt-1">
+                Tashkilot: <strong>{place?.name || 'Klinik baza'}</strong> · Koordinatalar: {place?.latitude?.toFixed(4)}, {place?.longitude?.toFixed(4)}
+              </p>
+              <p className="text-sm font-mono font-bold text-slate-800 mt-1.5">
+                Bazasigacha masofangiz: <span className={isInsideGeofence ? 'text-emerald-700 font-black' : 'text-rose-600 font-black'}>{distanceMeters} metr</span>
               </p>
             </div>
 
             {/* Status indicator */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-wider border">
               {isInsideGeofence ? (
-                <span className="text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-xl border border-emerald-300">
-                  🟢 Amaliyot bazasi hududidasiz (300m ichida)
+                <span className="text-emerald-800 bg-emerald-100 px-3.5 py-1.5 rounded-xl border border-emerald-300 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Amaliyot bazasi hududidasiz (300m ichida)
                 </span>
               ) : (
-                <span className="text-rose-700 bg-rose-100/80 px-3 py-1 rounded-xl border border-rose-300">
-                  🔴 Amaliyot bazasidan uzoqdasiz (&gt;300m)
+                <span className="text-rose-800 bg-rose-100 px-3.5 py-1.5 rounded-xl border border-rose-300 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                  Amaliyot bazasidan uzoqdasiz (&gt;300m)
                 </span>
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <button
                 type="button"
                 disabled={isLocating}
                 onClick={handleRefreshGps}
-                className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer inline-flex items-center justify-center gap-2"
               >
-                <Navigation className={`w-4 h-4 ${isLocating ? 'animate-spin' : ''}`} />
+                <Navigation className={`w-4 h-4 text-blue-600 ${isLocating ? 'animate-spin' : ''}`} />
                 <span>{isLocating ? 'Aniqlanmoqda...' : 'GPS NI YANGILASH'}</span>
               </button>
 
+              {/* BUGUN KELDIM BUTTON - Active when inside geofence, sends real-time alert to supervisor */}
               <button
                 type="button"
                 disabled={isConfirmingGps || !isInsideGeofence || Boolean(todayRecord?.checkInTime)}
                 onClick={handleConfirmGpsAttendance}
-                className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 active:scale-95 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer inline-flex items-center justify-center gap-2"
+                className={`w-full sm:w-auto px-8 py-3.5 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer inline-flex items-center justify-center gap-2 ${
+                  todayRecord?.status === 'PENDING' || todayRecord?.status === 'PENDING_CONFIRMATION'
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30'
+                    : isPresent(todayRecord?.status) || isLate(todayRecord?.status)
+                    ? 'bg-slate-400 cursor-not-allowed'
+                    : isInsideGeofence
+                    ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 shadow-emerald-600/30 ring-2 ring-emerald-400 ring-offset-2'
+                    : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                }`}
               >
-                {isConfirmingGps ? (
-                  <span>Tasdiqlanmoqda...</span>
-                ) : todayRecord?.checkInTime ? (
-                  <span>Bugun tasdiqlangan</span>
-                ) : (
-                  <span>[GPS ORQALI KELISH]</span>
-                )}
+                <CheckCircle2 className="w-5 h-5" />
+                <span>
+                  {isConfirmingGps ? (
+                    'Yuborilmoqda...'
+                  ) : todayRecord?.status === 'PENDING' || todayRecord?.status === 'PENDING_CONFIRMATION' ? (
+                    '⏳ RAHBAR TASDIQLASHI KUTILMOQDA'
+                  ) : isPresent(todayRecord?.status) || isLate(todayRecord?.status) ? (
+                    `✅ DAVOMAT TASDIQLANGAN (${todayRecord.checkInTime})`
+                  ) : isInsideGeofence ? (
+                    'BUGUN KELDIM'
+                  ) : (
+                    'BUGUN KELDIM (HUDUDDAN TASHQARISIZ)'
+                  )}
+                </span>
               </button>
             </div>
+
+            {/* Explanatory banner */}
+            {isInsideGeofence && !todayRecord && (
+              <p className="text-xs text-emerald-800 font-semibold max-w-md mx-auto bg-emerald-100/70 py-1.5 px-3 rounded-lg border border-emerald-200">
+                💡 "BUGUN KELDIM" tugmasini bosing. Amaliyot rahbariga real vaqtda siz kelganingiz haqida xabar boradi.
+              </p>
+            )}
+
+            {todayRecord && isPending(todayRecord.status) && (
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 font-medium max-w-lg mx-auto">
+                ⏳ <strong>Kelganligingiz qayd etildi!</strong> Amaliyot rahbariga real vaqtda xabar yuborildi. Rahbar tasdiqlashi bilan davomatingiz to'liq qabul qilinadi va elektron kundalik ochiladi.
+              </div>
+            )}
           </div>
         )}
 
@@ -364,8 +379,15 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
         <div className="pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center text-xs">
           <div className="p-3 bg-slate-50 rounded-xl">
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">Holat</span>
-            <span className={`font-bold mt-0.5 block ${todayRecord ? 'text-emerald-600' : 'text-slate-500'}`}>
-              {todayRecord ? (todayRecord.status === 'LATE' ? 'Kechikkan' : 'Kelgan') : 'Qayd etilmagan'}
+            <span className={`font-bold mt-0.5 block ${
+              isPresent(todayRecord?.status) ? 'text-emerald-600' :
+              isPending(todayRecord?.status) ? 'text-amber-600' :
+              isLate(todayRecord?.status) ? 'text-amber-600' : 'text-slate-500'
+            }`}>
+              {todayRecord ? (
+                isPending(todayRecord.status) ? 'Kutilmoqda (Rahbar)' :
+                todayRecord.status === 'LATE' ? 'Kechikkan (Tasdiqlangan)' : 'Kelgan (Tasdiqlangan)'
+              ) : 'Qayd etilmagan'}
             </span>
           </div>
           <div className="p-3 bg-slate-50 rounded-xl">

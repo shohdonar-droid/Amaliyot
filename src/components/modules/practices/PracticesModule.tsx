@@ -406,13 +406,12 @@ export function PracticesModule() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="py-3 px-3.5">Amaliyot nomi & turi</th>
-                  <th className="py-3 px-3">Fakultet & Yo'nalish</th>
-                  <th className="py-3 px-3 text-center">Kurs</th>
+                  <th className="py-3 px-3.5">Amaliyot nomi & kodi</th>
+                  <th className="py-3 px-3">Guruh(lar)</th>
+                  <th className="py-3 px-3">Amaliyot bazasi (Tashkilot)</th>
+                  <th className="py-3 px-3">Universitet rahbari</th>
                   <th className="py-3 px-3">Muddatlari</th>
                   <th className="py-3 px-3 text-center">Talabalar</th>
-                  <th className="py-3 px-3 text-center">Bazalar</th>
-                  <th className="py-3 px-3 text-center">Rahbarlar</th>
                   <th className="py-3 px-3">Status</th>
                   <th className="py-3 px-3 text-right">Amallar</th>
                 </tr>
@@ -422,9 +421,10 @@ export function PracticesModule() {
                   const norm = getNormStatus(practice.status);
                   const faculty = faculties.find(f => f.id === practice.facultyId);
                   const direction = directions.find(d => d.id === practice.directionId);
+                  const pGroups = groups.filter(g => (practice.groupIds || []).includes(g.id));
+                  const pPlaces = places.filter(pl => (practice.practicePlaceIds || []).includes(pl.id));
+                  const pSupervisors = supervisors.filter(s => (practice.supervisorIds || []).includes(s.id));
                   const studentCount = allAssignments.filter(a => a.practiceId === practice.id).length;
-                  const placesCount = (practice.practicePlaceIds || []).length;
-                  const supervisorsCount = (practice.supervisorIds || []).length;
 
                   const statusVariant: StatusVariant =
                     norm === 'ACTIVE' ? 'success' :
@@ -443,39 +443,84 @@ export function PracticesModule() {
                   return (
                     <tr key={practice.id} className="hover:bg-slate-50/80 transition-colors">
                       {/* Name & Type */}
-                      <td className="py-3 px-3.5">
+                      <td className="py-3 px-3.5 max-w-xs">
                         <div className="font-semibold text-slate-900 leading-tight">
                           {practice.name}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
-                          <span className="font-mono text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-slate-500">
+                          <span className="font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 font-bold text-[10px]">
                             {practice.code}
                           </span>
-                          <span>·</span>
-                          <span className="text-slate-600 font-medium">{practice.type}</span>
+                          {practice.orderNumber && (
+                            <span className="font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+                              {practice.orderNumber}
+                            </span>
+                          )}
+                          <span className="text-slate-600 font-medium text-[10px]">{practice.type}</span>
                         </div>
                       </td>
 
-                      {/* Faculty & Direction */}
-                      <td className="py-3 px-3 max-w-[200px]">
-                        <div className="font-medium text-slate-800 truncate" title={faculty?.name}>
-                          {faculty?.name || '—'}
+                      {/* Groups */}
+                      <td className="py-3 px-3 max-w-[140px]">
+                        <div className="flex flex-wrap gap-1">
+                          {pGroups.length > 0 ? (
+                            pGroups.map(g => (
+                              <span key={g.id} className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-bold font-mono text-[10px]">
+                                {g.name}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">Guruh biriktirilmagan</span>
+                          )}
                         </div>
-                        <div className="text-[11px] text-slate-500 truncate" title={direction?.name}>
-                          {direction?.name || '—'}
+                        <div className="text-[10px] text-slate-500 mt-1">
+                          {practice.courseLevel}-kurs · {direction?.name || 'Davolash'}
                         </div>
                       </td>
 
-                      {/* Course */}
-                      <td className="py-3 px-3 text-center">
-                        <span className="inline-block px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-700 font-mono text-[11px]">
-                          {practice.courseLevel}-kurs
-                        </span>
+                      {/* Practice Place Organization */}
+                      <td className="py-3 px-3 max-w-[180px]">
+                        {pPlaces.length > 0 ? (
+                          pPlaces.map(pl => (
+                            <div key={pl.id} className="space-y-0.5">
+                              <div className="font-semibold text-slate-800 text-[11px] flex items-center gap-1 truncate" title={pl.name}>
+                                <Hospital className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                <span className="truncate">{pl.name}</span>
+                              </div>
+                              <div className="font-mono text-[10px] text-blue-600 font-semibold pl-4">
+                                {pl.code || pl.organizationCode || 'Tash-1'}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">Baza tanlanmagan</span>
+                        )}
+                      </td>
+
+                      {/* Supervisors */}
+                      <td className="py-3 px-3 max-w-[160px]">
+                        {pSupervisors.length > 0 ? (
+                          pSupervisors.map(s => (
+                            <div key={s.id} className="space-y-0.5">
+                              <div className="font-semibold text-slate-800 text-[11px] flex items-center gap-1 truncate" title={s.fullName}>
+                                <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span className="truncate">{s.fullName}</span>
+                              </div>
+                              {s.phone && (
+                                <div className="text-[10px] text-slate-500 pl-4 font-mono">
+                                  {s.phone}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">Rahbar biriktirilmagan</span>
+                        )}
                       </td>
 
                       {/* Dates */}
                       <td className="py-3 px-3 whitespace-nowrap">
-                        <div className="font-mono text-slate-700 tabular-nums">
+                        <div className="font-mono text-slate-700 tabular-nums font-semibold">
                           {practice.startDate}
                         </div>
                         <div className="text-[11px] font-mono text-slate-400 tabular-nums">
@@ -487,20 +532,6 @@ export function PracticesModule() {
                       <td className="py-3 px-3 text-center">
                         <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full text-xs">
                           {studentCount}
-                        </span>
-                      </td>
-
-                      {/* Places Count */}
-                      <td className="py-3 px-3 text-center">
-                        <span className="font-mono font-bold text-slate-700">
-                          {placesCount} ta
-                        </span>
-                      </td>
-
-                      {/* Supervisors Count */}
-                      <td className="py-3 px-3 text-center">
-                        <span className="font-mono font-bold text-slate-700">
-                          {supervisorsCount} nafar
                         </span>
                       </td>
 
