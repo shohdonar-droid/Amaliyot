@@ -139,6 +139,7 @@ export type PracticePlaceType = 'Shifoxona' | 'Klinika' | 'Poliklinika' | 'Ilmiy
 
 export interface PracticePlace {
   id: string;
+  code?: string;
   organizationId?: string; // e.g. TASH-000125
   organizationCode?: string;
   name: string;
@@ -352,7 +353,7 @@ export interface Attendance {
   distributionId?: string;
   attendanceMethod?: 'GPS' | 'QR' | 'TOKEN' | 'MANUAL';
   approvalType?: 'AUTO' | 'MANUAL';
-  status: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | 'FAILED' | 'BLOCKED' | 'present' | 'absent' | 'excused' | 'late';
+  status: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | 'FAILED' | 'BLOCKED' | 'PENDING' | 'PENDING_CONFIRMATION' | 'present' | 'absent' | 'excused' | 'late' | 'pending' | 'pending_confirmation';
   latitude?: number;
   longitude?: number;
   failureReason?: string;
@@ -860,12 +861,15 @@ export type AuditAction =
   | 'attendanceSessionCreated'
   | 'attendanceSessionExpired'
   | 'attendanceCheckIn'
+  | 'attendanceCheckInGPS'
+  | 'attendanceConfirmed'
   | 'attendanceCheckOut'
   | 'attendanceManualCreated'
   | 'attendanceManualUpdated'
   | 'attendanceExcused'
   | 'attendanceDeleted'
   | 'journalSubmitted'
+  | 'journalSubmittedToSupervisor'
   | 'journalReviewed'
   | 'journalFinalApproved'
   | 'journalUpdated'

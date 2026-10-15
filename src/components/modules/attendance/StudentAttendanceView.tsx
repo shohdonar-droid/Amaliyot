@@ -350,7 +350,7 @@ export function StudentAttendanceView({ student, onRefresh }: StudentAttendanceV
                   ) : todayRecord?.status === 'PENDING' || todayRecord?.status === 'PENDING_CONFIRMATION' ? (
                     '⏳ RAHBAR TASDIQLASHI KUTILMOQDA'
                   ) : isPresent(todayRecord?.status) || isLate(todayRecord?.status) ? (
-                    `✅ DAVOMAT TASDIQLANGAN (${todayRecord.checkInTime})`
+                    `✅ DAVOMAT TASDIQLANGAN (${todayRecord?.checkInTime || ''})`
                   ) : isInsideGeofence ? (
                     'BUGUN KELDIM'
                   ) : (

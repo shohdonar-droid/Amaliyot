@@ -18,7 +18,9 @@ import {
   Settings,
   LogOut,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
@@ -73,6 +75,30 @@ export function Sidebar({
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [univName, setUnivName] = useState(() => storageService.getUniversityName());
   const [univLogo, setUnivLogo] = useState(() => storageService.getUniversityLogo());
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('tma_theme') || localStorage.getItem('theme');
+      if (saved === 'dark' || saved === 'light') return saved as 'light' | 'dark';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('tma_theme', theme);
+      localStorage.setItem('theme', theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   useEffect(() => {
     const handleSettingsUpdate = () => {
@@ -284,7 +310,29 @@ export function Sidebar({
 
         {/* User Card in Footer */}
         <div className="p-3 border-t border-slate-800 bg-slate-950/60 space-y-3">
-          <PWAInstallButton />
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <PWAInstallButton />
+            </div>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? "Yorug' rejimga o'tish" : "Qorong'i rejimga o'tish"}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-xl transition-all cursor-pointer shadow-xs"
+            >
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-[11px]">Yorug'</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <span className="text-[11px]">Qorong'i</span>
+                </>
+              )}
+            </button>
+          </div>
           <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-900/80 border border-slate-800">
             <button
               type="button"
