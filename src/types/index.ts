@@ -499,6 +499,14 @@ export interface DailyJournal {
   reviewerId?: string;
   attendanceId?: string;
   patientsExaminedCount?: number;
+  qrSignature?: {
+    journalId: string;
+    supervisorId: string;
+    timestamp: string;
+    token: string;
+    qrPayload: string;
+  };
+  qrPayload?: string;
 }
 
 export type JournalFieldType = "text" | "textarea" | "number" | "select" | "checkbox";

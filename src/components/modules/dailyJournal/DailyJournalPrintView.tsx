@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Printer, X, Download } from 'lucide-react';
 import { DailyJournal, Student, Practice, PracticePlace, Supervisor, Faculty, Group, JournalTemplate } from '../../../types';
 import { journalTemplateService } from '../../../services/journalTemplateService';
@@ -215,38 +216,46 @@ export function DailyJournalPrintView({
           </div>
         </div>
 
-        {/* 5. Rahbar xulosasi va Bahosi */}
-        <div className="p-3.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans space-y-2 mb-8">
+        {/* 5. Rahbar xulosasi va Talabga javob berishi */}
+        <div className="p-4 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans space-y-2 mb-8">
           <div className="flex justify-between items-center font-bold">
-            <span>AMALIYOT RAHBARI XULOSASI VA TAQRIZI:</span>
-            <span className="text-sm font-black text-slate-900">
-              BAHO: {journal.supervisorRating ? `${journal.supervisorRating} (Beshta)` : '5 (Baho qo\'yildi)'}
+            <span>AMALIYOT RAHBARI XULOSASI (TALABGA JAVOB BERADI):</span>
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded">
+              Tasdiqlangan (QR imzo bilan)
             </span>
           </div>
           <p className="italic font-serif text-slate-800">
-            "{journal.supervisorFeedback || 'Kundalik to\'g\'ri yuritilgan. Bemorlar kuratsiyasi va klinik tafakkur talabga javob beradi.'}"
+            "{journal.supervisorFeedback || 'Kundalik to\'g\'ri yuritilgan. Bemorlar kuratsiyasi va amaliy ko\'nikmalar talabga javob beradi.'}"
           </p>
           <p className="text-[11px] text-slate-500">
-            Tekshirdi: {journal.reviewedBy || supervisor?.fullName || 'Prof. Sobirov Alisher Tolipovich'}
+            Tekshirdi va tasdiqladi: {journal.reviewedBy || supervisor?.fullName || 'Prof. Sobirov Alisher Tolipovich'}
           </p>
         </div>
 
-        {/* Signatures */}
-        <div className="grid grid-cols-3 gap-6 text-xs font-sans text-center pt-4 border-t border-slate-400">
-          <div>
+        {/* Signatures & QR Code Signature */}
+        <div className="grid grid-cols-4 gap-4 text-xs font-sans items-center pt-4 border-t border-slate-400">
+          <div className="text-center">
             <div className="border-b border-slate-400 h-8 mb-1"></div>
             <span className="text-slate-600 block text-[10px]">Talaba imzosi</span>
             <strong className="text-slate-800 text-[11px]">{student?.fullName}</strong>
           </div>
-          <div>
+          <div className="text-center">
             <div className="border-b border-slate-400 h-8 mb-1"></div>
-            <span className="text-slate-600 block text-[10px]">Bo'lim mas'uli / Rahbar imzosi</span>
+            <span className="text-slate-600 block text-[10px]">Amaliyot rahbari imzosi</span>
             <strong className="text-slate-800 text-[11px]">{journal.reviewedBy || supervisor?.fullName}</strong>
           </div>
-          <div>
+          <div className="text-center">
             <div className="border-b border-slate-400 h-8 mb-1"></div>
-            <span className="text-slate-600 block text-[10px]">Klinik baza muhri (M.O'.)</span>
-            <span className="text-[10px] text-slate-400 italic">Muhr o'rni</span>
+            <span className="text-slate-600 block text-[10px]">Klinik baza muhri</span>
+            <span className="text-[10px] text-slate-400 italic">M.O'.</span>
+          </div>
+          <div className="flex flex-col items-center justify-center p-2 bg-slate-50 border border-slate-300 rounded-lg text-center">
+            <QRCodeSVG
+              value={journal.qrSignature?.qrPayload || journal.qrPayload || JSON.stringify({ journalId: journal.id, supervisorId: journal.reviewerId || journal.supervisorId, timestamp: journal.reviewedAt || new Date().toISOString() })}
+              size={64}
+            />
+            <span className="text-[9px] font-bold text-emerald-800 mt-1">Rahbar QR Imzosi</span>
+            <span className="text-[8px] text-slate-500">Haqiqiyligi tasdiqlangan</span>
           </div>
         </div>
       </div>

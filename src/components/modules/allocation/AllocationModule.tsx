@@ -144,7 +144,7 @@ export function AllocationModule() {
     if (supervisorGroups.length > 0 && (!selectedSupervisorGroupId || !supervisorGroups.some(g => g.id === selectedSupervisorGroupId))) {
       setSelectedSupervisorGroupId(supervisorGroups[0].id);
     }
-  }, [supervisorGroups, selectedSupervisorGroupId]);
+  }, [supervisorGroups.map(g => g.id).join(','), selectedSupervisorGroupId]);
 
   // Supervisor unassigned department count
   const supervisorUnassignedList = useMemo(() => {
@@ -192,7 +192,7 @@ export function AllocationModule() {
     if (hospitalDepartments.length > 0 && !targetDepartmentName) {
       setTargetDepartmentName(hospitalDepartments[0]);
     }
-  }, [hospitalDepartments, targetDepartmentName]);
+  }, [hospitalDepartments.join(','), targetDepartmentName]);
 
   // Department counts for this supervisor group
   const groupDeptBreakdown = useMemo(() => {
@@ -313,7 +313,7 @@ export function AllocationModule() {
     if (practices.length > 0 && (!adminSelectedPracticeId || !practices.some(p => p.id === adminSelectedPracticeId))) {
       setAdminSelectedPracticeId(practices[0].id);
     }
-  }, [practices, adminSelectedPracticeId]);
+  }, [practices.map(p => p.id).join(','), adminSelectedPracticeId]);
 
   useEffect(() => {
     if (adminAvailableGroups.length > 0 && (!adminSelectedGroupId || !adminAvailableGroups.some(g => g.id === adminSelectedGroupId))) {
@@ -321,7 +321,7 @@ export function AllocationModule() {
       setAdminSelectedStudentAsgIds([]);
       setAdminDeptFilter('all');
     }
-  }, [adminAvailableGroups, adminSelectedGroupId]);
+  }, [adminAvailableGroups.map(g => g.id).join(','), adminSelectedGroupId]);
 
   // Distribution, Hospital, and Supervisor for current selection
   const activeAdminDistribution = useMemo(() => {
@@ -352,7 +352,7 @@ export function AllocationModule() {
     if (adminHospitalDepartments.length > 0 && !adminTargetDeptName) {
       setAdminTargetDeptName(adminHospitalDepartments[0]);
     }
-  }, [adminHospitalDepartments, adminTargetDeptName]);
+  }, [adminHospitalDepartments.join(','), adminTargetDeptName]);
 
   // Assignments for the selected practice and group
   const currentAdminGroupAssignments = useMemo(() => {
@@ -509,7 +509,7 @@ export function AllocationModule() {
     if (availableFormGroups.length > 0 && !availableFormGroups.some(g => g.id === formGroupId)) {
       setFormGroupId(availableFormGroups[0].id);
     }
-  }, [availableFormGroups, formGroupId]);
+  }, [availableFormGroups.map(g => g.id).join(','), formGroupId]);
 
   const handleCreateDistribution = (e: React.FormEvent) => {
     e.preventDefault();

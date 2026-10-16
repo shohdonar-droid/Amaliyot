@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   Calendar,
   Building2,
@@ -129,23 +130,20 @@ export function DailyJournalDetailModal({
             )}
           </div>
 
-          {/* Rating Stars if Approved */}
-          {isApproved && journal.supervisorRating && (
-            <div className="flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-emerald-200 shadow-2xs shrink-0">
-              <span className="text-xs font-bold text-slate-700 mr-1">Baho:</span>
-              {[1, 2, 3, 4, 5].map(star => (
-                <Star
-                  key={star}
-                  className={`w-4 h-4 ${
-                    star <= (journal.supervisorRating || 0)
-                      ? 'fill-amber-400 text-amber-400'
-                      : 'text-slate-300'
-                  }`}
-                />
-              ))}
-              <span className="text-xs font-black text-slate-900 ml-1">
-                {journal.supervisorRating}/5
-              </span>
+          {/* QR Code Electronic Signature if Approved */}
+          {isApproved && (
+            <div className="flex items-center gap-2.5 bg-white p-2.5 rounded-xl border border-emerald-200 shadow-2xs shrink-0">
+              <QRCodeSVG
+                value={journal.qrSignature?.qrPayload || journal.qrPayload || JSON.stringify({ journalId: journal.id, supervisorId: journal.reviewerId || journal.supervisorId, timestamp: journal.reviewedAt || new Date().toISOString() })}
+                size={54}
+              />
+              <div className="text-[11px] text-slate-700">
+                <p className="font-bold text-emerald-800 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Rahbar QR Imzosi</span>
+                </p>
+                <p className="text-slate-500 text-[10px]">Talabga javob beradi</p>
+              </div>
             </div>
           )}
         </div>

@@ -175,38 +175,16 @@ export function DailyJournalReviewModal({
           </div>
         </div>
 
-        {/* Rating Stars (If APPROVED) */}
+        {/* Approval Confirmation Note (If APPROVED) */}
         {decision === 'APPROVED' && (
-          <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Rahbar bahosi (1 dan 5 gacha)
-              </label>
-              <span className="text-xs font-black text-emerald-800">
-                {rating === 5 ? "5 — A'lo" : rating === 4 ? "4 — Yaxshi" : rating === 3 ? "3 — Qoniqarli" : `${rating} ball`}
-              </span>
+          <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-1.5">
+            <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Kundalik talabga javob beradi (Tasdiqlash)</span>
             </div>
-
-            <div className="flex items-center gap-2">
-              {[1, 2, 3, 4, 5].map(star => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  onMouseEnter={() => setHoverRating(star)}
-                  onMouseLeave={() => setHoverRating(0)}
-                  className="p-1.5 focus:outline-hidden hover:scale-110 transition-transform"
-                >
-                  <Star
-                    className={`w-7 h-7 transition-colors ${
-                      star <= (hoverRating || rating)
-                        ? 'fill-amber-400 text-amber-400'
-                        : 'text-slate-300'
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
+            <p className="text-[11px] text-emerald-700">
+              Ushbu kundalikka amaliyot rahbarining elektron QR imzo sertifikati biriktiriladi. Baho qo'yilmaydi, shunchaki amaliyot talablariga muvofiqligi tasdiqlanadi.
+            </p>
           </div>
         )}
 

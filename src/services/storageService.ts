@@ -46,6 +46,7 @@ import {
 import { getFirebaseConfigStatus, db } from './firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { recordUsedStudentSequence } from './loginGeneratorService';
+import { journalQrService } from './journalQrService';
 
 const STORAGE_KEY_V2 = 'tma_amaliyot_cloud_db_v2';
 const APP_MODE_KEY = 'tma_amaliyot_environment_mode';
@@ -5488,12 +5489,15 @@ class StorageServiceV2 {
     const now = new Date().toISOString();
     const isApproval = params.status === 'APPROVED' || params.status === 'SUPERVISOR_APPROVED';
     journal.status = isApproval ? 'SUPERVISOR_APPROVED' : 'REVISION';
-    journal.supervisorRating = isApproval ? (params.rating || 5) : undefined;
+    journal.supervisorRating = undefined; // No grading on supervisor approval (shunchaki talabga javob beradi)
     journal.supervisorFeedback = params.feedback;
     if (!isApproval) {
       journal.revisionReason = params.revisionReason || params.feedback;
     } else {
       journal.revisionReason = undefined;
+      const qrSig = journalQrService.generateSignature(journal.id, params.reviewerId || params.actorUserId);
+      journal.qrSignature = qrSig;
+      journal.qrPayload = qrSig.qrPayload;
     }
     journal.reviewedAt = now;
     journal.reviewedBy = params.reviewerName;
@@ -5503,26 +5507,42 @@ class StorageServiceV2 {
     // Send notification to the student
     const student = state.students.find(s => s.id === journal.studentId);
     if (isApproval) {
-      // Check if all student journals for this practice are now supervisor-approved
-      const studentPracticeJournals = state.dailyJournals.filter(
-        j => j.studentId === journal.studentId && j.practiceId === journal.practiceId
-      );
-      const allDone = studentPracticeJournals.length > 0 && studentPracticeJournals.every(
-        j => j.id === journal.id || j.status === 'SUPERVISOR_APPROVED' || j.status === 'FINAL_PENDING' || j.status === 'FINAL_APPROVED' || j.status === 'LOCKED'
-      );
-      if (allDone) {
-        studentPracticeJournals.forEach(j => {
-          if (j.id === journal.id || j.status === 'SUPERVISOR_APPROVED') {
-            j.status = 'FINAL_PENDING';
-            j.updatedAt = now;
+      // Find total expected practice days for this student
+      const stuAssignment = state.practiceAssignments.find(a => a.studentId === journal.studentId || a.studentId === student?.studentId);
+      const stuPractice = state.practices.find(p => p.id === journal.practiceId || p.id === stuAssignment?.practiceId);
+      let totalPracticeDays = stuPractice?.durationDays || 30;
+      if (!totalPracticeDays || totalPracticeDays <= 0) {
+        if (stuPractice?.startDate && stuPractice?.endDate) {
+          const s = new Date(stuPractice.startDate).getTime();
+          const e = new Date(stuPractice.endDate).getTime();
+          if (!isNaN(s) && !isNaN(e) && e >= s) {
+            totalPracticeDays = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
           }
+        }
+      }
+
+      const studentPracticeJournals = state.dailyJournals.filter(
+        j => j.studentId === journal.studentId && (j.practiceId === journal.practiceId || !journal.practiceId || !j.practiceId)
+      );
+
+      // Check if ALL expected practice days have been written and approved by supervisor
+      const allDaysWritten = studentPracticeJournals.length >= totalPracticeDays;
+      const allApproved = studentPracticeJournals.length > 0 && studentPracticeJournals.every(
+        j => j.status === 'SUPERVISOR_APPROVED' || j.status === 'FINAL_PENDING' || j.status === 'FINAL_APPROVED' || j.status === 'LOCKED'
+      );
+
+      // Only send to admin / department head (FINAL_PENDING) when ALL expected practice days are written and approved
+      if (allDaysWritten && allApproved) {
+        studentPracticeJournals.forEach(j => {
+          j.status = 'FINAL_PENDING';
+          j.updatedAt = now;
         });
         journal.status = 'FINAL_PENDING';
 
         this.addNotification({
           recipientRoles: ['PRACTICE_HEAD', 'PRACTICE_STAFF', 'SUPER_ADMIN'],
-          title: '🟡 Barcha kunlar tasdiqlandi (FINAL_PENDING)',
-          message: `${student?.fullName || 'Talaba'} barcha amaliyot kunlari kundaliklari rahbar tomonidan tasdiqlandi va Amaliyot bo'limining yakuniy tasdig'ini (Final Approval) kutmoqda.`,
+          title: '🟡 Barcha amaliyot kunlari tasdiqlandi (FINAL_PENDING)',
+          message: `${student?.fullName || 'Talaba'} barcha ${totalPracticeDays} kunlik amaliyot kundaliklari rahbar tomonidan muvaffaqiyatli tasdiqlandi va Amaliyot bo'limining yakuniy tasdig'iga yuborildi.`,
           type: 'warning',
           linkModule: 'daily_journal'
         });
@@ -5531,8 +5551,8 @@ class StorageServiceV2 {
       this.addNotification({
         recipientUserId: student?.userId,
         recipientRoles: ['STUDENT'],
-        title: 'Kundaligingiz tasdiqlandi (SUPERVISOR_APPROVED)',
-        message: `Sizning ${journal.date} kungi amaliyot kundaligingiz rahbar tomonidan tasdiqlandi. Baho: ${params.rating || 5}/5. Taqriz: "${params.feedback || 'A\'lo darajada'}"`,
+        title: 'Kundaligingiz tasdiqlandi (Talabga javob beradi)',
+        message: `Sizning ${journal.date} kungi amaliyot kundaligingiz rahbar tomonidan tasdiqlandi. Taqriz: "${params.feedback || 'Talabga javob beradi'}"`,
         type: 'success',
         linkModule: 'daily_journal'
       });
