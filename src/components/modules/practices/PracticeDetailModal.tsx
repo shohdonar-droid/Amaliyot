@@ -123,7 +123,9 @@ export function PracticeDetailModal({
             </div>
 
             <div className="text-xs text-slate-500 flex flex-wrap items-center gap-2 pt-0.5">
-              <span className="font-mono tabular-nums">{practice.startDate} dan {practice.endDate} gacha</span>
+              <span className="font-mono tabular-nums font-semibold text-slate-800">
+                {practice.startDate} dan {practice.endDate} gacha ({practice.durationDays || 30} kun)
+              </span>
               <span>·</span>
               <span>{practice.totalHours} soat ({practice.credits} kredit)</span>
               <span>·</span>

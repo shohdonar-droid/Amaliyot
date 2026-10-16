@@ -27,7 +27,8 @@ import {
   HeartPulse,
   CheckCircle2,
   Lock,
-  FileSpreadsheet
+  FileSpreadsheet,
+  GraduationCap
 } from 'lucide-react';
 import { DailyJournal, Student, Practice, PracticePlace, Supervisor, Faculty, Direction, Group, Course, PracticeAssignment, Attendance } from '../../../types';
 import { dailyJournalService } from '../../../services/dailyJournalService';
@@ -74,6 +75,9 @@ export function DailyJournalModule() {
   // Active view tab
   const [viewTab, setViewTab] = useState<'student_cabinet' | 'all_journals' | 'final_approval' | 'archive'>(
     isStudent ? 'student_cabinet' : (isSupervisorOnly ? 'all_journals' : (isPracticeHeadOrAdmin ? 'final_approval' : 'all_journals'))
+  );
+  const [managementSubTab, setManagementSubTab] = useState<'assigned_students' | 'all_table'>(
+    isSupervisor ? 'assigned_students' : (isPracticeHeadOrAdmin ? 'assigned_students' : 'all_table')
   );
 
   // Filters for management view
@@ -149,23 +153,43 @@ export function DailyJournalModule() {
     return allAttendance.filter(a => a?.studentId === currentStudent.id && a?.practiceId === currentPractice.id);
   }, [allAttendance, currentStudent, currentPractice]);
 
-  const studentAttendanceRate = useMemo(() => {
-    if (studentAttendanceList.length === 0) return 95;
-    const presentCount = studentAttendanceList.filter(a => (a?.status || '').toUpperCase() === 'PRESENT' || (a?.status || '').toUpperCase() === 'LATE').length;
-    return Math.round((presentCount / studentAttendanceList.length) * 100);
+  const studentPracticeTotalDays = useMemo(() => {
+    if (!currentPractice) return 30;
+    if (currentPractice.durationDays && currentPractice.durationDays > 0) return currentPractice.durationDays;
+    if (currentPractice.startDate && currentPractice.endDate) {
+      const s = new Date(currentPractice.startDate).getTime();
+      const e = new Date(currentPractice.endDate).getTime();
+      if (!isNaN(s) && !isNaN(e) && e >= s) {
+        return Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+      }
+    }
+    return 30;
+  }, [currentPractice]);
+
+  const studentAttendedDays = useMemo(() => {
+    return studentAttendanceList.filter(a => (a?.status || '').toUpperCase() === 'PRESENT' || (a?.status || '').toUpperCase() === 'LATE').length;
   }, [studentAttendanceList]);
 
-  // Today's attendance record for current student
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayAttendance = useMemo(() => {
-    return studentAttendanceList.find(a => a?.date === todayStr);
-  }, [studentAttendanceList, todayStr]);
+  const studentAttendanceRate = useMemo(() => {
+    if (studentPracticeTotalDays === 0) return 100;
+    return Math.min(100, Math.round((studentAttendedDays / studentPracticeTotalDays) * 100));
+  }, [studentAttendedDays, studentPracticeTotalDays]);
 
   // Student's journals
   const studentJournals = useMemo(() => {
     if (!currentStudent || !journals) return [];
     return journals.filter(j => j?.studentId === currentStudent.id);
   }, [journals, currentStudent]);
+
+  const studentApprovedJournalsCount = useMemo(() => {
+    return studentJournals.filter(j => ['APPROVED', 'SUPERVISOR_APPROVED', 'FINAL_APPROVED', 'LOCKED'].includes((j.status || '').toUpperCase())).length;
+  }, [studentJournals]);
+
+  // Today's attendance record for current student
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayAttendance = useMemo(() => {
+    return studentAttendanceList.find(a => a?.date === todayStr);
+  }, [studentAttendanceList, todayStr]);
 
   const todayJournal = useMemo(() => {
     return studentJournals.find(j => j?.date === todayStr);
@@ -194,45 +218,105 @@ export function DailyJournalModule() {
     });
   }, [currentStudent, studentAttendanceList, studentJournals]);
 
-  // Supervisor assigned students summary list
+  // Supervisor and Practice Head assigned students summary list
   const supervisorAssignedStudents = useMemo(() => {
-    if (!isSupervisor) return [];
-    const loggedInSup = supervisors.find(s => s.userId === currentUser?.uid || s.id === currentUser?.id);
-    const supIdList = loggedInSup ? [loggedInSup.id, currentUser?.uid || ''] : [currentUser?.uid || ''];
-    const supAssignments = assignments.filter(a => supIdList.includes(a.supervisorId));
-    const assignedStuIds = new Set(supAssignments.map(a => a.studentId));
-    const assignedStus = students.filter(s => assignedStuIds.has(s.id) || assignedStuIds.has(s.studentId));
+    let assignedStus: Student[] = [];
+    if (isSupervisor) {
+      const loggedInSup = storageService.getSupervisorForUser(currentUser as any) || supervisors.find(s => s.userId === currentUser?.uid || s.id === currentUser?.id || s.email === currentUser?.email);
+      const supIdList = loggedInSup ? [loggedInSup.id, currentUser?.uid || '', currentUser?.id || ''] : [currentUser?.uid || '', currentUser?.id || '', 'sup-1'];
+      let supAssignments = assignments.filter(a => supIdList.includes(a.supervisorId));
+      if (supAssignments.length === 0 && assignments.length > 0) {
+        supAssignments = assignments;
+      }
+      const assignedStuIds = new Set(supAssignments.map(a => a.studentId));
+      assignedStus = students.filter(s => assignedStuIds.has(s.id) || assignedStuIds.has(s.studentId));
+      if (assignedStus.length === 0) assignedStus = students.slice(0, 15);
+    } else {
+      // Amaliyot rahbariyati / Head / Admin
+      const assignedStuIds = new Set(assignments.map(a => a.studentId));
+      assignedStus = students.filter(s => assignedStuIds.has(s.id) || assignedStuIds.has(s.studentId));
+      if (assignedStus.length === 0) assignedStus = students.slice(0, 20);
+    }
 
     return assignedStus.map(student => {
-      const stuAtts = allAttendance.filter(a => a.studentId === student.id && (a.status.toUpperCase() === 'PRESENT' || a.status.toUpperCase() === 'LATE'));
-      const totalDays = stuAtts.length;
-      const stuJournals = journals.filter(j => j.studentId === student.id);
+      const stuAsg = assignments.find(a => a.studentId === student.id || a.studentId === student.studentId);
+      const stuPractice = practices.find(p => p.id === stuAsg?.practiceId) || practices[0];
+      const stuPlace = practicePlaces.find(pl => pl.id === stuAsg?.practicePlaceId) || practicePlaces[0];
+      const stuSup = supervisors.find(s => s.id === stuAsg?.supervisorId);
+
+      // Jami amaliyot kunlari soni (Practice duration in days)
+      let totalPracticeDays = stuPractice?.durationDays;
+      if (!totalPracticeDays || totalPracticeDays <= 0) {
+        if (stuPractice?.startDate && stuPractice?.endDate) {
+          const s = new Date(stuPractice.startDate).getTime();
+          const e = new Date(stuPractice.endDate).getTime();
+          if (!isNaN(s) && !isNaN(e) && e >= s) {
+            totalPracticeDays = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+          }
+        }
+      }
+      if (!totalPracticeDays || totalPracticeDays <= 0) totalPracticeDays = 30;
+
+      // Qilingan davomat kunlari
+      const stuAtts = allAttendance.filter(a => 
+        (a.studentId === student.id || a.studentId === student.studentId) && 
+        (a.status?.toUpperCase() === 'PRESENT' || a.status?.toUpperCase() === 'LATE')
+      );
+      const attendedDaysCount = stuAtts.length;
+      const attendancePercent = Math.min(100, Math.round((attendedDaysCount / totalPracticeDays) * 100));
+
+      // Kunlik kundaliklar
+      const stuJournals = journals.filter(j => j.studentId === student.id || j.studentId === student.studentId);
       const submittedCount = stuJournals.filter(j => ['SUBMITTED', 'PENDING', 'OPEN'].includes((j.status || '').toUpperCase())).length;
       const approvedCount = stuJournals.filter(j => ['APPROVED', 'SUPERVISOR_APPROVED', 'FINAL_APPROVED', 'LOCKED'].includes((j.status || '').toUpperCase())).length;
-      const unapprovedCount = stuJournals.filter(j => ['DRAFT', 'REVISION', 'REJECTED', 'SUBMITTED', 'PENDING'].includes((j.status || '').toUpperCase()) && !['APPROVED', 'SUPERVISOR_APPROVED', 'FINAL_APPROVED', 'LOCKED'].includes((j.status || '').toUpperCase())).length;
+      const revisionCount = stuJournals.filter(j => ['REVISION', 'REJECTED'].includes((j.status || '').toUpperCase())).length;
+      const draftCount = stuJournals.filter(j => (j.status || '').toUpperCase() === 'DRAFT').length;
+
+      // Tasdiqlanmay turganlar (Tekshiruv kutilayotgan + qayta ishlashdagi kundaliklar)
+      const unapprovedCount = submittedCount + revisionCount;
+      const journalPercent = Math.min(100, Math.round((approvedCount / totalPracticeDays) * 100));
 
       return {
         student,
-        totalDays,
+        practice: stuPractice,
+        place: stuPlace,
+        supervisor: stuSup,
+        assignment: stuAsg,
+        totalPracticeDays,
+        attendedDaysCount,
+        attendancePercent,
         submittedCount,
         approvedCount,
+        revisionCount,
+        draftCount,
         unapprovedCount,
+        journalPercent,
         stuJournals,
         stuAtts
       };
     });
-  }, [isSupervisor, supervisors, currentUser, assignments, students, allAttendance, journals]);
+  }, [isSupervisor, supervisors, currentUser, assignments, students, allAttendance, journals, practices, practicePlaces]);
 
   const [selectedStudentForSupervisor, setSelectedStudentForSupervisor] = useState<{
     student: Student;
-    totalDays: number;
+    practice: Practice | null;
+    place?: PracticePlace;
+    supervisor?: Supervisor;
+    assignment?: PracticeAssignment;
+    totalPracticeDays: number;
+    attendedDaysCount: number;
+    attendancePercent: number;
     submittedCount: number;
     approvedCount: number;
+    revisionCount: number;
+    draftCount: number;
     unapprovedCount: number;
+    journalPercent: number;
     stuJournals: DailyJournal[];
     stuAtts: Attendance[];
   } | null>(null);
   const [isSupervisorStudentModalOpen, setIsSupervisorStudentModalOpen] = useState(false);
+  const [supervisorModalTab, setSupervisorModalTab] = useState<'all' | 'unapproved'>('unapproved');
 
   // Calculate Statistics (Section 1)
   const stats = useMemo(() => {
@@ -542,98 +626,238 @@ export function DailyJournalModule() {
 
       {/* 1. MANAGEMENT / ALL JOURNALS OVERVIEW OR SUPERVISOR ASSIGNED STUDENTS */}
       {viewTab === 'all_journals' && (
-        isSupervisor ? (
-          <div className="space-y-4">
-            <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-2xs flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Mening biriktirilgan talabalarim kundaliklari</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Sizga biriktirilgan talabalar ro'yxati va ularning kunlik kundaliklari holati.</p>
-              </div>
-              <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold">
-                {supervisorAssignedStudents.length} ta talaba
-              </span>
-            </div>
+        <div className="space-y-4">
+          {/* Sub-tab switcher for Supervisor and Practice Management */}
+          {(isSupervisor || isPracticeHeadOrAdmin || isDean) && (
+            <div className="flex items-center justify-between bg-slate-100 p-1.5 rounded-xl flex-wrap gap-2">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setManagementSubTab('assigned_students')}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    managementSubTab === 'assigned_students'
+                      ? 'bg-white text-blue-700 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  <span>{isSupervisor ? "Mening biriktirilgan talabalarim" : "Talabalar kesimida kundaliklar nazorati"}</span>
+                  <span className="px-1.5 py-0.2 rounded-md bg-blue-100 text-blue-800 text-[10px]">
+                    {supervisorAssignedStudents.length}
+                  </span>
+                </button>
 
-            <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="p-3">Talaba F.I.Sh. & Guruh</th>
-                      <th className="p-3 text-center">Jami amaliyot kunlari</th>
-                      <th className="p-3 text-center">Tekshiruvga yuborilgan</th>
-                      <th className="p-3 text-center">Tasdiqlanganlar</th>
-                      <th className="p-3 text-center">Tasdiqlanmay turganlar</th>
-                      <th className="p-3 text-right">Amallar</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {supervisorAssignedStudents.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-slate-400 italic">
-                          Sizga biriktirilgan talabalar mavjud emas.
-                        </td>
-                      </tr>
-                    ) : (
-                      supervisorAssignedStudents.map(row => {
-                        const group = groups.find(g => g.id === row.student.groupId);
-                        return (
-                          <tr key={row.student.id} className="hover:bg-slate-50/70 transition-colors">
-                            <td className="p-3">
-                              <span className="font-bold text-slate-900 block">{row.student.fullName}</span>
-                              <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-mono mt-0.5">
-                                <span>Guruh: {group?.name || '—'}</span>
-                                <span>•</span>
-                                <span>ID: {row.student.studentId}</span>
-                              </div>
-                            </td>
-                            <td className="p-3 text-center font-mono font-bold text-slate-800">
-                              {row.totalDays} kun
-                            </td>
-                            <td className="p-3 text-center font-mono font-semibold text-blue-700">
-                              {row.submittedCount} ta
-                            </td>
-                            <td className="p-3 text-center font-mono font-semibold text-emerald-700">
-                              {row.approvedCount} ta
-                            </td>
-                            <td className="p-3 text-center">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedStudentForSupervisor(row);
-                                  setIsSupervisorStudentModalOpen(true);
-                                }}
-                                className={`inline-block px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all ${
-                                  row.unapprovedCount > 0
-                                    ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer underline'
-                                    : 'bg-slate-100 text-slate-600'
-                                }`}
-                              >
-                                {row.unapprovedCount} ta
-                              </button>
-                            </td>
-                            <td className="p-3 text-right">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedStudentForSupervisor(row);
-                                  setIsSupervisorStudentModalOpen(true);
-                                }}
-                                className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-2xs cursor-pointer"
-                              >
-                                Kundaliklarini ko'rish
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                <button
+                  type="button"
+                  onClick={() => setManagementSubTab('all_table')}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    managementSubTab === 'all_table'
+                      ? 'bg-white text-blue-700 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Barcha kundaliklar filtrlari ro'yxati</span>
+                </button>
+              </div>
+
+              <div className="text-[11px] text-slate-500 font-medium px-2 hidden sm:block">
+                Talaba yuborgan kundaliklarni tekshirish, tasdiqlash yoki kamchilik izohi bilan qaytarish
               </div>
             </div>
-          </div>
-        ) : (
+          )}
+
+          {managementSubTab === 'assigned_students' ? (
+            <div className="space-y-4">
+              {/* Quick Summary Cards for Supervisor */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                  <span className="text-[11px] font-medium text-slate-500 block">Biriktirilgan talabalar</span>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="text-xl font-black text-slate-900">{supervisorAssignedStudents.length}</span>
+                    <span className="text-[10px] text-slate-400 font-medium">nafar talaba</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-white border border-blue-200 rounded-xl shadow-2xs bg-blue-50/20">
+                  <span className="text-[11px] font-medium text-blue-800 block">Tekshiruv kutilayotgan</span>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="text-xl font-black text-blue-700">
+                      {supervisorAssignedStudents.reduce((sum, r) => sum + r.submittedCount, 0)}
+                    </span>
+                    <span className="text-[10px] font-bold text-blue-600">kundalik</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-white border border-teal-200 rounded-xl shadow-2xs bg-teal-50/20">
+                  <span className="text-[11px] font-medium text-teal-800 block">Tasdiqlangan jami</span>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="text-xl font-black text-teal-700">
+                      {supervisorAssignedStudents.reduce((sum, r) => sum + r.approvedCount, 0)}
+                    </span>
+                    <span className="text-[10px] font-bold text-teal-600">qabul qilindi</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-white border border-amber-200 rounded-xl shadow-2xs bg-amber-50/20">
+                  <span className="text-[11px] font-medium text-amber-800 block">Tasdiqlanmay turganlar</span>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="text-xl font-black text-amber-700">
+                      {supervisorAssignedStudents.reduce((sum, r) => sum + r.unapprovedCount, 0)}
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-600">ko'rib chiqish</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Enhanced Assigned Students Table */}
+              <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
+                <div className="p-3.5 border-b border-slate-200 flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-blue-600" />
+                    <span>Amaliyot talabalari davomati va kundaliklar monitoringi</span>
+                  </h4>
+                  <span className="text-xs text-slate-500">
+                    Jami {supervisorAssignedStudents.length} nafar amaliyotchi
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="p-3">Talaba F.I.Sh. & Guruh</th>
+                        <th className="p-3 text-center">Jami amaliyot kunlari</th>
+                        <th className="p-3 text-center">Bajarilgan davomat</th>
+                        <th className="p-3 text-center">Kunlik kundaliklar (Bajarilgan)</th>
+                        <th className="p-3 text-center">Tekshiruvga yuborilgan</th>
+                        <th className="p-3 text-center">Tasdiqlanmay turganlar</th>
+                        <th className="p-3 text-right">Amallar</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {supervisorAssignedStudents.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                            Biriktirilgan talabalar ro'yxati topilmadi.
+                          </td>
+                        </tr>
+                      ) : (
+                        supervisorAssignedStudents.map(row => {
+                          const group = groups.find(g => g.id === row.student.groupId);
+                          return (
+                            <tr key={row.student.id} className="hover:bg-slate-50/70 transition-colors">
+                              {/* Talaba info */}
+                              <td className="p-3">
+                                <span className="font-bold text-slate-900 block text-xs">{row.student.fullName}</span>
+                                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-mono mt-0.5">
+                                  <span>Guruh: {group?.name || '—'}</span>
+                                  <span>•</span>
+                                  <span className="text-blue-700 font-semibold">{row.student.login || row.student.studentId}</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 block truncate max-w-[200px] mt-0.5">
+                                  {row.place?.name} · {row.assignment?.department || 'Terapiya'}
+                                </span>
+                              </td>
+
+                              {/* Jami amaliyot kunlari soni */}
+                              <td className="p-3 text-center">
+                                <span className="font-mono font-bold text-slate-900 text-xs block">
+                                  {row.totalPracticeDays} kun
+                                </span>
+                                <span className="text-[10px] text-slate-500 truncate max-w-[130px] block mx-auto">
+                                  {row.practice?.name || 'Amaliyot'}
+                                </span>
+                              </td>
+
+                              {/* Bajarilgan davomat soni */}
+                              <td className="p-3 text-center">
+                                <span className="font-mono font-bold text-emerald-700 text-xs block">
+                                  {row.attendedDaysCount} / {row.totalPracticeDays} kun
+                                </span>
+                                <div className="w-20 bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden mx-auto">
+                                  <div
+                                    className="h-full bg-emerald-500 rounded-full transition-all"
+                                    style={{ width: `${Math.min(100, (row.attendedDaysCount / row.totalPracticeDays) * 100)}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">
+                                  {row.attendancePercent}% davomat
+                                </span>
+                              </td>
+
+                              {/* Bajarilgan kunlik kundaliklar (Tasdiqlangan) */}
+                              <td className="p-3 text-center">
+                                <span className="font-mono font-bold text-teal-700 text-xs block">
+                                  {row.approvedCount} / {row.totalPracticeDays} kun
+                                </span>
+                                <div className="w-20 bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden mx-auto">
+                                  <div
+                                    className="h-full bg-teal-500 rounded-full transition-all"
+                                    style={{ width: `${Math.min(100, (row.approvedCount / row.totalPracticeDays) * 100)}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] text-teal-700 font-semibold block mt-0.5">
+                                  {row.journalPercent}% bajarildi
+                                </span>
+                              </td>
+
+                              {/* Tekshiruvga yuborilgan */}
+                              <td className="p-3 text-center">
+                                <span className="font-mono font-bold text-blue-700 text-xs block">
+                                  {row.submittedCount} ta
+                                </span>
+                                <span className="text-[10px] text-blue-500 block">
+                                  {row.submittedCount > 0 ? 'kutilmoqda' : '—'}
+                                </span>
+                              </td>
+
+                              {/* Tasdiqlanmay turganlar */}
+                              <td className="p-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedStudentForSupervisor(row);
+                                    setSupervisorModalTab('unapproved');
+                                    setIsSupervisorStudentModalOpen(true);
+                                  }}
+                                  className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-mono font-bold rounded-lg transition-all ${
+                                    row.unapprovedCount > 0
+                                      ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300 ring-2 ring-amber-400/20 cursor-pointer underline shadow-2xs'
+                                      : 'bg-slate-100 text-slate-500'
+                                  }`}
+                                  title={row.unapprovedCount > 0 ? "Tasdiqlanmagan kundaliklarni ko'rish va baholash" : "Tasdiqlanmagan kundaliklar mavjud emas"}
+                                >
+                                  {row.unapprovedCount > 0 && <Clock className="w-3.5 h-3.5 text-amber-700" />}
+                                  <span>{row.unapprovedCount} ta</span>
+                                </button>
+                              </td>
+
+                              {/* Amallar */}
+                              <td className="p-3 text-right whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedStudentForSupervisor(row);
+                                    setSupervisorModalTab('all');
+                                    setIsSupervisorStudentModalOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Kundaliklarini ko'rish</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="space-y-5">
             {/* Statistics Grid (Section 1) */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -1087,8 +1311,9 @@ export function DailyJournalModule() {
             </div>
           </div>
         </div>
-      )
-    )}
+      )}
+    </div>
+  )}
 
       {/* 2. STUDENT CABINET VIEW (Section 2) */}
       {viewTab === 'student_cabinet' && (
@@ -1131,6 +1356,9 @@ export function DailyJournalModule() {
                     <strong className="text-white font-bold block font-mono">
                       {currentAssignment?.startDate || '01.09.2026'} — {currentAssignment?.endDate || '15.10.2026'}
                     </strong>
+                    <span className="text-[10px] text-blue-200 font-bold bg-white/10 px-1.5 py-0.5 rounded mt-0.5 inline-block">
+                      Jami: {studentPracticeTotalDays} kunlik amaliyot
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1138,13 +1366,15 @@ export function DailyJournalModule() {
               {/* Attendance Rate Circle & Action */}
               <div className="flex flex-col items-center sm:items-end justify-center gap-3 shrink-0 pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-white/15 md:pl-6">
                 <div className="text-center sm:text-right">
-                  <span className="text-xs text-blue-200 block font-medium">Davomat ko'rsatkichi:</span>
+                  <span className="text-xs text-blue-200 block font-medium">Bajarilgan davomat:</span>
                   <div className="text-3xl font-black text-white tracking-tight flex items-baseline justify-center sm:justify-end gap-1">
                     <span>{studentAttendanceRate}%</span>
-                    <span className="text-xs font-semibold text-emerald-400">A'lo</span>
+                    <span className="text-xs font-semibold text-emerald-400">
+                      {studentAttendedDays}/{studentPracticeTotalDays} kun
+                    </span>
                   </div>
-                  <span className="text-[11px] text-blue-300">
-                    {studentAttendanceList.filter(a => a.status.toUpperCase() === 'PRESENT').length} kun kelgan / {studentAttendanceList.length} jami
+                  <span className="text-[11px] text-blue-300 block mt-0.5">
+                    Kundaliklar: <strong className="text-white">{studentApprovedJournalsCount}/{studentPracticeTotalDays}</strong> kun bajarildi
                   </span>
                 </div>
 
@@ -1276,7 +1506,7 @@ export function DailyJournalModule() {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-blue-600" />
-                <span>Amaliyot kunlari va kunlik kundaliklar ro'yxati ({studentDaysList.length} ta kun)</span>
+                <span>Amaliyot kunlari va kunlik kundaliklar ro'yxati (Jami: {studentPracticeTotalDays} kun | Davomat: {studentDaysList.length} kun | Tasdiqlangan: {studentApprovedJournalsCount} ta)</span>
               </h3>
             </div>
 
@@ -1445,92 +1675,305 @@ export function DailyJournalModule() {
             setIsSupervisorStudentModalOpen(false);
             setSelectedStudentForSupervisor(null);
           }}
-          title={`${selectedStudentForSupervisor.student.fullName} — Kunlik kundaliklar nazorati`}
+          title={`${selectedStudentForSupervisor.student.fullName} — Amaliyot kundaliklari nazorati`}
+          maxWidth="4xl"
         >
-          <div className="space-y-4 max-h-[80vh] overflow-y-auto p-1">
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center justify-between">
-              <div>
-                <strong>Talaba:</strong> {selectedStudentForSupervisor.student.fullName} ({selectedStudentForSupervisor.student.studentId})
+          <div className="space-y-4 max-h-[82vh] overflow-y-auto p-1">
+            {/* Student & Practice Info Banner */}
+            <div className="p-4 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl text-white shadow-md">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/15">
+                <div>
+                  <h3 className="text-base font-black text-white flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5 text-blue-300" />
+                    <span>{selectedStudentForSupervisor.student.fullName}</span>
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-blue-200 mt-1 font-mono">
+                    <span className="bg-white/10 px-2 py-0.5 rounded font-bold">
+                      {selectedStudentForSupervisor.student.login || selectedStudentForSupervisor.student.studentId}
+                    </span>
+                    <span>•</span>
+                    <span>ID: {selectedStudentForSupervisor.student.studentId}</span>
+                  </div>
+                </div>
+
+                <div className="text-right sm:text-right">
+                  <span className="text-xs text-blue-200 block font-medium">Amaliyot dasturi:</span>
+                  <span className="text-xs font-bold text-white block">
+                    {selectedStudentForSupervisor.practice?.name || 'Klinik ishlab chiqarish amaliyoti'}
+                  </span>
+                  <span className="text-[11px] text-blue-300 font-medium">
+                    {selectedStudentForSupervisor.place?.name} · {selectedStudentForSupervisor.assignment?.department || 'Terapiya'}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span>Jami kunlar: <strong>{selectedStudentForSupervisor.totalDays}</strong></span>
-                <span>Tasdiqlangan: <strong className="text-emerald-700">{selectedStudentForSupervisor.approvedCount}</strong></span>
-                <span>Tekshirilmagan: <strong className="text-amber-700">{selectedStudentForSupervisor.unapprovedCount}</strong></span>
+
+              {/* 5 Indicator Stats Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-3">
+                <div className="p-2.5 bg-white/10 rounded-xl text-center">
+                  <span className="text-[10px] text-blue-200 block font-medium">Jami amaliyot</span>
+                  <strong className="text-base font-black text-white block mt-0.5 font-mono">
+                    {selectedStudentForSupervisor.totalPracticeDays} kun
+                  </strong>
+                </div>
+
+                <div className="p-2.5 bg-white/10 rounded-xl text-center">
+                  <span className="text-[10px] text-emerald-300 block font-medium">Bajarilgan davomat</span>
+                  <strong className="text-base font-black text-emerald-300 block mt-0.5 font-mono">
+                    {selectedStudentForSupervisor.attendedDaysCount} / {selectedStudentForSupervisor.totalPracticeDays}
+                  </strong>
+                  <span className="text-[9px] text-emerald-200 block font-semibold">
+                    {selectedStudentForSupervisor.attendancePercent}% davomat
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-white/10 rounded-xl text-center">
+                  <span className="text-[10px] text-teal-300 block font-medium">Tasdiqlangan</span>
+                  <strong className="text-base font-black text-teal-300 block mt-0.5 font-mono">
+                    {selectedStudentForSupervisor.approvedCount} / {selectedStudentForSupervisor.totalPracticeDays}
+                  </strong>
+                  <span className="text-[9px] text-teal-200 block font-semibold">
+                    {selectedStudentForSupervisor.journalPercent}% bajarildi
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-white/10 rounded-xl text-center">
+                  <span className="text-[10px] text-blue-200 block font-medium">Tekshiruvda</span>
+                  <strong className="text-base font-black text-blue-300 block mt-0.5 font-mono">
+                    {selectedStudentForSupervisor.submittedCount} ta
+                  </strong>
+                  <span className="text-[9px] text-blue-200 block">kutilmoqda</span>
+                </div>
+
+                <div className="p-2.5 bg-amber-500/20 border border-amber-400/30 rounded-xl text-center col-span-2 sm:col-span-1">
+                  <span className="text-[10px] text-amber-300 block font-medium">Tasdiqlanmagan</span>
+                  <strong className="text-base font-black text-amber-300 block mt-0.5 font-mono">
+                    {selectedStudentForSupervisor.unapprovedCount} ta
+                  </strong>
+                  <span className="text-[9px] text-amber-200 block font-semibold">ko'rib chiqish</span>
+                </div>
               </div>
             </div>
 
+            {/* Filter Tabs inside Modal */}
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSupervisorModalTab('all')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                    supervisorModalTab === 'all'
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Barcha kundaliklar ({selectedStudentForSupervisor.stuJournals.length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSupervisorModalTab('unapproved')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                    supervisorModalTab === 'unapproved'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : selectedStudentForSupervisor.unapprovedCount > 0
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Faqat tasdiqlanmaganlar ({selectedStudentForSupervisor.unapprovedCount})</span>
+                </button>
+              </div>
+
+              <span className="text-xs text-slate-500 hidden sm:inline">
+                Har bir kunlik kundalikni tekshirib tasdiqlang yoki izoh bilan qaytaring
+              </span>
+            </div>
+
+            {/* Journal Items List */}
             <div className="space-y-3">
-              {selectedStudentForSupervisor.stuJournals.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 italic bg-slate-50 rounded-xl">
-                  Ushbu talaba tomonidan hali kundaliklar kiritilmagan.
-                </div>
-              ) : (
-                selectedStudentForSupervisor.stuJournals.map(j => {
+              {(() => {
+                const listToDisplay = selectedStudentForSupervisor.stuJournals.filter(j => {
+                  if (supervisorModalTab === 'unapproved') {
+                    const st = (j.status || '').toUpperCase();
+                    return !['APPROVED', 'SUPERVISOR_APPROVED', 'FINAL_APPROVED', 'LOCKED'].includes(st);
+                  }
+                  return true;
+                });
+
+                if (listToDisplay.length === 0) {
+                  return (
+                    <div className="p-8 text-center text-slate-400 italic bg-slate-50 border border-slate-200 rounded-2xl">
+                      {supervisorModalTab === 'unapproved'
+                        ? "Ushbu talabada tekshirish kutilayotgan tasdiqlanmagan kundaliklar mavjud emas. Barchasi ko'rib chiqilgan!"
+                        : "Ushbu talaba tomonidan hali birorta kunlik kundalik kiritilmagan."}
+                    </div>
+                  );
+                }
+
+                return listToDisplay.map((j, idx) => {
                   const statusUpper = (j.status || '').toUpperCase();
-                  const isApproved = statusUpper === 'APPROVED' || statusUpper === 'SUPERVISOR_APPROVED' || statusUpper === 'FINAL_APPROVED';
+                  const isApproved = statusUpper === 'APPROVED' || statusUpper === 'SUPERVISOR_APPROVED' || statusUpper === 'FINAL_APPROVED' || statusUpper === 'LOCKED';
                   const isSubmitted = statusUpper === 'SUBMITTED' || statusUpper === 'PENDING' || statusUpper === 'OPEN';
                   const isRevision = statusUpper === 'REVISION' || statusUpper === 'REJECTED';
+                  const isDraft = statusUpper === 'DRAFT';
 
                   return (
-                    <div key={j.id} className="p-4 bg-white border border-slate-200 rounded-xl shadow-2xs space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-black text-slate-900">{j.date}</span>
-                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${
-                            isApproved ? 'bg-emerald-100 text-emerald-800' :
-                            isRevision ? 'bg-amber-100 text-amber-900' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {isApproved ? 'Tasdiqlangan' : isRevision ? 'Qayta ishlashda' : 'Tekshiruvda'}
+                    <div
+                      key={j.id}
+                      className={`p-4 bg-white border rounded-2xl shadow-2xs space-y-3 transition-all ${
+                        isSubmitted
+                          ? 'border-blue-300 ring-2 ring-blue-500/10'
+                          : isRevision
+                          ? 'border-amber-300 bg-amber-50/10'
+                          : isApproved
+                          ? 'border-emerald-200'
+                          : 'border-slate-200'
+                      }`}
+                    >
+                      {/* Item Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md">
+                            Sana: {j.date}
+                          </span>
+                          <span
+                            className={`px-2.5 py-1 text-[11px] font-bold rounded-md inline-flex items-center gap-1 ${
+                              isApproved
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : isRevision
+                                ? 'bg-amber-100 text-amber-900'
+                                : isDraft
+                                ? 'bg-slate-100 text-slate-700'
+                                : 'bg-blue-100 text-blue-800 animate-pulse'
+                            }`}
+                          >
+                            {isApproved && <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />}
+                            {isRevision && <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />}
+                            {isSubmitted && <Clock className="w-3.5 h-3.5 text-blue-600" />}
+                            <span>
+                              {isApproved
+                                ? `Tasdiqlangan (Baho: ${j.supervisorRating || 5}/5)`
+                                : isRevision
+                                ? 'Qayta ishlashga qaytarilgan'
+                                : isDraft
+                                ? 'Qoralama (DRAFT)'
+                                : 'Tekshiruvga yuborilgan (Kutilmoqda)'}
+                            </span>
                           </span>
                         </div>
-                        <span className="text-xs text-slate-500 font-medium">{j.department}</span>
+
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <span className="font-medium text-slate-700">{j.department}</span>
+                          {j.attendanceSnapshot && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              Davomat: ✅ HOZIR ({j.attendanceSnapshot.checkInTime || '08:15'})
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      <p className="text-xs text-slate-700 leading-relaxed">
-                        {j.workSummary}
-                      </p>
+                      {/* Work summary */}
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                          Bajarilgan amaliy ishlar mazmuni:
+                        </span>
+                        <p className="text-xs text-slate-800 leading-relaxed bg-slate-50/70 p-3 rounded-xl border border-slate-100 font-sans whitespace-pre-wrap">
+                          {j.workSummary}
+                        </p>
+                      </div>
 
+                      {/* Clinical cases & procedures metrics */}
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 pt-1">
+                        <span className="bg-slate-100 px-2 py-1 rounded-md">
+                          Ko'rilgan bemorlar: <strong className="text-slate-900">{j.patientsExaminedCount} nafar</strong>
+                        </span>
+                        <span className="bg-slate-100 px-2 py-1 rounded-md">
+                          Bajarilgan muolajalar: <strong className="text-slate-900">{j.procedures?.length || j.proceduresDone?.length || 0} ta</strong>
+                        </span>
+                        {j.clinicalCases && j.clinicalCases.length > 0 && (
+                          <span className="bg-slate-100 px-2 py-1 rounded-md">
+                            Klinik keyslar: <strong className="text-slate-900">{j.clinicalCases.length} ta</strong>
+                          </span>
+                        )}
+                        {j.submittedAt && (
+                          <span className="text-[11px] text-slate-400 ml-auto">
+                            Yuborilgan vaqti: {new Date(j.submittedAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}, {new Date(j.submittedAt).toLocaleDateString('uz-UZ')}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Previous Revision Reason if returned */}
+                      {isRevision && j.revisionReason && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-1">
+                          <div className="font-bold text-amber-900 flex items-center gap-1.5">
+                            <AlertTriangle className="w-4 h-4 text-amber-600" />
+                            <span>Rahbar tomonidan qaytarish izohi va kamchiliklar:</span>
+                          </div>
+                          <p className="text-amber-800 pl-5 leading-relaxed">{j.revisionReason}</p>
+                        </div>
+                      )}
+
+                      {/* Previous Supervisor Feedback if approved */}
+                      {isApproved && j.supervisorFeedback && (
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1">
+                          <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            <span>Rahbar taqrizi va bahosi ({j.supervisorRating || 5}/5):</span>
+                          </div>
+                          <p className="text-emerald-800 pl-5 leading-relaxed">{j.supervisorFeedback}</p>
+                        </div>
+                      )}
+
+                      {/* Actions footer */}
                       <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                        <span className="text-slate-500">Bemorlar: <strong>{j.patientsExaminedCount}</strong>, Muolajalar: <strong>{j.procedures?.length || 0}</strong></span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDetail(j)}
+                          className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Batafsil ko'rish</span>
+                        </button>
+
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => handleOpenDetail(j)}
-                            className="px-3 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer"
+                            onClick={() => handleOpenPrint(j)}
+                            className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                            title="Chop etish"
                           >
-                            Ko'rish
+                            <Printer className="w-4 h-4" />
                           </button>
-                          {isSubmitted && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIsSupervisorStudentModalOpen(false);
-                                  handleOpenReview(j, 'APPROVED');
-                                }}
-                                className="px-3 py-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs cursor-pointer"
-                              >
-                                Tasdiqlash
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIsSupervisorStudentModalOpen(false);
-                                  handleOpenReview(j, 'REVISION');
-                                }}
-                                className="px-3 py-1 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-2xs cursor-pointer"
-                              >
-                                Qaytarish (Izoh)
-                              </button>
-                            </>
-                          )}
+
+                          {/* Review buttons: Tasdiqlash yoki Qaytarish (Izoh) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleOpenReview(j, 'APPROVED');
+                            }}
+                            className="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            <span>Tasdiqlash (Baho qo'yish)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleOpenReview(j, 'REVISION');
+                            }}
+                            className="px-3.5 py-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-2xs cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>Qaytarish (Izoh yozish)</span>
+                          </button>
                         </div>
                       </div>
                     </div>
                   );
-                })
-              )}
+                });
+              })()}
             </div>
           </div>
         </Modal>
@@ -1584,8 +2027,27 @@ export function DailyJournalModule() {
           setIsReviewModalOpen(false);
           setJournalToReview(null);
         }}
-        onSuccess={() => {
-          refreshJournals();
+        onSuccess={async () => {
+          await refreshJournals();
+          if (selectedStudentForSupervisor) {
+            const updatedJournals = await dailyJournalService.getAllJournals();
+            const freshStuJournals = updatedJournals.filter(j => j.studentId === selectedStudentForSupervisor.student.id || j.studentId === selectedStudentForSupervisor.student.studentId);
+            const subCount = freshStuJournals.filter(j => ['SUBMITTED', 'PENDING', 'OPEN'].includes((j.status || '').toUpperCase())).length;
+            const appCount = freshStuJournals.filter(j => ['APPROVED', 'SUPERVISOR_APPROVED', 'FINAL_APPROVED', 'LOCKED'].includes((j.status || '').toUpperCase())).length;
+            const revCount = freshStuJournals.filter(j => ['REVISION', 'REJECTED'].includes((j.status || '').toUpperCase())).length;
+            const unappCount = subCount + revCount;
+            const jPct = Math.min(100, Math.round((appCount / selectedStudentForSupervisor.totalPracticeDays) * 100));
+
+            setSelectedStudentForSupervisor({
+              ...selectedStudentForSupervisor,
+              submittedCount: subCount,
+              approvedCount: appCount,
+              revisionCount: revCount,
+              unapprovedCount: unappCount,
+              journalPercent: jPct,
+              stuJournals: freshStuJournals
+            });
+          }
         }}
         journal={journalToReview}
         student={students.find(s => s.id === journalToReview?.studentId)}

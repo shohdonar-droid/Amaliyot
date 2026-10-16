@@ -39,6 +39,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { storageService } from '../../../services/storageService';
 import { ActiveModule } from '../../layout/Sidebar';
 import { PracticesListOverview } from '../practices/PracticesListOverview';
+import { SupervisorJournalCharts } from './SupervisorJournalCharts';
 
 interface DashboardModuleProps {
   onNavigate: (module: ActiveModule) => void;
@@ -90,6 +91,16 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
       setNotifications(storageService.getNotifications() || []);
     };
     window.addEventListener('tma_state_changed', handleSync);
+
+    // Sync any Firestore or updated daily journals
+    import('../../../services/dailyJournalService').then(({ dailyJournalService }) => {
+      dailyJournalService.getAllJournals().then(res => {
+        if (res && res.length > 0) {
+          setJournals(res);
+        }
+      }).catch(() => {});
+    });
+
     return () => window.removeEventListener('tma_state_changed', handleSync);
   }, []);
 
@@ -501,6 +512,17 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           </div>
         </div>
 
+        {/* Visual Recharts Progress Bars & Pie Charts for Assigned Groups */}
+        <SupervisorJournalCharts
+          supervisorIds={supIds}
+          students={students}
+          groups={groups}
+          assignments={assignments}
+          practices={practices}
+          journals={journals}
+          onNavigate={onNavigate}
+        />
+
         {/* Quick actions: Talabalar, Davomat, Kundalik, Ko‘nikmalar, Hisobot */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -909,6 +931,17 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           subtitle="Bo'lim boshlig'i nazorati ostidagi barcha o'quv, klinik ishlab chiqarish va malakaviy amaliyotlar"
         />
 
+        {/* Guruhlar kesimida elektron kundaliklar bajarilish monitoringi */}
+        <SupervisorJournalCharts
+          supervisorIds={[]}
+          students={students}
+          groups={groups}
+          assignments={assignments}
+          practices={practices}
+          journals={journals}
+          onNavigate={onNavigate}
+        />
+
         {/* Katta action cards: 10 ta asosiy bo‘lim */}
         <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -1060,6 +1093,17 @@ export function DashboardModule({ onNavigate }: DashboardModuleProps) {
           </div>
         </div>
       </div>
+
+      {/* Guruhlar kesimida elektron kundaliklar bajarilish monitoringi */}
+      <SupervisorJournalCharts
+        supervisorIds={[]}
+        students={students}
+        groups={groups}
+        assignments={assignments}
+        practices={practices}
+        journals={journals}
+        onNavigate={onNavigate}
+      />
 
       {/* Tizimda shu vaqtgacha yaratilgan amaliyotlar ro'yxati (Admin) */}
       <PracticesListOverview

@@ -549,6 +549,42 @@ const DEFAULT_STUDENTS_V2: Student[] = [
     currentPracticeId: 'prac-2',
     currentPracticePlaceId: 'place-tash-2',
     createdAt: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'std-6',
+    studentId: 'T00006',
+    hemisStudentId: '12345683',
+    studentCode: 'T00006',
+    login: 'T00006',
+    fullName: 'Normurodov Alisher Qobilovich',
+    facultyId: 'fac-1',
+    directionId: 'dir-1',
+    courseId: 'course-4',
+    groupId: 'grp-402',
+    phone: '+998 (90) 666-77-88',
+    email: 'T00006@student.uz',
+    status: 'in_practice',
+    currentPracticeId: 'prac-1',
+    currentPracticePlaceId: 'place-tash-1',
+    createdAt: '2026-08-01T08:00:00Z'
+  },
+  {
+    id: 'std-7',
+    studentId: 'T00007',
+    hemisStudentId: '12345684',
+    studentCode: 'T00007',
+    login: 'T00007',
+    fullName: 'Ismoilova Umida Sunnat qizi',
+    facultyId: 'fac-2',
+    directionId: 'dir-3',
+    courseId: 'course-3',
+    groupId: 'grp-301',
+    phone: '+998 (90) 777-88-99',
+    email: 'T00007@student.uz',
+    status: 'in_practice',
+    currentPracticeId: 'prac-2',
+    currentPracticePlaceId: 'place-tash-2',
+    createdAt: '2026-08-01T08:00:00Z'
   }
 ];
 
@@ -574,6 +610,7 @@ const DEFAULT_PRACTICES_V2: Practice[] = [
     description: 'Talabalarning statsionar shifoxonalarda ichki kasalliklar, jarrohlik va kardiologiya bo\'limlarida malakaviy ko\'nikmalarini oshirish.',
     totalHours: 180,
     credits: 6,
+    durationDays: 30,
     practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
     startTime: '08:00',
     endTime: '14:00',
@@ -601,6 +638,7 @@ const DEFAULT_PRACTICES_V2: Practice[] = [
     description: 'Hamshiralik ishi muolajalari, infuzion terapiya va bemorlarni parvarish qilish amaliyoti.',
     totalHours: 120,
     credits: 4,
+    durationDays: 20,
     practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
     startTime: '08:30',
     endTime: '13:30',
@@ -628,6 +666,7 @@ const DEFAULT_PRACTICES_V2: Practice[] = [
     description: 'Bolalar shifoxonasi tuzilmasi, sanitariya-gigiyena qoidalari bilan tanishuv.',
     totalHours: 90,
     credits: 3,
+    durationDays: 15,
     practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
     startTime: '09:00',
     endTime: '13:00',
@@ -663,15 +702,715 @@ const DEFAULT_PRACTICES_V2: Practice[] = [
   }
 ];
 
-const DEFAULT_DISTRIBUTIONS_V2: PracticeDistribution[] = [];
+const DEFAULT_DISTRIBUTIONS_V2: PracticeDistribution[] = [
+  {
+    id: 'dist-401',
+    distributionCode: 'TAQ-2026-001',
+    practiceId: 'prac-1',
+    academicYear: '2026-2027',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    startDate: '2026-10-01',
+    endDate: '2026-11-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    status: 'active',
+    totalStudentsCount: 3,
+    assignedDepartmentsCount: 3,
+    unassignedDepartmentsCount: 0,
+    createdAt: '2026-09-25T08:00:00Z',
+    updatedAt: '2026-09-28T08:00:00Z'
+  },
+  {
+    id: 'dist-402',
+    distributionCode: 'TAQ-2026-002',
+    practiceId: 'prac-1',
+    academicYear: '2026-2027',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    groupId: 'grp-402',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    startDate: '2026-10-01',
+    endDate: '2026-11-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    status: 'active',
+    totalStudentsCount: 2,
+    assignedDepartmentsCount: 2,
+    unassignedDepartmentsCount: 0,
+    createdAt: '2026-09-25T08:00:00Z',
+    updatedAt: '2026-09-28T08:00:00Z'
+  },
+  {
+    id: 'dist-301',
+    distributionCode: 'TAQ-2026-003',
+    practiceId: 'prac-2',
+    academicYear: '2026-2027',
+    courseLevel: 3,
+    directionId: 'dir-1',
+    groupId: 'grp-301',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-2',
+    startDate: '2026-10-05',
+    endDate: '2026-10-30',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:30',
+    endTime: '13:30',
+    status: 'active',
+    totalStudentsCount: 2,
+    assignedDepartmentsCount: 2,
+    unassignedDepartmentsCount: 0,
+    createdAt: '2026-09-25T08:00:00Z',
+    updatedAt: '2026-09-28T08:00:00Z'
+  }
+];
 
-const DEFAULT_ASSIGNMENTS_V2: PracticeAssignment[] = [];
+const DEFAULT_ASSIGNMENTS_V2: PracticeAssignment[] = [
+  {
+    id: 'asg-std-1',
+    assignmentId: 'asg-std-1',
+    distributionId: 'dist-401',
+    distributionCode: 'TAQ-2026-001',
+    practiceId: 'prac-1',
+    studentId: 'std-1',
+    groupId: 'grp-401',
+    practicePlaceId: 'place-tash-1',
+    department: 'Gospital terapiya bo\'limi',
+    departmentId: 'pdept-1',
+    supervisorId: 'sup-1',
+    startDate: '2026-10-01',
+    endDate: '2026-11-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2026-2027',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    status: 'in_progress',
+    createdAt: '2026-09-28T08:00:00Z'
+  },
+  {
+    id: 'asg-std-2',
+    assignmentId: 'asg-std-2',
+    distributionId: 'dist-401',
+    distributionCode: 'TAQ-2026-001',
+    practiceId: 'prac-1',
+    studentId: 'std-2',
+    groupId: 'grp-401',
+    practicePlaceId: 'place-tash-1',
+    department: 'Kardiologiya bo\'limi',
+    departmentId: 'pdept-2',
+    supervisorId: 'sup-1',
+    startDate: '2026-10-01',
+    endDate: '2026-11-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2026-2027',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    status: 'in_progress',
+    createdAt: '2026-09-28T08:00:00Z'
+  },
+  {
+    id: 'asg-std-3',
+    assignmentId: 'asg-std-3',
+    distributionId: 'dist-401',
+    distributionCode: 'TAQ-2026-001',
+    practiceId: 'prac-1',
+    studentId: 'std-3',
+    groupId: 'grp-401',
+    practicePlaceId: 'place-tash-1',
+    department: 'Gospital terapiya bo\'limi',
+    departmentId: 'pdept-1',
+    supervisorId: 'sup-1',
+    startDate: '2026-10-01',
+    endDate: '2026-11-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2026-2027',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    status: 'in_progress',
+    createdAt: '2026-09-28T08:00:00Z'
+  },
+  {
+    id: 'asg-std-4',
+    assignmentId: 'asg-std-4',
+    distributionId: 'dist-402',
+    distributionCode: 'TAQ-2026-002',
+    practiceId: 'prac-1',
+    studentId: 'std-4',
+    groupId: 'grp-402',
+    practicePlaceId: 'place-tash-1',
+    department: 'Xirurgiya bo\'limi',
+    departmentId: 'pdept-3',
+    supervisorId: 'sup-1',
+    startDate: '2026-10-01',
+    endDate: '2026-11-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2026-2027',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    status: 'in_progress',
+    createdAt: '2026-09-28T08:00:00Z'
+  },
+  {
+    id: 'asg-std-6',
+    assignmentId: 'asg-std-6',
+    distributionId: 'dist-402',
+    distributionCode: 'TAQ-2026-002',
+    practiceId: 'prac-1',
+    studentId: 'std-6',
+    groupId: 'grp-402',
+    practicePlaceId: 'place-tash-1',
+    department: 'Xirurgiya bo\'limi',
+    departmentId: 'pdept-3',
+    supervisorId: 'sup-1',
+    startDate: '2026-10-01',
+    endDate: '2026-11-15',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:00',
+    endTime: '14:00',
+    academicYear: '2026-2027',
+    courseLevel: 4,
+    directionId: 'dir-1',
+    status: 'in_progress',
+    createdAt: '2026-09-28T08:00:00Z'
+  },
+  {
+    id: 'asg-std-5',
+    assignmentId: 'asg-std-5',
+    distributionId: 'dist-301',
+    distributionCode: 'TAQ-2026-003',
+    practiceId: 'prac-2',
+    studentId: 'std-5',
+    groupId: 'grp-301',
+    practicePlaceId: 'place-tash-2',
+    department: 'Muolaja xonasi va terapiya',
+    departmentId: 'pdept-4',
+    supervisorId: 'sup-1',
+    startDate: '2026-10-05',
+    endDate: '2026-10-30',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:30',
+    endTime: '13:30',
+    academicYear: '2026-2027',
+    courseLevel: 3,
+    directionId: 'dir-1',
+    status: 'in_progress',
+    createdAt: '2026-09-28T08:00:00Z'
+  },
+  {
+    id: 'asg-std-7',
+    assignmentId: 'asg-std-7',
+    distributionId: 'dist-301',
+    distributionCode: 'TAQ-2026-003',
+    practiceId: 'prac-2',
+    studentId: 'std-7',
+    groupId: 'grp-301',
+    practicePlaceId: 'place-tash-2',
+    department: 'Bolalar terapiyasi bo\'limi',
+    departmentId: 'pdept-5',
+    supervisorId: 'sup-1',
+    startDate: '2026-10-05',
+    endDate: '2026-10-30',
+    practiceDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma'],
+    startTime: '08:30',
+    endTime: '13:30',
+    academicYear: '2026-2027',
+    courseLevel: 3,
+    directionId: 'dir-3',
+    status: 'in_progress',
+    createdAt: '2026-09-28T08:00:00Z'
+  }
+];
 
 const DEFAULT_ATTENDANCE_SESSIONS_V2: AttendanceSession[] = [];
 
-const DEFAULT_ATTENDANCE_V2: Attendance[] = [];
+const DEFAULT_ATTENDANCE_V2: Attendance[] = [
+  { id: 'att-1-1', studentId: 'std-1', practiceId: 'prac-1', date: '2026-10-12', status: 'PRESENT', checkInTime: '08:02', practicePlaceId: 'place-tash-1' },
+  { id: 'att-1-2', studentId: 'std-1', practiceId: 'prac-1', date: '2026-10-13', status: 'PRESENT', checkInTime: '08:05', practicePlaceId: 'place-tash-1' },
+  { id: 'att-1-3', studentId: 'std-1', practiceId: 'prac-1', date: '2026-10-14', status: 'PRESENT', checkInTime: '08:00', practicePlaceId: 'place-tash-1' },
+  { id: 'att-2-1', studentId: 'std-2', practiceId: 'prac-1', date: '2026-10-12', status: 'PRESENT', checkInTime: '08:10', practicePlaceId: 'place-tash-1' },
+  { id: 'att-2-2', studentId: 'std-2', practiceId: 'prac-1', date: '2026-10-13', status: 'PRESENT', checkInTime: '08:00', practicePlaceId: 'place-tash-1' },
+  { id: 'att-2-3', studentId: 'std-2', practiceId: 'prac-1', date: '2026-10-14', status: 'PRESENT', checkInTime: '08:04', practicePlaceId: 'place-tash-1' },
+  { id: 'att-3-1', studentId: 'std-3', practiceId: 'prac-1', date: '2026-10-12', status: 'PRESENT', checkInTime: '08:01', practicePlaceId: 'place-tash-1' },
+  { id: 'att-3-2', studentId: 'std-3', practiceId: 'prac-1', date: '2026-10-13', status: 'PRESENT', checkInTime: '08:03', practicePlaceId: 'place-tash-1' },
+  { id: 'att-4-1', studentId: 'std-4', practiceId: 'prac-1', date: '2026-10-12', status: 'PRESENT', checkInTime: '08:15', practicePlaceId: 'place-tash-1' },
+  { id: 'att-4-2', studentId: 'std-4', practiceId: 'prac-1', date: '2026-10-13', status: 'PRESENT', checkInTime: '08:05', practicePlaceId: 'place-tash-1' },
+  { id: 'att-6-1', studentId: 'std-6', practiceId: 'prac-1', date: '2026-10-12', status: 'PRESENT', checkInTime: '08:00', practicePlaceId: 'place-tash-1' },
+  { id: 'att-5-1', studentId: 'std-5', practiceId: 'prac-2', date: '2026-10-12', status: 'PRESENT', checkInTime: '08:25', practicePlaceId: 'place-tash-2' },
+  { id: 'att-7-1', studentId: 'std-7', practiceId: 'prac-2', date: '2026-10-12', status: 'PRESENT', checkInTime: '08:28', practicePlaceId: 'place-tash-2' }
+];
 
-const DEFAULT_DAILY_JOURNALS_V2: DailyJournal[] = [];
+const DEFAULT_DAILY_JOURNALS_V2: DailyJournal[] = [
+  // grp-401: std-1
+  {
+    id: 'dj-401-1-1',
+    studentId: 'std-1',
+    assignmentId: 'asg-std-1',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-06',
+    date: '2026-10-06',
+    status: 'APPROVED',
+    content: 'Kardiologiya bo\'limida 4 nafar bemorni ko\'rikdan o\'tkazdim, EKG tahlil qilindi, arterial qon bosimi o\'lchandi.',
+    submittedAt: '2026-10-06T15:30:00Z',
+    reviewedAt: '2026-10-06T18:00:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'EKG tahlillari to\'g\'ri yozilgan. Baho: 5/5',
+    createdAt: '2026-10-06T14:00:00Z',
+    updatedAt: '2026-10-06T18:00:00Z'
+  },
+  {
+    id: 'dj-401-1-2',
+    studentId: 'std-1',
+    assignmentId: 'asg-std-1',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-07',
+    date: '2026-10-07',
+    status: 'APPROVED',
+    content: 'Gipertoniya kasalligi 2-bosqich bemori anamnezini to\'pladim, statsionar kartani to\'ldirdim.',
+    submittedAt: '2026-10-07T16:00:00Z',
+    reviewedAt: '2026-10-07T18:15:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Tibbiy karta namunali to\'ldirilgan. Baho: 5/5',
+    createdAt: '2026-10-07T14:30:00Z',
+    updatedAt: '2026-10-07T18:15:00Z'
+  },
+  {
+    id: 'dj-401-1-3',
+    studentId: 'std-1',
+    assignmentId: 'asg-std-1',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-08',
+    date: '2026-10-08',
+    status: 'APPROVED',
+    content: 'Vena ichiga dori yuborish muolajasida hamshiraga assistentlik qildim, aseptika qoidalariga rioya qilindi.',
+    submittedAt: '2026-10-08T15:45:00Z',
+    reviewedAt: '2026-10-08T18:30:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 5/5',
+    createdAt: '2026-10-08T14:15:00Z',
+    updatedAt: '2026-10-08T18:30:00Z'
+  },
+  {
+    id: 'dj-401-1-4',
+    studentId: 'std-1',
+    assignmentId: 'asg-std-1',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-09',
+    date: '2026-10-09',
+    status: 'APPROVED',
+    content: 'Yurak ishemik kasalligi bilan og\'rigan bemorning reabilitatsiya rejasini muhokama qildik.',
+    submittedAt: '2026-10-09T16:10:00Z',
+    reviewedAt: '2026-10-09T18:40:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 4/5',
+    createdAt: '2026-10-09T14:00:00Z',
+    updatedAt: '2026-10-09T18:40:00Z'
+  },
+  {
+    id: 'dj-401-1-5',
+    studentId: 'std-1',
+    assignmentId: 'asg-std-1',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-12',
+    date: '2026-10-12',
+    status: 'PENDING',
+    content: 'Reanimatsiya bo\'limida shok holatidagi bemor monitorini kuzatish, pulsoksimetriya va qon gazlari tahlili.',
+    submittedAt: '2026-10-12T16:20:00Z',
+    createdAt: '2026-10-12T14:10:00Z',
+    updatedAt: '2026-10-12T16:20:00Z'
+  },
+  {
+    id: 'dj-401-1-6',
+    studentId: 'std-1',
+    assignmentId: 'asg-std-1',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-13',
+    date: '2026-10-13',
+    status: 'REVISION',
+    content: 'Terapiya bo\'limida obxod o\'tkazildi.',
+    submittedAt: '2026-10-13T16:00:00Z',
+    reviewedAt: '2026-10-13T19:00:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Juda qisqa. Obxod davomida qaysi bemorlar ko\'rildi, qanday klinik belgilar aniqlandi va qanday davo choralari buyurildi, to\'liq yozing.',
+    createdAt: '2026-10-13T14:00:00Z',
+    updatedAt: '2026-10-13T19:00:00Z'
+  },
+  // grp-401: std-2
+  {
+    id: 'dj-401-2-1',
+    studentId: 'std-2',
+    assignmentId: 'asg-std-2',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-06',
+    date: '2026-10-06',
+    status: 'APPROVED',
+    content: 'Kardiologiya bo\'limida aritmiya bilan yotgan bemorlarni ko\'rish, ritm buzilishlari tahlili.',
+    submittedAt: '2026-10-06T16:30:00Z',
+    reviewedAt: '2026-10-06T18:10:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Klinik tahlil a\'lo darajada. Baho: 5/5',
+    createdAt: '2026-10-06T14:00:00Z',
+    updatedAt: '2026-10-06T18:10:00Z'
+  },
+  {
+    id: 'dj-401-2-2',
+    studentId: 'std-2',
+    assignmentId: 'asg-std-2',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-07',
+    date: '2026-10-07',
+    status: 'APPROVED',
+    content: 'Biokimyoviy qon tahlillari (troponin, ALT, AST, mochevina, kreatinin) ko\'rsatkichlarini sharhlash.',
+    submittedAt: '2026-10-07T16:00:00Z',
+    reviewedAt: '2026-10-07T18:25:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 5/5',
+    createdAt: '2026-10-07T14:30:00Z',
+    updatedAt: '2026-10-07T18:25:00Z'
+  },
+  {
+    id: 'dj-401-2-3',
+    studentId: 'std-2',
+    assignmentId: 'asg-std-2',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-08',
+    date: '2026-10-08',
+    status: 'APPROVED',
+    content: 'Yurak yetishmovchiligi bo\'lgan bemorga parhez va suyuqlik iste\'moli bo\'yicha tavsiyalar berish.',
+    submittedAt: '2026-10-08T15:50:00Z',
+    reviewedAt: '2026-10-08T18:35:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 5/5',
+    createdAt: '2026-10-08T14:00:00Z',
+    updatedAt: '2026-10-08T18:35:00Z'
+  },
+  {
+    id: 'dj-401-2-4',
+    studentId: 'std-2',
+    assignmentId: 'asg-std-2',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-12',
+    date: '2026-10-12',
+    status: 'PENDING',
+    content: 'EchoKG (exokardiografiya) tekshiruvida ishtirok etish, chap qorincha otish fraksiyasi o\'rganildi.',
+    submittedAt: '2026-10-12T16:15:00Z',
+    createdAt: '2026-10-12T14:00:00Z',
+    updatedAt: '2026-10-12T16:15:00Z'
+  },
+  // grp-401: std-3
+  {
+    id: 'dj-401-3-1',
+    studentId: 'std-3',
+    assignmentId: 'asg-std-3',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-06',
+    date: '2026-10-06',
+    status: 'APPROVED',
+    content: 'Gospital terapiya bo\'limida surunkali bronxit kasalligi bilan og\'rigan bemor auskultatsiyasi.',
+    submittedAt: '2026-10-06T16:00:00Z',
+    reviewedAt: '2026-10-06T18:20:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 4/5',
+    createdAt: '2026-10-06T14:00:00Z',
+    updatedAt: '2026-10-06T18:20:00Z'
+  },
+  {
+    id: 'dj-401-3-2',
+    studentId: 'std-3',
+    assignmentId: 'asg-std-3',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-07',
+    date: '2026-10-07',
+    status: 'APPROVED',
+    content: 'Nibulayzer terapiyasi va ingalyatsiya o\'tkazish texnikasini amalda bajardim.',
+    submittedAt: '2026-10-07T16:10:00Z',
+    reviewedAt: '2026-10-07T18:30:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 5/5',
+    createdAt: '2026-10-07T14:15:00Z',
+    updatedAt: '2026-10-07T18:30:00Z'
+  },
+  {
+    id: 'dj-401-3-3',
+    studentId: 'std-3',
+    assignmentId: 'asg-std-3',
+    groupId: 'grp-401',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-12',
+    date: '2026-10-12',
+    status: 'PENDING',
+    content: 'Plevral punktat tahlili natijalarini shifokor bilan birgalikda tahlil qildik.',
+    submittedAt: '2026-10-12T16:40:00Z',
+    createdAt: '2026-10-12T14:30:00Z',
+    updatedAt: '2026-10-12T16:40:00Z'
+  },
+
+  // grp-402: std-4
+  {
+    id: 'dj-402-4-1',
+    studentId: 'std-4',
+    assignmentId: 'asg-std-4',
+    groupId: 'grp-402',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-06',
+    date: '2026-10-06',
+    status: 'APPROVED',
+    content: 'Xirurgiya bo\'limida operatsiyadan keyingi bemorlar bog\'lamlarini almashtirishda qatnashdim.',
+    submittedAt: '2026-10-06T16:20:00Z',
+    reviewedAt: '2026-10-06T18:45:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Aseptika qoidalari to\'g\'ri ta\'riflangan. Baho: 5/5',
+    createdAt: '2026-10-06T14:00:00Z',
+    updatedAt: '2026-10-06T18:45:00Z'
+  },
+  {
+    id: 'dj-402-4-2',
+    studentId: 'std-4',
+    assignmentId: 'asg-std-4',
+    groupId: 'grp-402',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-07',
+    date: '2026-10-07',
+    status: 'APPROVED',
+    content: 'Jarrohlik sohasidagi drenaj naylarini nazorat qilish, chiqayotgan suyuqlik miqdorini hisoblash.',
+    submittedAt: '2026-10-07T16:00:00Z',
+    reviewedAt: '2026-10-07T18:50:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 4/5',
+    createdAt: '2026-10-07T14:30:00Z',
+    updatedAt: '2026-10-07T18:50:00Z'
+  },
+  {
+    id: 'dj-402-4-3',
+    studentId: 'std-4',
+    assignmentId: 'asg-std-4',
+    groupId: 'grp-402',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-12',
+    date: '2026-10-12',
+    status: 'PENDING',
+    content: 'O\'tkir appenditsit gumon qilingan bemorni qabul qilish va birlamchi jarrohlik ko\'rigi.',
+    submittedAt: '2026-10-12T16:50:00Z',
+    createdAt: '2026-10-12T14:20:00Z',
+    updatedAt: '2026-10-12T16:50:00Z'
+  },
+  {
+    id: 'dj-402-4-4',
+    studentId: 'std-4',
+    assignmentId: 'asg-std-4',
+    groupId: 'grp-402',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-13',
+    date: '2026-10-13',
+    status: 'DRAFT',
+    content: 'Laparoskopik operatsiyada assistentlik qilish va steril kiyinish qoidalari.',
+    createdAt: '2026-10-13T14:00:00Z',
+    updatedAt: '2026-10-13T14:00:00Z'
+  },
+
+  // grp-402: std-6
+  {
+    id: 'dj-402-6-1',
+    studentId: 'std-6',
+    assignmentId: 'asg-std-6',
+    groupId: 'grp-402',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-06',
+    date: '2026-10-06',
+    status: 'APPROVED',
+    content: 'Jarrohlik bo\'limi reanimatsiyasida bemor hayotiy ko\'rsatkichlarini monitoring qilish.',
+    submittedAt: '2026-10-06T16:15:00Z',
+    reviewedAt: '2026-10-06T18:55:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 5/5',
+    createdAt: '2026-10-06T14:00:00Z',
+    updatedAt: '2026-10-06T18:55:00Z'
+  },
+  {
+    id: 'dj-402-6-2',
+    studentId: 'std-6',
+    assignmentId: 'asg-std-6',
+    groupId: 'grp-402',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-1',
+    journalDate: '2026-10-07',
+    date: '2026-10-07',
+    status: 'REVISION',
+    content: 'Bog\'lov xonasida ishlash.',
+    submittedAt: '2026-10-07T16:20:00Z',
+    reviewedAt: '2026-10-07T19:05:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Qaysi antiseptik vositalardan foydalandingiz, necha nafar bemorga bog\'lov o\'tkazildi? To\'ldirib qayta yuboring.',
+    createdAt: '2026-10-07T14:00:00Z',
+    updatedAt: '2026-10-07T19:05:00Z'
+  },
+
+  // grp-301: std-5
+  {
+    id: 'dj-301-5-1',
+    studentId: 'std-5',
+    assignmentId: 'asg-std-5',
+    groupId: 'grp-301',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-2',
+    journalDate: '2026-10-06',
+    date: '2026-10-06',
+    status: 'APPROVED',
+    content: 'Hamshiralik amaliyoti: teri osti va mushak ichiga inyeksiya qilish qoidalari va texnikasi.',
+    submittedAt: '2026-10-06T15:30:00Z',
+    reviewedAt: '2026-10-06T18:00:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Sanitariya-epidemiologiya talablari yaxshi o\'zlashtirilgan. Baho: 5/5',
+    createdAt: '2026-10-06T14:00:00Z',
+    updatedAt: '2026-10-06T18:00:00Z'
+  },
+  {
+    id: 'dj-301-5-2',
+    studentId: 'std-5',
+    assignmentId: 'asg-std-5',
+    groupId: 'grp-301',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-2',
+    journalDate: '2026-10-07',
+    date: '2026-10-07',
+    status: 'APPROVED',
+    content: 'Infuzion sistemani yig\'ish, vena qon tomirini kateterlash va eritmalarni tomchilab yuborish.',
+    submittedAt: '2026-10-07T15:40:00Z',
+    reviewedAt: '2026-10-07T18:10:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 5/5',
+    createdAt: '2026-10-07T14:00:00Z',
+    updatedAt: '2026-10-07T18:10:00Z'
+  },
+  {
+    id: 'dj-301-5-3',
+    studentId: 'std-5',
+    assignmentId: 'asg-std-5',
+    groupId: 'grp-301',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-2',
+    journalDate: '2026-10-08',
+    date: '2026-10-08',
+    status: 'APPROVED',
+    content: 'Oshqozonni yuvish muolajasiga tayyorgarlik va uning ko\'rsatmalarini o\'rganish.',
+    submittedAt: '2026-10-08T15:55:00Z',
+    reviewedAt: '2026-10-08T18:20:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 4/5',
+    createdAt: '2026-10-08T14:00:00Z',
+    updatedAt: '2026-10-08T18:20:00Z'
+  },
+  {
+    id: 'dj-301-5-4',
+    studentId: 'std-5',
+    assignmentId: 'asg-std-5',
+    groupId: 'grp-301',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-2',
+    journalDate: '2026-10-12',
+    date: '2026-10-12',
+    status: 'PENDING',
+    content: 'Kasalxonada yotgan bemorlarni antromometrik ko\'rsatkichlarini o\'lchash (bo\'y, vazn, tana harorati).',
+    submittedAt: '2026-10-12T16:10:00Z',
+    createdAt: '2026-10-12T14:00:00Z',
+    updatedAt: '2026-10-12T16:10:00Z'
+  },
+
+  // grp-301: std-7
+  {
+    id: 'dj-301-7-1',
+    studentId: 'std-7',
+    assignmentId: 'asg-std-7',
+    groupId: 'grp-301',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-2',
+    journalDate: '2026-10-06',
+    date: '2026-10-06',
+    status: 'APPROVED',
+    content: 'Bolalar bo\'limida yosh bolalarni parvarish qilish, dori vositalarini qabul qilish jadvalini nazorat qilish.',
+    submittedAt: '2026-10-06T15:45:00Z',
+    reviewedAt: '2026-10-06T18:05:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 5/5',
+    createdAt: '2026-10-06T14:00:00Z',
+    updatedAt: '2026-10-06T18:05:00Z'
+  },
+  {
+    id: 'dj-301-7-2',
+    studentId: 'std-7',
+    assignmentId: 'asg-std-7',
+    groupId: 'grp-301',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-2',
+    journalDate: '2026-10-07',
+    date: '2026-10-07',
+    status: 'APPROVED',
+    content: 'Bolalarda fiziologik eritmalarni yuborishda tomchi tezligini aniqlash va nazorat qilish.',
+    submittedAt: '2026-10-07T15:50:00Z',
+    reviewedAt: '2026-10-07T18:15:00Z',
+    reviewedBy: 'Dots. Karimov Jasur Alisherovich',
+    reviewComment: 'Baho: 5/5',
+    createdAt: '2026-10-07T14:00:00Z',
+    updatedAt: '2026-10-07T18:15:00Z'
+  },
+  {
+    id: 'dj-301-7-3',
+    studentId: 'std-7',
+    assignmentId: 'asg-std-7',
+    groupId: 'grp-301',
+    supervisorId: 'sup-1',
+    organizationId: 'place-tash-2',
+    journalDate: '2026-10-08',
+    date: '2026-10-08',
+    status: 'DRAFT',
+    content: 'Bolalarda tana haroratini termometriya qilish va harorat varaqasini to\'ldirish.',
+    createdAt: '2026-10-08T14:00:00Z',
+    updatedAt: '2026-10-08T14:00:00Z'
+  }
+];
 
 const DEFAULT_SKILL_CATEGORIES_V2: string[] = [
   'Diagnostika',
@@ -1727,7 +2466,13 @@ class StorageServiceV2 {
       parsed.practices = DEFAULT_PRACTICES_V2;
     }
     parsed.practiceDistributions = Array.isArray(parsed.practiceDistributions) ? parsed.practiceDistributions.filter((d: any) => !parsed.deletedPracticeIds.includes(d.practiceId)) : [];
+    if (parsed.practiceDistributions.length === 0) {
+      parsed.practiceDistributions = DEFAULT_DISTRIBUTIONS_V2;
+    }
     parsed.practiceAssignments = Array.isArray(parsed.practiceAssignments) ? parsed.practiceAssignments.filter((a: any) => !parsed.deletedPracticeIds.includes(a.practiceId)) : [];
+    if (parsed.practiceAssignments.length === 0) {
+      parsed.practiceAssignments = DEFAULT_ASSIGNMENTS_V2;
+    }
 
     // Ensure admin and dept_head are present
     const hasAdmin = (parsed.users || []).some((u: any) => u.login === 'admin' || u.role === 'SUPER_ADMIN');
@@ -1744,9 +2489,9 @@ class StorageServiceV2 {
       const supUser = DEFAULT_USERS_V2.find(u => u.login === 'supervisor');
       if (supUser) parsed.users.push(supUser);
     }
-    parsed.attendance = parsed.attendance || [];
+    parsed.attendance = Array.isArray(parsed.attendance) && parsed.attendance.length > 0 ? parsed.attendance : DEFAULT_ATTENDANCE_V2;
     parsed.attendanceSessions = parsed.attendanceSessions || [];
-    parsed.dailyJournals = parsed.dailyJournals || [];
+    parsed.dailyJournals = Array.isArray(parsed.dailyJournals) && parsed.dailyJournals.length > 0 ? parsed.dailyJournals : DEFAULT_DAILY_JOURNALS_V2;
     parsed.skills = parsed.skills || [];
     parsed.studentSkills = parsed.studentSkills || [];
     parsed.skillLogs = parsed.skillLogs || [];
@@ -2453,7 +3198,26 @@ class StorageServiceV2 {
 
   // --- PRACTICES ---
   public getPractices(): Practice[] {
-    return this.getState().practices;
+    const list = this.getState().practices || [];
+    return list.map(p => {
+      let durationDays = p.durationDays;
+      if (!durationDays || durationDays <= 0) {
+        if (p.startDate && p.endDate) {
+          const s = new Date(p.startDate).getTime();
+          const e = new Date(p.endDate).getTime();
+          if (!isNaN(s) && !isNaN(e) && e >= s) {
+            durationDays = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+          }
+        }
+        if (!durationDays || durationDays <= 0) {
+          durationDays = 30;
+        }
+      }
+      return {
+        ...p,
+        durationDays
+      };
+    });
   }
 
   public getPracticeById(id: string): Practice | undefined {
@@ -2465,8 +3229,23 @@ class StorageServiceV2 {
     const idx = state.practices.findIndex(p => p.id === practice.id);
     const isNew = idx < 0;
 
+    let durationDays = practice.durationDays;
+    if (!durationDays || durationDays <= 0) {
+      if (practice.startDate && practice.endDate) {
+        const s = new Date(practice.startDate).getTime();
+        const e = new Date(practice.endDate).getTime();
+        if (!isNaN(s) && !isNaN(e) && e >= s) {
+          durationDays = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+        }
+      }
+      if (!durationDays || durationDays <= 0) {
+        durationDays = 30;
+      }
+    }
+
     const payload: Practice = {
       ...practice,
+      durationDays,
       updatedAt: new Date().toISOString()
     };
     if (isNew) {

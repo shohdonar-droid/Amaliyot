@@ -428,10 +428,10 @@ export function PracticesListOverview({
                       {/* Muddat & Reja */}
                       <td className="py-3 px-3 whitespace-nowrap">
                         <div className="font-mono text-slate-800 text-[11px] font-bold">
-                          {practice.startDate}
+                          {practice.startDate} — {practice.endDate}
                         </div>
-                        <div className="text-[10px] font-mono text-slate-500">
-                          {practice.endDate} gacha
+                        <div className="text-[10px] text-blue-700 font-bold bg-blue-50 px-1.5 py-0.5 rounded inline-block mt-0.5 border border-blue-200">
+                          {practice.durationDays || 30} kun
                         </div>
                       </td>
 
@@ -591,9 +591,14 @@ export function PracticesListOverview({
                   {/* Muddat */}
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-slate-500">Muddat:</span>
-                    <span className="font-mono text-slate-700 font-medium">
-                      {practice.startDate} — {practice.endDate}
-                    </span>
+                    <div className="text-right">
+                      <span className="font-mono text-slate-700 font-medium block">
+                        {practice.startDate} — {practice.endDate}
+                      </span>
+                      <span className="text-[10px] text-blue-700 font-bold bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200 inline-block mt-0.5">
+                        {practice.durationDays || 30} kun
+                      </span>
+                    </div>
                   </div>
 
                   {/* Talabalar soni */}

@@ -38,6 +38,7 @@ export function PracticeFormModal({
   const [code, setCode] = useState('');
   const [startDate, setStartDate] = useState('2026-10-01');
   const [endDate, setEndDate] = useState('2026-11-15');
+  const [durationDays, setDurationDays] = useState<number>(30);
   const [academicYear, setAcademicYear] = useState('2026-2027');
   const [facultyId, setFacultyId] = useState(faculties[0]?.id || '');
   const [directionId, setDirectionId] = useState(directions[0]?.id || '');
@@ -52,6 +53,16 @@ export function PracticeFormModal({
   const [totalHours, setTotalHours] = useState(180);
   const [credits, setCredits] = useState(6);
   const [status, setStatus] = useState<PracticeStatus>('draft');
+
+  useEffect(() => {
+    if (startDate && endDate) {
+      const s = new Date(startDate).getTime();
+      const e = new Date(endDate).getTime();
+      if (!isNaN(s) && !isNaN(e) && e >= s) {
+        setDurationDays(Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1);
+      }
+    }
+  }, [startDate, endDate]);
 
   useEffect(() => {
     if (isOpen) {
@@ -71,6 +82,7 @@ export function PracticeFormModal({
       setCode(practiceToEdit.code);
       setStartDate(practiceToEdit.startDate);
       setEndDate(practiceToEdit.endDate);
+      setDurationDays(practiceToEdit.durationDays || 30);
       setAcademicYear(practiceToEdit.academicYear);
       setFacultyId(practiceToEdit.facultyId);
       setDirectionId(practiceToEdit.directionId);
@@ -91,6 +103,7 @@ export function PracticeFormModal({
       setCode(`PRAC-${new Date().getFullYear()}-MED${Math.floor(10 + Math.random() * 90)}`);
       setStartDate('2026-10-01');
       setEndDate('2026-11-15');
+      setDurationDays(30);
       setAcademicYear('2026-2027');
       setFacultyId(faculties[0]?.id || '');
       setDirectionId(directions[0]?.id || '');
@@ -127,6 +140,7 @@ export function PracticeFormModal({
       code: code.trim(),
       startDate,
       endDate,
+      durationDays: Number(durationDays) || 30,
       academicYear,
       facultyId,
       directionId,
@@ -221,8 +235,8 @@ export function PracticeFormModal({
           </div>
         </div>
 
-        {/* Start Date, End Date, Academic Year */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Start Date, End Date, Duration Days, Academic Year */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
               Boshlanish sanasi *
@@ -247,6 +261,26 @@ export function PracticeFormModal({
               onChange={e => setEndDate(e.target.value)}
               className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-mono"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              Jami kunlar soni *
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                min={1}
+                max={365}
+                required
+                value={durationDays}
+                onChange={e => setDurationDays(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full px-3 py-2 text-xs font-mono font-bold border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+              />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-blue-700 font-bold">
+                kun
+              </span>
+            </div>
           </div>
 
           <div>

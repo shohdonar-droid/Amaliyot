@@ -1641,8 +1641,13 @@ export function AllocationModule() {
                                 <div className="text-slate-800 font-medium">
                                   {dist.startDate} — {dist.endDate}
                                 </div>
-                                <div className="text-[11px] text-slate-500">
-                                  {dist.practiceDays?.join(', ')} · {dist.startTime}–{dist.endTime}
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                    {Math.max(1, Math.round((new Date(dist.endDate).getTime() - new Date(dist.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1)} kun
+                                  </span>
+                                  <span className="text-[11px] text-slate-500">
+                                    {dist.practiceDays?.join(', ')} · {dist.startTime}–{dist.endTime}
+                                  </span>
                                 </div>
                               </td>
                               <td className="py-2.5 px-3 font-semibold text-slate-900">
@@ -2039,6 +2044,13 @@ export function AllocationModule() {
                 required
               />
             </div>
+          </div>
+
+          <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center justify-between text-xs">
+            <span className="text-slate-700 font-medium">Belgilangan amaliyot muddati:</span>
+            <span className="font-bold text-blue-800 bg-blue-100 px-2.5 py-1 rounded-lg">
+              Jami {Math.max(1, Math.round((new Date(formEndDate).getTime() - new Date(formStartDate).getTime()) / (1000 * 60 * 60 * 24)) + 1)} kun
+            </span>
           </div>
 
           <div>
